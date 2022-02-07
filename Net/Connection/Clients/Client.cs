@@ -1,12 +1,12 @@
-﻿using System.Collections;
-using System.Net;
-using System.Net.Sockets;
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace Net.Connection
+﻿namespace Net.Connection.Clients
 {
-    public class Client : GeneralClient
+    using System.Collections;
+    using System.Net;
+    using System.Net.Sockets;
+    using System.Threading;
+    using System.Threading.Tasks;
+
+    public class Client : GeneralClient, IConnectable
     {
         public readonly IPAddress Address;
         public readonly uint Port;
@@ -29,12 +29,12 @@ namespace Net.Connection
             t.Start();
         }
 
-        public override void Connect()
+        public void Connect()
         {
             Soc.Connect(new IPEndPoint(Address, (int)Port));
             while (!Connected) ;
         }
 
-        public override Task ConnectAsync() => Task.Run(() => Connect());
+        public Task ConnectAsync() => Task.Run(() => Connect());
     }
 }

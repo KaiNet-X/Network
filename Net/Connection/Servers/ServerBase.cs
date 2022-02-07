@@ -1,8 +1,9 @@
-﻿using Net.Messages;
-using System.Collections.Generic;
-
-namespace Net
+﻿namespace Net.Connection.Servers
 {
+    using Clients;
+    using Messages;
+    using System.Collections.Generic;
+
     public abstract class ServerBase<TClient> where TClient : ClientBase
     {
         internal virtual List<TClient> Clients { get; init; }
@@ -17,7 +18,7 @@ namespace Net
 
         public virtual void ShutDown()
         {
-
+            
         }
     }
 }

@@ -1,11 +1,10 @@
-﻿using Net.Messages;
-using System.Collections;
-using System.Net;
-using System.Net.Sockets;
-using System.Security.Cryptography;
-
-namespace Net.Connection
+﻿namespace Net.Connection.Clients
 {
+    using Net.Messages;
+    using System.Net;
+    using System.Net.Sockets;
+    using System.Security.Cryptography;
+
     public class ServerClient : GeneralClient
     {
         public delegate void RecieveObject(object Obj, EndPoint Remote);

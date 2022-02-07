@@ -7,6 +7,9 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Net;
 using Net.Connection;
+using Net.Connection.Channels;
+using Net.Connection.Clients;
+using Net.Connection.Servers;
 
 namespace Testing
 {
@@ -14,35 +17,56 @@ namespace Testing
     {
         static void Main(string[] args)
         {
-            //Server s = new Server(IPAddress.Loopback, 9696, 2, new NetSettings { SingleThreadedServer = false, UseEncryption = true });
-            //s.RegisterType<int>();
-            //s.RegisterType<Exception>();
-            //s.RegisterType<test>();
-            //s.StartServer();
+            Server s = new Server(IPAddress.Loopback, 9696, 2, new NetSettings { SingleThreadedServer = false, UseEncryption = true });
+            s.RegisterType<int>();
+            s.RegisterType<Exception>();
+            s.RegisterType<test>();
+            s.StartServer();
 
-            //Client c1 = new Client(IPAddress.Loopback, 9696);
-            //c1.OnRecieveObject = rec;
-            //c1.Connect();
+            Client c1 = new Client(IPAddress.Loopback, 9696);
+            c1.OnRecieveObject = rec;
+            c1.Connect();
 
-            //Client c2 = new Client(IPAddress.Loopback, 9696);
-            //c2.OnRecieveObject = rec;
-            //c2.Connect();
+            Client c2 = new Client(IPAddress.Loopback, 9696);
+            c2.OnRecieveObject = rec;
+            c2.Connect();
 
-            //s.SendObjectToAll(new Exception("HERRO"));
-            //Console.WriteLine(typeof(test).FullName);
+            s.SendObjectToAll(new Exception("HERRO"));
+            Console.WriteLine(typeof(test).FullName);
             //while (Console.ReadKey().KeyChar != 'e')
             //{
             //    s.SendObjectToAll(test.GetTest());
 
             //    s.SendObjectToAll(88);
             //}
-            Channel rec = new Channel(false, "PP", new IPEndPoint(IPAddress.Any, 9090));
+            c2.OnChannelOpened = async (Guid id) =>
+            {
+                byte[] bytes = await c2.RecieveBytesFromChannelAsync(id);
+                Console.WriteLine(bytes);
+            };
+            c1.SendBytesOnChannel(Guid.NewGuid().ToByteArray(),c1.OpenChannel());
+            s.ShutDown();
+            ////UdpClient c1 = new UdpClient(11000);
+            ////UdpClient c2 = new UdpClient(11111);
 
-            Channel send = new Channel(true, "[[", new IPEndPoint(IPAddress.Any, 9090));
+            ////var EP = new IPEndPoint(IPAddress.Loopback, 11000);
 
-            Task<List<byte>> t = rec.Listen();
-            send.SendData(Encoding.UTF8.GetBytes("WRYYYYYYYYY")).Wait();
-            Console.WriteLine(Encoding.UTF8.GetString(t.Result.ToArray()));
+            ////var bytes = Encoding.UTF8.GetBytes("SENT FROM REEEEE");
+            ////c2.Send(bytes, bytes.Length, EP);
+
+            ////byte[] recived = c1.ReceiveAsync().Result.Buffer;
+            ////Console.WriteLine(Encoding.UTF8.GetString(recived));
+            //var ep1 = new IPEndPoint(IPAddress.Loopback, 9999);
+            //var ep2 = new IPEndPoint(IPAddress.Loopback, 8888);
+
+            //Channel rec = new Channel(false, "PP", ep1, ep2);
+
+            //Channel send = new Channel(true, "[[", ep2, ep1);
+
+            ////Task<List<byte>> t = rec.Listen();
+            //Task<byte[]> t = rec.Recieve();
+            //send.SendData(Encoding.UTF8.GetBytes("WRYYYYYYYYY")).Wait();
+            //Console.WriteLine(Encoding.UTF8.GetString(t.Result));
             //UDPSocket s = new UDPSocket();
             //s.Server("127.0.0.1", 27000);
 

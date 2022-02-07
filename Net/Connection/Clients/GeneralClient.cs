@@ -1,48 +1,85 @@
-﻿using Net.Messages;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Net.Sockets;
-using System.Security.Cryptography;
-using System.Threading.Tasks;
-
-namespace Net.Connection
+﻿namespace Net.Connection.Clients
 {
-    public class GeneralClient : ClientBase
+    using Messages;
+    using Net.Connection.Channels;
+    using System;
+    using System.Collections;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Net;
+    using System.Net.Sockets;
+    using System.Security.Cryptography;
+    using System.Threading.Tasks;
+
+    public abstract class GeneralClient : ClientBase, IClosable
     {
         protected RSAParameters? RsaKey;
-        protected byte[] Key;
+        protected volatile byte[] Key;
 
         protected Socket Soc;
+
+        public volatile List<Channel> Channels;
 
         public bool Connected { get; private set; }
 
         private EncryptionMessage.Stage stage = EncryptionMessage.Stage.NONE;
 
-        public delegate void RecievedObject(object Obj);
-        public delegate void RecievedFile(NetFile File);
+        //delegate void RecievedObject(object Obj);
+        //public delegate void RecievedFile(NetFile File);
 
-        public RecievedObject OnRecieveObject;
-        public RecievedFile OnRecieveFile;
+        public Action<object> OnRecieveObject;
+        public Action<NetFile> OnRecieveFile;
+        public Action<Guid> OnChannelOpened;
 
-        public void SendObject<T>(T obj)
+        public void SendObject<T>(T obj) =>
+            SendMessage(new ObjectMessage(obj));
+       
+        public async Task SendObjectAsync<T>(T obj) =>
+            await SendMessageAsync(new ObjectMessage(obj));
+
+        public Guid OpenChannel()
         {
-            ObjectMessage msg = new ObjectMessage(obj);
-
-            SendMessage(msg);
+            Channel c = new Channel(Soc.LocalEndPoint as IPEndPoint, Soc.RemoteEndPoint as IPEndPoint);
+            Channels.Add(c);
+            SendMessage(new CreateChannelMessage(c.Id));
+            return c.Id;
         }
 
-        public async Task SendObjectAsync<T>(T obj)
+        public async Task<Guid> OpenChannelAsync()
         {
-            ObjectMessage msg = new ObjectMessage(obj);
-
-            await SendMessageAsync(msg);
+            Channel c = new Channel(Soc.LocalEndPoint as IPEndPoint, Soc.RemoteEndPoint as IPEndPoint);
+            Channels.Add(c);
+            await SendMessageAsync(new CreateChannelMessage(c.Id));
+            return c.Id;
         }
 
-        public override void Connect()
-        {
-            throw new NotImplementedException();
-        }
+        public void SendBytesOnChannel(byte[] bytes, Guid id) =>
+            Channels.First(c => c.Id == id).SendBytes(bytes);
+
+        public async Task SendBytesOnChannelAsync(byte[] bytes, Guid id) =>
+            await Channels.First(c => c.Id == id).SendBytesAsync(bytes);
+
+        public byte[] RecieveBytesFromChannel(Guid id) =>
+            Channels.First(c => c.Id == id).RecieveBytes();
+
+        public async Task<byte[]> RecieveBytesFromChannelAsync(Guid id) =>
+            await Channels.First(c => c.Id == id).RecieveBytesAsync();
+
+        //public void SendUdpBytes(byte[] bytes)
+        //{
+        //    Channel c = new Channel(Soc.LocalEndPoint as IPEndPoint, Soc.RemoteEndPoint as IPEndPoint);
+        //    Channels.Add(c);
+        //    SendMessage(new CreateChannelMessage(c.Id));
+        //    c.SendBytes(bytes);
+        //}
+
+        //public async Task SendUdpBytesAsync(byte[] bytes)
+        //{
+        //    Channel c = new Channel(Soc.LocalEndPoint as IPEndPoint, Soc.RemoteEndPoint as IPEndPoint);
+        //    Channels.Add(c);
+        //    await SendMessageAsync(new CreateChannelMessage(c.Id));
+        //    await c.SendBytesAsync(bytes);
+        //}
 
         private void HandleMessage(MessageBase message)
         {
@@ -77,6 +114,13 @@ namespace Net.Connection
                     {
                         SendMessage(new ConfirmationMessage("encryption"));
                     }
+                    break;
+                case "channel":
+                    var msg = message as CreateChannelMessage;
+                    var val = (Guid)msg.GetValue();
+                    var c = new Channel(Soc.LocalEndPoint as IPEndPoint, Soc.RemoteEndPoint as IPEndPoint, val);
+                    Channels.Add(c);
+                    OnChannelOpened?.Invoke(val);
                     break;
             }
         }
@@ -151,6 +195,17 @@ namespace Net.Connection
                     HandleMessage(msg);
                 }
             }
+        }
+
+        public void Close()
+        {
+            Soc.Close();
+            Channels.ForEach(c => c.Dispose());
+        }
+
+        public Task CloseAsync()
+        {
+            throw new NotImplementedException();
         }
     }
 }
