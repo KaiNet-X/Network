@@ -13,8 +13,11 @@
 
         public Client(IPAddress Address, uint Port)
         {
-            Soc = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
-            Soc.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, false);
+            if (Address.AddressFamily == AddressFamily.InterNetwork)
+                Soc = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            else
+                Soc = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
+            //Soc.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, false);
 
             this.Address = Address;
             this.Port = Port;

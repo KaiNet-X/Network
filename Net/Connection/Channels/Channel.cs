@@ -9,14 +9,15 @@ namespace Net.Connection.Channels
     {
         public bool Running;
         public readonly Guid Id;
+        public int Port => (Udp.Client.LocalEndPoint as IPEndPoint).Port;
         private IPEndPoint remoteEndpoint;
         private bool disposedValue;
         private readonly UdpClient Udp;
 
-        public Channel(IPEndPoint local, IPEndPoint remote, Guid? id = null)
+        public Channel(IPAddress localAddr, IPEndPoint remote, Guid? id = null)
         {
             this.Id = id??Guid.NewGuid();
-            Udp = new UdpClient(local);
+            Udp = new UdpClient(new IPEndPoint(localAddr, 0));
             remoteEndpoint = remote;
         }
 

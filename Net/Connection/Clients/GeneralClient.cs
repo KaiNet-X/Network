@@ -18,7 +18,7 @@
 
         protected Socket Soc;
 
-        public volatile List<Channel> Channels;
+        public volatile List<Channel> Channels = new List<Channel>();
 
         public bool Connected { get; private set; }
 
@@ -39,17 +39,18 @@
 
         public Guid OpenChannel()
         {
-            Channel c = new Channel(Soc.LocalEndPoint as IPEndPoint, Soc.RemoteEndPoint as IPEndPoint);
+            var localEP = (Soc.LocalEndPoint as IPEndPoint);
+            Channel c = new Channel(localEP.Address, Soc.RemoteEndPoint as IPEndPoint);
             Channels.Add(c);
-            SendMessage(new CreateChannelMessage(c.Id));
+            SendMessage(new CreateChannelMessage(c.Id, c.Port));
             return c.Id;
         }
 
         public async Task<Guid> OpenChannelAsync()
         {
-            Channel c = new Channel(Soc.LocalEndPoint as IPEndPoint, Soc.RemoteEndPoint as IPEndPoint);
+            Channel c = new Channel((Soc.LocalEndPoint as IPEndPoint).Address, Soc.RemoteEndPoint as IPEndPoint);
             Channels.Add(c);
-            await SendMessageAsync(new CreateChannelMessage(c.Id));
+            await SendMessageAsync(new CreateChannelMessage(c.Id, c.Port));
             return c.Id;
         }
 
@@ -64,22 +65,6 @@
 
         public async Task<byte[]> RecieveBytesFromChannelAsync(Guid id) =>
             await Channels.First(c => c.Id == id).RecieveBytesAsync();
-
-        //public void SendUdpBytes(byte[] bytes)
-        //{
-        //    Channel c = new Channel(Soc.LocalEndPoint as IPEndPoint, Soc.RemoteEndPoint as IPEndPoint);
-        //    Channels.Add(c);
-        //    SendMessage(new CreateChannelMessage(c.Id));
-        //    c.SendBytes(bytes);
-        //}
-
-        //public async Task SendUdpBytesAsync(byte[] bytes)
-        //{
-        //    Channel c = new Channel(Soc.LocalEndPoint as IPEndPoint, Soc.RemoteEndPoint as IPEndPoint);
-        //    Channels.Add(c);
-        //    await SendMessageAsync(new CreateChannelMessage(c.Id));
-        //    await c.SendBytesAsync(bytes);
-        //}
 
         private void HandleMessage(MessageBase message)
         {
@@ -118,9 +103,14 @@
                 case "channel":
                     var msg = message as CreateChannelMessage;
                     var val = (Guid)msg.GetValue();
-                    var c = new Channel(Soc.LocalEndPoint as IPEndPoint, Soc.RemoteEndPoint as IPEndPoint, val);
+                    var ipAddr = (Soc.LocalEndPoint as IPEndPoint).Address;
+                    var remoteEndpoint = new IPEndPoint((Soc.RemoteEndPoint as IPEndPoint).Address, msg.Port);
+                    var c = new Channel(ipAddr, remoteEndpoint, val);
                     Channels.Add(c);
                     OnChannelOpened?.Invoke(val);
+                    break;
+                default:
+                    ;
                     break;
             }
         }

@@ -6,8 +6,8 @@
 
     public abstract class ServerBase<TClient> where TClient : ClientBase
     {
-        internal virtual List<TClient> Clients { get; init; }
-        internal virtual NetSettings Settings { get; init; }
+        protected virtual List<TClient> Clients { get; init; }
+        protected virtual NetSettings Settings { get; init; }
         public abstract void StartServer();
 
         public virtual void SendMessageToAll(MessageBase msg)

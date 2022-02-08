@@ -39,12 +39,18 @@ namespace Testing
 
             //    s.SendObjectToAll(88);
             //}
+            s.OnClientChannelOpened = async (Guid id, ServerClient c) =>
+            {
+                byte[] bytes = await c2.RecieveBytesFromChannelAsync(id);
+                Console.WriteLine(bytes);
+            };
             c2.OnChannelOpened = async (Guid id) =>
             {
                 byte[] bytes = await c2.RecieveBytesFromChannelAsync(id);
                 Console.WriteLine(bytes);
             };
             c1.SendBytesOnChannel(Guid.NewGuid().ToByteArray(),c1.OpenChannel());
+            Console.ReadKey();
             s.ShutDown();
             ////UdpClient c1 = new UdpClient(11000);
             ////UdpClient c2 = new UdpClient(11111);
