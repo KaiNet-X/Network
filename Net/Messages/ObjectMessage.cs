@@ -10,7 +10,8 @@ namespace Net.Messages
 
         public ObjectMessage(object obj)
         {
-            RegisterMessage<ObjectMessage>();
+            //RegisterMessage<ObjectMessage>();
+            RegisterMessage();
             Type t = obj.GetType();
             TypeName = t.Name;
             Content = MessagePackSerializer.Serialize(t, obj, ResolveOptions);

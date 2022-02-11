@@ -17,6 +17,7 @@
         private Socket ServerSoc;
 
         public Action<Guid, ServerClient> OnClientChannelOpened;
+        public Action<object, ServerClient> OnClientObjectReceived;
 
         public Server(IPAddress Address, uint Port, ushort MaxClients, NetSettings settings = default)
         {
@@ -61,17 +62,16 @@
                 {
                     c = new ServerClient(ServerSoc.Accept(), Settings);
                     c.OnChannelOpened = (guid) => OnClientChannelOpened?.Invoke(guid, c);
+                    c.OnRecieveObject = (obj) => OnClientObjectReceived?.Invoke(obj, c);
+
                     lock (Clients)
                         Clients.Add(c);
 
                     if (!Settings.SingleThreadedServer)
-                    {
                         Task.Run(() =>
                         {
                             while (true) c.Reciever.MoveNext();
                         });
-
-                    }
                     while (!c.Connected) ;
 
                     //foreach (Type t in Utilities.NameTypeAssociations.Values)

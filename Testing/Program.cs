@@ -27,12 +27,9 @@ namespace Testing
             c1.OnRecieveObject = rec;
             c1.Connect();
 
-            Client c2 = new Client(IPAddress.Loopback, 9696);
-            c2.OnRecieveObject = rec;
-            c2.Connect();
-
             s.SendObjectToAll(new Exception("HERRO"));
-            Console.WriteLine(typeof(test).FullName);
+            s.SendObjectToAll("PPPPPPPPS AISDFHOASHFOIASF");
+            //Console.WriteLine(typeof(test).FullName);
             //while (Console.ReadKey().KeyChar != 'e')
             //{
             //    s.SendObjectToAll(test.GetTest());
@@ -41,16 +38,16 @@ namespace Testing
             //}
             s.OnClientChannelOpened = async (Guid id, ServerClient c) =>
             {
-                byte[] bytes = await c2.RecieveBytesFromChannelAsync(id);
+                byte[] bytes = await c.RecieveBytesFromChannelAsync(id);
                 Console.WriteLine(bytes);
             };
-            c2.OnChannelOpened = async (Guid id) =>
-            {
-                byte[] bytes = await c2.RecieveBytesFromChannelAsync(id);
-                Console.WriteLine(bytes);
-            };
+            //c2.OnChannelOpened = async (Guid id) =>
+            //{
+            //    byte[] bytes = await c2.RecieveBytesFromChannelAsync(id);
+            //    Console.WriteLine(bytes);
+            //};
             c1.SendBytesOnChannel(Guid.NewGuid().ToByteArray(),c1.OpenChannel());
-            Console.ReadKey();
+            while (Console.ReadKey().Key != ConsoleKey.E);
             s.ShutDown();
             ////UdpClient c1 = new UdpClient(11000);
             ////UdpClient c2 = new UdpClient(11111);

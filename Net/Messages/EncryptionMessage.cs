@@ -15,7 +15,8 @@ namespace Net.Messages
 
         public EncryptionMessage(Stage stage, RSAParameters param)
         {
-            RegisterMessage<EncryptionMessage>();
+            //RegisterMessage<EncryptionMessage>();
+            RegisterMessage();
             this.stage = stage;
             switch (stage)
             {

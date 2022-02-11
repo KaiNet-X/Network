@@ -8,7 +8,8 @@ namespace Net.Messages
         public ConfirmationMessage(string @for)
         {
             Content = MessagePackSerializer.Serialize(@for, ResolveOptions);
-            RegisterMessage<ConfirmationMessage>();
+            //RegisterMessage<ConfirmationMessage>();
+            RegisterMessage();
         }
         public ConfirmationMessage() { }
         protected internal override object GetValue()

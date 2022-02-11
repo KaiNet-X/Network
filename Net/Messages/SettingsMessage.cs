@@ -9,7 +9,8 @@ namespace Net.Messages
         public override string MessageType => "settings";
         public SettingsMessage(NetSettings settings)
         {
-            RegisterMessage<SettingsMessage>();
+            //RegisterMessage<SettingsMessage>();
+            RegisterMessage();
             Content = MessagePackSerializer.Serialize(settings, ResolveOptions);
         }
 

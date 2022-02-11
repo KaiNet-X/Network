@@ -24,9 +24,6 @@
 
         private EncryptionMessage.Stage stage = EncryptionMessage.Stage.NONE;
 
-        //delegate void RecievedObject(object Obj);
-        //public delegate void RecievedFile(NetFile File);
-
         public Action<object> OnRecieveObject;
         public Action<NetFile> OnRecieveFile;
         public Action<Guid> OnChannelOpened;
@@ -42,7 +39,7 @@
             var localEP = (Soc.LocalEndPoint as IPEndPoint);
             Channel c = new Channel(localEP.Address, Soc.RemoteEndPoint as IPEndPoint);
             Channels.Add(c);
-            SendMessage(new CreateChannelMessage(c.Id, c.Port));
+            SendMessage(new ChannelManagementMessage(c.Id, c.Port, ChannelManagementMessage.Mode.Create));
             return c.Id;
         }
 
@@ -50,7 +47,7 @@
         {
             Channel c = new Channel((Soc.LocalEndPoint as IPEndPoint).Address, Soc.RemoteEndPoint as IPEndPoint);
             Channels.Add(c);
-            await SendMessageAsync(new CreateChannelMessage(c.Id, c.Port));
+            await SendMessageAsync(new ChannelManagementMessage(c.Id, c.Port, ChannelManagementMessage.Mode.Create));
             return c.Id;
         }
 
@@ -68,21 +65,20 @@
 
         private void HandleMessage(MessageBase message)
         {
-            switch (message.MessageType)
+            switch (message)
             {
-                case "confirmation":
+                case ConfirmationMessage m:
                     Connected = true;
                     break;
-                case "object":
-                    OnRecieveObject?.Invoke((message as ObjectMessage).GetValue());
+                case ObjectMessage m:
+                    OnRecieveObject?.Invoke(m.GetValue());
                     break;
-                case "settings":
-                    Settings = (message as SettingsMessage).GetValue() as NetSettings;
+                case SettingsMessage m:
+                    Settings = m.GetValue() as NetSettings;
                     if (!Settings.UseEncryption) SendMessage(new ConfirmationMessage("settings"));
                     break;
-                case "encryption":
-                    var enc = message as EncryptionMessage;
-                    stage = enc.stage;
+                case EncryptionMessage m:
+                    stage = m.stage;
                     if (stage == EncryptionMessage.Stage.SYN)
                     {
                         RsaKey = (RSAParameters)message.GetValue();
@@ -91,23 +87,27 @@
                     }
                     else if (stage == EncryptionMessage.Stage.ACK)
                     {
-                        Key = enc.GetValue() as byte[];
+                        Key = m.GetValue() as byte[];
                         SendMessage(new EncryptionMessage(EncryptionMessage.Stage.SYNACK));
                         stage = EncryptionMessage.Stage.SYNACK;
                     }
                     else if (stage == EncryptionMessage.Stage.SYNACK)
-                    {
                         SendMessage(new ConfirmationMessage("encryption"));
-                    }
                     break;
-                case "channel":
-                    var msg = message as CreateChannelMessage;
-                    var val = (Guid)msg.GetValue();
-                    var ipAddr = (Soc.LocalEndPoint as IPEndPoint).Address;
-                    var remoteEndpoint = new IPEndPoint((Soc.RemoteEndPoint as IPEndPoint).Address, msg.Port);
-                    var c = new Channel(ipAddr, remoteEndpoint, val);
-                    Channels.Add(c);
-                    OnChannelOpened?.Invoke(val);
+                case ChannelManagementMessage m:
+                    var val = (Guid)m.GetValue();
+                    if (m.ManageMode == ChannelManagementMessage.Mode.Create)
+                    {
+                        var ipAddr = (Soc.LocalEndPoint as IPEndPoint).Address;
+                        var remoteEndpoint = new IPEndPoint((Soc.RemoteEndPoint as IPEndPoint).Address, m.Port);
+                        var c = new Channel(ipAddr, remoteEndpoint, val);
+                        c.Connected = true;
+                        Channels.Add(c);
+                        OnChannelOpened?.Invoke(val);
+                        SendMessage(new ChannelManagementMessage(val, ChannelManagementMessage.Mode.Confirm));
+                    }
+                    else if (m.ManageMode == ChannelManagementMessage.Mode.Confirm)
+                        Channels.First(c => c.Id == val).Connected = true;
                     break;
                 default:
                     ;

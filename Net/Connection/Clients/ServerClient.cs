@@ -1,14 +1,14 @@
 ﻿namespace Net.Connection.Clients
 {
     using Net.Messages;
+    using System;
     using System.Net;
     using System.Net.Sockets;
     using System.Security.Cryptography;
 
     public class ServerClient : GeneralClient
     {
-        public delegate void RecieveObject(object Obj, EndPoint Remote);
-        public event RecieveObject OnRecieve;
+        //public Action<object, EndPoint> OnRecieve;
 
         internal ServerClient(Socket soc, NetSettings settings = default) 
         {
@@ -19,10 +19,10 @@
 
             Reciever = Recieve();
 
-            OnRecieveObject = delegate (object o)
-            {
-                OnRecieve(o, Soc.RemoteEndPoint);
-            };
+            //OnRecieveObject = delegate (object o)
+            //{
+            //    OnRecieve(o, Soc.RemoteEndPoint);
+            //};
 
             SendMessage(new SettingsMessage(Settings));
             if (!settings.UseEncryption) return;
