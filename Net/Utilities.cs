@@ -27,6 +27,26 @@ namespace Net
             return -1;
         }
 
+        public static int IndexInByteArray(IEnumerable<byte> bytes, byte[] SearchBytes, int offset = 0)
+        {
+            var byteArray = bytes.ToArray();
+            for (int i = offset; i <= byteArray.Length - SearchBytes.Length; i++)
+            {
+                for (int I = 0; I < SearchBytes.Length; I++)
+                {
+                    if (!SearchBytes[I].Equals(byteArray[i + I]))
+                    {
+                        break;
+                    }
+                    else if (I == SearchBytes.Length - 1 && SearchBytes[I].Equals(byteArray[i + I]))
+                    {
+                        return i;
+                    }
+                }
+            }
+            return -1;
+        }
+
         public static bool IsArray(string typeName) => typeName.Contains('[');
 
         public static void RegisterType(Type t)

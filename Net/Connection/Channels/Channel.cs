@@ -41,6 +41,12 @@ namespace Net.Connection.Channels
             remoteEndpoint = remote;
         }
 
+        public Channel(IPAddress localAddr, Guid? id = null)
+        {
+            this.Id = id ?? Guid.NewGuid();
+            Udp = new UdpClient(new IPEndPoint(localAddr, 0));
+        }
+
         public void SendBytes(byte[] data)
         {
             if (!Connected)
@@ -81,12 +87,17 @@ namespace Net.Connection.Channels
             }
         }
 
+        public void SetRemote(IPEndPoint remote)
+        {
+            remoteEndpoint = remote;
+            Udp.Connect(remoteEndpoint);
+        }
         // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
-        // ~Channel()
-        // {
-        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-        //     Dispose(disposing: false);
-        // }
+        ~Channel()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
 
         public void Dispose()
         {

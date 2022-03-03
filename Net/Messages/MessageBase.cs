@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Net.Messages
 {
-    public abstract class MessageBase
+    public class MessageBase
     {
         private static Dictionary<string, Type> Registered { get; set; } = new Dictionary<string, Type>();
         public virtual string MessageType { get; set; }
@@ -30,7 +30,7 @@ namespace Net.Messages
         public static MessageBase Deserialize(byte[] obj)
         {
             string str = Encoding.UTF8.GetString(obj);
-            MessageBase msg = JsonSerializer.Deserialize<Message>(str);
+            MessageBase msg = JsonSerializer.Deserialize<MessageBase>(str);
 
             Type t = Registered[msg.MessageType];
 
@@ -58,7 +58,10 @@ namespace Net.Messages
         internal protected virtual Task<List<byte>> SerializeAsync() =>
             Task.FromResult(Serialize());
 
-        internal protected abstract object GetValue();
+        internal protected virtual object GetValue()
+        {
+            return null;
+        }
 
         internal protected virtual Task<object> GetValueAsync() => Task.FromResult(GetValue());
 

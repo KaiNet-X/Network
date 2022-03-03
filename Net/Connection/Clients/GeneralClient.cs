@@ -25,8 +25,9 @@
         private EncryptionMessage.Stage stage = EncryptionMessage.Stage.NONE;
 
         public Action<object> OnRecieveObject;
-        public Action<NetFile> OnRecieveFile;
+        //public Action<NetFile> OnRecieveFile;
         public Action<Guid> OnChannelOpened;
+        public Action<MessageBase> OnRecievedCustomMessage;
 
         public void SendObject<T>(T obj) =>
             SendMessage(new ObjectMessage(obj));
@@ -37,7 +38,7 @@
         public Guid OpenChannel()
         {
             var localEP = (Soc.LocalEndPoint as IPEndPoint);
-            Channel c = new Channel(localEP.Address, Soc.RemoteEndPoint as IPEndPoint);
+            Channel c = new Channel(localEP.Address);
             Channels.Add(c);
             SendMessage(new ChannelManagementMessage(c.Id, c.Port, ChannelManagementMessage.Mode.Create));
             return c.Id;
@@ -45,7 +46,7 @@
 
         public async Task<Guid> OpenChannelAsync()
         {
-            Channel c = new Channel((Soc.LocalEndPoint as IPEndPoint).Address, Soc.RemoteEndPoint as IPEndPoint);
+            Channel c = new Channel((Soc.LocalEndPoint as IPEndPoint).Address);
             Channels.Add(c);
             await SendMessageAsync(new ChannelManagementMessage(c.Id, c.Port, ChannelManagementMessage.Mode.Create));
             return c.Id;
@@ -104,10 +105,14 @@
                         c.Connected = true;
                         Channels.Add(c);
                         OnChannelOpened?.Invoke(val);
-                        SendMessage(new ChannelManagementMessage(val, ChannelManagementMessage.Mode.Confirm));
+                        SendMessage(new ChannelManagementMessage(val, c.Port, ChannelManagementMessage.Mode.Confirm));
                     }
                     else if (m.ManageMode == ChannelManagementMessage.Mode.Confirm)
-                        Channels.First(c => c.Id == val).Connected = true;
+                    {
+                        var c = Channels.First(c => c.Id == val);
+                        c.SetRemote(new IPEndPoint((Soc.RemoteEndPoint as IPEndPoint).Address, m.Port));
+                        c.Connected = true;
+                    }
                     break;
                 default:
                     ;

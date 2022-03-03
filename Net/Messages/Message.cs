@@ -3,9 +3,9 @@ using System.Threading.Tasks;
 
 namespace Net.Messages
 {
-    public class Message : MessageBase
+    public class MpMessage : MessageBase
     {
-        public Message() { }
+        public MpMessage() { }
 
         public override string MessageType { get; set; }
 
