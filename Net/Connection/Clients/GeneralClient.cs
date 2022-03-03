@@ -84,7 +84,7 @@
                     {
                         RsaKey = (RSAParameters)m.GetValue();
                         Key = CryptoServices.KeyFromHash(CryptoServices.CreateHash(Guid.NewGuid().ToByteArray()));
-                        SendMessage(new EncryptionMessage(EncryptionMessage.Stage.ACK, Key));
+                        SendMessage(new EncryptionMessage(Key));
                     }
                     else if (stage == EncryptionMessage.Stage.ACK)
                     {

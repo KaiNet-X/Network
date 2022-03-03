@@ -29,7 +29,7 @@
             CryptoServices.GenerateKeyPair(out RSAParameters Public, out p);
             RsaKey = p;
 
-            SendMessage(new EncryptionMessage(EncryptionMessage.Stage.SYN, Public));
+            SendMessage(new EncryptionMessage(Public));
         }
     }
 }

@@ -1,48 +1,36 @@
 ﻿using MessagePack;
 using System.Security.Cryptography;
+using System.Text.Json.Serialization;
 
 namespace Net.Messages
 {
     class EncryptionMessage : MpMessage
     {
         public override string MessageType => "encryption";
+
         public Stage stage { get; set; }
+        public RSAParameters RSA { get; set; }
+        public byte[] AES { get; set; }
 
-        public EncryptionMessage(Stage stage, RSAParameters param)
+        public EncryptionMessage(RSAParameters param)
         {
-            //RegisterMessage<EncryptionMessage>();
             RegisterMessage();
-            this.stage = stage;
-            switch (stage)
-            {
-                case Stage.SYN:
-                    Content = MessagePackSerializer.Serialize(param, ResolveOptions);
-                    break;
-                case Stage.ACK:
-                    break;
-                case Stage.SYNACK:
+            stage = Stage.SYN;
+            RSA = param;
+            Content = MessagePackSerializer.Serialize(param, ResolveOptions);
+        }
 
-                    break;
-            }
-        }
-        public EncryptionMessage(Stage stage, byte[] param)
+        public EncryptionMessage(byte[] param)
         {
-            this.stage = stage;
-            switch (stage)
-            {
-                case Stage.SYN:
-                    break;
-                case Stage.ACK:
-                    Content = param;
-                    break;
-                case Stage.SYNACK:
-                    break;
-            }
+            stage = Stage.ACK;
+            Content = AES = param;
         }
+
         public EncryptionMessage(Stage stage)
         {
             this.stage = stage;
         }
+
         public EncryptionMessage() { }
 
         protected internal override object GetValue()
