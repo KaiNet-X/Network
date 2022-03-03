@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace Net.Messages
 {
-    class SettingsMessage : MessageBase
+    class SettingsMessage : MpMessage
     {
         public override string MessageType => "settings";
         public SettingsMessage(NetSettings settings)

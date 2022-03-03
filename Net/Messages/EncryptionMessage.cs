@@ -1,14 +1,9 @@
 ﻿using MessagePack;
-using MessagePack.Resolvers;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
-using System.Threading.Tasks;
 
 namespace Net.Messages
 {
-    class EncryptionMessage : MessageBase
+    class EncryptionMessage : MpMessage
     {
         public override string MessageType => "encryption";
         public Stage stage { get; set; }

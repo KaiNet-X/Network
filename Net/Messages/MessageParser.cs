@@ -7,19 +7,36 @@ namespace Net.Messages
     {
         static readonly byte[] Start = new byte[] { 0x3c, 0x53, 0x54, 0x41, 0x52, 0x54, 0x3e };
         static readonly byte[] End = new byte[] { 0x3c, 0x45, 0x4e, 0x44, 0x3e };
+
+        //public static List<MessageBase> GetMessages(ref List<byte> obj)
+        //{
+        //    int start = obj.IndexOf(0x7B);
+        //    int count = obj.IndexOf(0x7D, start);
+        //    List<byte> sub = null;
+        //    List<MessageBase> msg = new List<MessageBase>();
+
+        //    while (count != -1)
+        //    {
+        //        start = obj.IndexOf(0x7B);
+        //        count = obj.IndexOf(0x7D, start) - start + 1;
+        //        sub = obj.GetRange(start, count);
+        //        obj.RemoveRange(start, count);
+        //        msg.Add(MessageBase.Deserialize(sub.ToArray()));
+        //        if (obj.Count == 0) break;
+        //    }
+        //    return msg;
+        //}
+
         public static List<MessageBase> GetMessages(ref List<byte> obj)
         {
-            int start = obj.IndexOf(0x7B);
-            int count = obj.IndexOf(0x7D, start);
-            List<byte> sub = null;
+            List<byte> sub = new List<byte>();
             List<MessageBase> msg = new List<MessageBase>();
 
-            while (count != -1)
+            while (true)
             {
-                start = obj.IndexOf(0x7B);
-                count = obj.IndexOf(0x7D, start) - start + 1;
-                sub = obj.GetRange(start, count);
-                obj.RemoveRange(start, count);
+                sub = new List<byte>(GetTags(ref obj));
+                if (sub.Count == 0) break;
+
                 msg.Add(MessageBase.Deserialize(sub.ToArray()));
                 if (obj.Count == 0) break;
             }

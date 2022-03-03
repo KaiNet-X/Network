@@ -2,7 +2,7 @@
 
 namespace Net.Messages
 {
-    class StreamMessage : MessageBase
+    class StreamMessage : MpMessage
     {
         public StreamMessage() { }
         protected internal override object GetValue()

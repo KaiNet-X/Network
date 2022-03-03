@@ -82,7 +82,7 @@
                     stage = m.stage;
                     if (stage == EncryptionMessage.Stage.SYN)
                     {
-                        RsaKey = (RSAParameters)message.GetValue();
+                        RsaKey = (RSAParameters)m.GetValue();
                         Key = CryptoServices.KeyFromHash(CryptoServices.CreateHash(Guid.NewGuid().ToByteArray()));
                         SendMessage(new EncryptionMessage(EncryptionMessage.Stage.ACK, Key));
                     }
@@ -124,24 +124,15 @@
         {
             List<byte> bytes = message.Serialize();
             if (Settings != null && Settings.UseEncryption)
-                switch (stage)
+                bytes = stage switch
                 {
-                    case EncryptionMessage.Stage.SYN:
-                        bytes = new List<byte>(CryptoServices.EncryptRSA(bytes.ToArray(), RsaKey.Value));
-                        bytes = MessageParser.AddTags(bytes);
-                        break;
-                    case EncryptionMessage.Stage.ACK:
-                        bytes = new List<byte>(CryptoServices.EncryptAES(bytes.ToArray(), Key));
-                        bytes = MessageParser.AddTags(bytes);
-                        break;
-                    case EncryptionMessage.Stage.SYNACK:
-                        bytes = new List<byte>(CryptoServices.EncryptAES(bytes.ToArray(), Key));
-                        bytes = MessageParser.AddTags(bytes);
+                    EncryptionMessage.Stage.SYN => new List<byte>(CryptoServices.EncryptRSA(bytes.ToArray(), RsaKey.Value)),
+                    EncryptionMessage.Stage.ACK => new List<byte>(CryptoServices.EncryptAES(bytes.ToArray(), Key)),
+                    EncryptionMessage.Stage.SYNACK => new List<byte>(CryptoServices.EncryptAES(bytes.ToArray(), Key)),
+                    EncryptionMessage.Stage.NONE => bytes
+                };
 
-                        break;
-                }
-
-            Soc.Send(bytes.ToArray());
+            Soc.Send(MessageParser.AddTags(bytes).ToArray());
         }
 
         protected internal override IEnumerator Recieve()

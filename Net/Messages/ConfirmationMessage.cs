@@ -2,7 +2,7 @@
 
 namespace Net.Messages
 {
-    class ConfirmationMessage : MessageBase
+    class ConfirmationMessage : MpMessage
     {
         public override string MessageType => "confirmation";
         public ConfirmationMessage(string @for)

@@ -3,7 +3,7 @@ using System;
 
 namespace Net.Messages
 {
-    public class ObjectMessage : MessageBase
+    public class ObjectMessage : MpMessage
     {
         public override string MessageType => "object";
         public string TypeName { get; set; }

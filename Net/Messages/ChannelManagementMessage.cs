@@ -2,7 +2,7 @@
 
 namespace Net.Messages
 {
-    public class ChannelManagementMessage : MessageBase
+    public class ChannelManagementMessage : MpMessage
     {
         public override string MessageType => "Channel";
         public Guid Id { get; set; }

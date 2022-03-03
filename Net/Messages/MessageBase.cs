@@ -14,18 +14,7 @@ namespace Net.Messages
     {
         private static Dictionary<string, Type> Registered { get; set; } = new Dictionary<string, Type>();
         public virtual string MessageType { get; set; }
-        public virtual byte[] Content { get; init; }
-
-        //public static void RegisterMessage<TMessage>(string name) where TMessage : MessageBase
-        //{
-        //    Type type = typeof(TMessage);
-        //    if (!Registered.ContainsKey(type.Name)) Registered[name] = type;
-        //}
-
-        //public static void RegisterMessage(string name)
-        //{
-
-        //}
+        //public virtual byte[] Content { get; init; }
 
         public static MessageBase Deserialize(byte[] obj)
         {
@@ -37,14 +26,8 @@ namespace Net.Messages
             return JsonSerializer.Deserialize(str, t) as MessageBase;
         }
 
-        [JsonIgnore] 
-        public virtual MessagePackSerializerOptions ResolveOptions => ContractlessStandardResolver.Options;
-
-        //protected void RegisterMessage<TMessage>() where TMessage : MessageBase
-        //{
-        //    Type type = typeof(TMessage);
-        //    if (!Registered.ContainsKey(type.Name)) Registered[MessageType] = type;
-        //}
+        //[JsonIgnore] 
+        //public virtual MessagePackSerializerOptions ResolveOptions => ContractlessStandardResolver.Options;
 
         protected void RegisterMessage()
         {
@@ -58,17 +41,17 @@ namespace Net.Messages
         internal protected virtual Task<List<byte>> SerializeAsync() =>
             Task.FromResult(Serialize());
 
-        internal protected virtual object GetValue()
-        {
-            return null;
-        }
+        //internal protected virtual object GetValue()
+        //{
+        //    return null;
+        //}
 
-        internal protected virtual Task<object> GetValueAsync() => Task.FromResult(GetValue());
+        //internal protected virtual Task<object> GetValueAsync() => Task.FromResult(GetValue());
 
-        internal virtual object GetValue(Type t) =>
-            MessagePackSerializer.Deserialize(t, Content, ResolveOptions);
+        //internal virtual object GetValue(Type t) =>
+        //    MessagePackSerializer.Deserialize(t, Content, ResolveOptions);
 
-        internal virtual async Task<object> GetValueAsync(Type t) =>
-            await MessagePackSerializer.DeserializeAsync(t, new MemoryStream(Content), ResolveOptions);
+        //internal virtual async Task<object> GetValueAsync(Type t) =>
+        //    await MessagePackSerializer.DeserializeAsync(t, new MemoryStream(Content), ResolveOptions);
     }
 }
