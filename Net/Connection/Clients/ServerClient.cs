@@ -1,12 +1,14 @@
 ﻿namespace Net.Connection.Clients
 {
     using Net.Messages;
+    using System.Collections.Generic;
     using System.Net.Sockets;
     using System.Security.Cryptography;
 
     public class ServerClient : GeneralClient
     {
         //public Action<object, EndPoint> OnRecieve;
+        private IEnumerator<MessageBase> Reciever;
 
         internal ServerClient(Socket soc, NetSettings settings = default) 
         {
@@ -15,7 +17,7 @@
             this.Settings = settings;
             this.Soc = soc;
 
-            Reciever = Recieve();
+            Reciever = RecieveMessages().GetEnumerator();
 
             //OnRecieveObject = delegate (object o)
             //{
@@ -30,6 +32,13 @@
             RsaKey = p;
 
             SendMessage(new EncryptionMessage(Public));
+        }
+
+        internal void GetNextMessage()
+        {
+            var msg = Reciever.Current;
+            if (msg != null) HandleMessage(msg);
+            Reciever.MoveNext();
         }
     }
 }

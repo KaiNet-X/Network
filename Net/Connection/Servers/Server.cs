@@ -21,8 +21,6 @@
 
         public Server(IPAddress Address, uint Port, ushort MaxClients, NetSettings settings = default)
         {
-            //if (settings == default) settings = new NetSettings();
-
             this.Address = Address; 
             this.Port = Port;
             this.MaxClients = MaxClients;
@@ -30,8 +28,6 @@
 
             Clients = new List<ServerClient>();
 
-            //ServerSoc = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
-            //ServerSoc.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, false);
             InitializeSocket();
         }
 
@@ -50,7 +46,7 @@
                     {
                         lock (Clients)
                             foreach (ServerClient c in Clients)
-                                c.Reciever.MoveNext();
+                                c.GetNextMessage();
                     }
                 });
 
@@ -70,12 +66,10 @@
                     if (!Settings.SingleThreadedServer)
                         Task.Run(() =>
                         {
-                            while (true) c.Reciever.MoveNext();
+                            while (true) 
+                                c.GetNextMessage();
                         });
                     while (!c.Connected) ;
-
-                    //foreach (Type t in Utilities.NameTypeAssociations.Values)
-                    //    c.SendMessage(new TypeMessage(t));
 
                     c.SendMessage(new ConfirmationMessage("done"));
                 }
@@ -88,17 +82,14 @@
                 foreach (var c in Clients) c.Close();
         }
 
-        public void RegisterType<T>()
-        {
+        public void RegisterType<T>() =>
             Utilities.RegisterType(typeof(T));
-        }
 
         private void InitializeSocket()
         {
-            if (Address.AddressFamily == AddressFamily.InterNetwork)
-                ServerSoc = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            else
-                ServerSoc = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
+            ServerSoc = Address.AddressFamily == AddressFamily.InterNetwork ? 
+                new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp) :
+                new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
 
             ServerSoc.Bind(new IPEndPoint(Address, (int)Port));
         }

@@ -64,7 +64,7 @@
         public async Task<byte[]> RecieveBytesFromChannelAsync(Guid id) =>
             await Channels.First(c => c.Id == id).RecieveBytesAsync();
 
-        private void HandleMessage(MessageBase message)
+        protected void HandleMessage(MessageBase message)
         {
             switch (message)
             {
@@ -135,7 +135,55 @@
             Soc.Send(MessageParser.AddTags(bytes).ToArray());
         }
 
-        protected internal override IEnumerator Recieve()
+        //protected internal override IEnumerator Recieve()
+        //{
+        //    List<byte> allBytes = new List<byte>();
+        //    byte[] buffer;
+
+        //    while (true)
+        //    {
+        //        int available = Soc.Available;
+        //        if (available == 0)
+        //        {
+        //            yield return null;
+        //            continue;
+        //        }
+
+        //        buffer = new byte[available];
+        //        Task.Delay(10).Wait();
+        //        Soc.Receive(buffer);
+
+        //        allBytes.AddRange(buffer);
+        //        List<MessageBase> messages = null;
+
+        //        if (Settings != null && Settings.UseEncryption)
+        //            switch (stage)
+        //            {
+        //                case EncryptionMessage.Stage.SYN:
+        //                    messages = MessageParser.GetMessagesAes(ref allBytes, Key);
+        //                    break;
+        //                case EncryptionMessage.Stage.ACK:
+        //                    messages = MessageParser.GetMessagesRsa(ref allBytes, RsaKey.Value);
+        //                    break;
+        //                case EncryptionMessage.Stage.SYNACK:
+        //                    messages = MessageParser.GetMessagesAes(ref allBytes, Key);
+        //                    break;
+        //                default:
+        //                    if (RsaKey == null)
+        //                        messages = MessageParser.GetMessages(ref allBytes);
+        //                    else
+        //                        messages = MessageParser.GetMessagesRsa(ref allBytes, RsaKey.Value);
+        //                    break;
+        //            }
+        //        else messages = MessageParser.GetMessages(ref allBytes);
+        //        foreach (MessageBase msg in messages)
+        //        {
+        //            HandleMessage(msg);
+        //        }
+        //    }
+        //}
+
+        protected override IEnumerable<MessageBase> RecieveMessages()
         {
             List<byte> allBytes = new List<byte>();
             byte[] buffer;
@@ -176,9 +224,10 @@
                             break;
                     }
                 else messages = MessageParser.GetMessages(ref allBytes);
+
                 foreach (MessageBase msg in messages)
                 {
-                    HandleMessage(msg);
+                    yield return msg;
                 }
             }
         }

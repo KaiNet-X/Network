@@ -17,15 +17,16 @@
                 Soc = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             else
                 Soc = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
-            //Soc.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, false);
 
             this.Address = Address;
             this.Port = Port;
 
             Thread t = new Thread(() =>
             {
-                IEnumerator e = Recieve();
-                while (true) e.MoveNext();
+                //IEnumerator e = Recieve();
+                //while (true) e.MoveNext();
+                foreach (var msg in RecieveMessages())
+                    HandleMessage(msg);
             });
 
             t.IsBackground = true;
