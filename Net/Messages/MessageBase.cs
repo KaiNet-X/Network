@@ -1,11 +1,7 @@
-﻿using MessagePack;
-using MessagePack.Resolvers;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace Net.Messages
@@ -13,8 +9,7 @@ namespace Net.Messages
     public class MessageBase
     {
         private static Dictionary<string, Type> Registered { get; set; } = new Dictionary<string, Type>();
-        public virtual string MessageType { get; set; }
-        //public virtual byte[] Content { get; init; }
+        public virtual string MessageType { get; }
 
         public static MessageBase Deserialize(byte[] obj)
         {
@@ -25,9 +20,6 @@ namespace Net.Messages
 
             return JsonSerializer.Deserialize(str, t) as MessageBase;
         }
-
-        //[JsonIgnore] 
-        //public virtual MessagePackSerializerOptions ResolveOptions => ContractlessStandardResolver.Options;
 
         protected void RegisterMessage()
         {
@@ -40,18 +32,5 @@ namespace Net.Messages
 
         internal protected virtual Task<List<byte>> SerializeAsync() =>
             Task.FromResult(Serialize());
-
-        //internal protected virtual object GetValue()
-        //{
-        //    return null;
-        //}
-
-        //internal protected virtual Task<object> GetValueAsync() => Task.FromResult(GetValue());
-
-        //internal virtual object GetValue(Type t) =>
-        //    MessagePackSerializer.Deserialize(t, Content, ResolveOptions);
-
-        //internal virtual async Task<object> GetValueAsync(Type t) =>
-        //    await MessagePackSerializer.DeserializeAsync(t, new MemoryStream(Content), ResolveOptions);
     }
 }

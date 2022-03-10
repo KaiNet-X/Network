@@ -25,9 +25,10 @@
         private EncryptionMessage.Stage stage = EncryptionMessage.Stage.NONE;
 
         public Action<object> OnRecieveObject;
-        //public Action<NetFile> OnRecieveFile;
         public Action<Guid> OnChannelOpened;
         public Action<MessageBase> OnRecievedCustomMessage;
+
+        public Dictionary<string, Action<MessageBase>> MessageHandlers;
 
         public void SendObject<T>(T obj) =>
             SendMessage(new ObjectMessage(obj));
@@ -114,8 +115,19 @@
                         c.Connected = true;
                     }
                     break;
+                case ConnectionPollMessage m:
+                    switch (m.PollState)
+                    {
+                        case ConnectionPollMessage.PollMessage.SYN:
+                            SendMessage(new ConnectionPollMessage { PollState = ConnectionPollMessage.PollMessage.ACK });
+                            break;
+                        case ConnectionPollMessage.PollMessage.ACK:
+
+                            break;
+                    }
+                    break;
                 default:
-                    ;
+                    MessageHandlers[message.MessageType]?.Invoke(message);
                     break;
             }
         }
@@ -134,54 +146,6 @@
 
             Soc.Send(MessageParser.AddTags(bytes).ToArray());
         }
-
-        //protected internal override IEnumerator Recieve()
-        //{
-        //    List<byte> allBytes = new List<byte>();
-        //    byte[] buffer;
-
-        //    while (true)
-        //    {
-        //        int available = Soc.Available;
-        //        if (available == 0)
-        //        {
-        //            yield return null;
-        //            continue;
-        //        }
-
-        //        buffer = new byte[available];
-        //        Task.Delay(10).Wait();
-        //        Soc.Receive(buffer);
-
-        //        allBytes.AddRange(buffer);
-        //        List<MessageBase> messages = null;
-
-        //        if (Settings != null && Settings.UseEncryption)
-        //            switch (stage)
-        //            {
-        //                case EncryptionMessage.Stage.SYN:
-        //                    messages = MessageParser.GetMessagesAes(ref allBytes, Key);
-        //                    break;
-        //                case EncryptionMessage.Stage.ACK:
-        //                    messages = MessageParser.GetMessagesRsa(ref allBytes, RsaKey.Value);
-        //                    break;
-        //                case EncryptionMessage.Stage.SYNACK:
-        //                    messages = MessageParser.GetMessagesAes(ref allBytes, Key);
-        //                    break;
-        //                default:
-        //                    if (RsaKey == null)
-        //                        messages = MessageParser.GetMessages(ref allBytes);
-        //                    else
-        //                        messages = MessageParser.GetMessagesRsa(ref allBytes, RsaKey.Value);
-        //                    break;
-        //            }
-        //        else messages = MessageParser.GetMessages(ref allBytes);
-        //        foreach (MessageBase msg in messages)
-        //        {
-        //            HandleMessage(msg);
-        //        }
-        //    }
-        //}
 
         protected override IEnumerable<MessageBase> RecieveMessages()
         {

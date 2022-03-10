@@ -79,7 +79,8 @@
         public override void ShutDown()
         {
             lock (Clients)
-                foreach (var c in Clients) c.Close();
+                foreach (var c in Clients)
+                    c.Close();
         }
 
         public void RegisterType<T>() =>
