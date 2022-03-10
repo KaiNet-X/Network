@@ -21,6 +21,7 @@
         public volatile List<Channel> Channels = new List<Channel>();
 
         public bool Connected { get; private set; }
+        IClosable.ConnectState IClosable.ConnectionState { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         private EncryptionMessage.Stage stage = EncryptionMessage.Stage.NONE;
 
@@ -203,6 +204,16 @@
         }
 
         public Task CloseAsync()
+        {
+            throw new NotImplementedException();
+        }
+
+        void IClosable.Close()
+        {
+            throw new NotImplementedException();
+        }
+
+        Task IClosable.CloseAsync()
         {
             throw new NotImplementedException();
         }
