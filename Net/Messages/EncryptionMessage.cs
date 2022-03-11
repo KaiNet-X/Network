@@ -1,12 +1,12 @@
 ﻿using MessagePack;
 using System.Security.Cryptography;
-using System.Text.Json.Serialization;
 
 namespace Net.Messages
 {
+    [Attributes.RegisterMessageAttribute]
     class EncryptionMessage : MpMessage
     {
-        public override string MessageType => "encryption";
+        public override string MessageType => GetType().Name;
 
         public Stage stage { get; set; }
         public RSAParameters RSA { get; set; }
@@ -14,7 +14,6 @@ namespace Net.Messages
 
         public EncryptionMessage(RSAParameters param)
         {
-            RegisterMessage();
             stage = Stage.SYN;
             RSA = param;
             Content = MessagePackSerializer.Serialize(param, ResolveOptions);

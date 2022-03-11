@@ -17,7 +17,7 @@ namespace Testing
     {
         static void Main(string[] args)
         {
-            Client c1 = new Client(IPAddress.Loopback, 5555);
+            Client c1 = new Client(IPAddress.Loopback, 6969);
             c1.OnRecieveObject = rec;
             c1.Connect();
             Console.WriteLine("Connected");

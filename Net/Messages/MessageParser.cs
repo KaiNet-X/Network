@@ -47,11 +47,12 @@ namespace Net.Messages
         {
             List<byte> sub = new List<byte>();
             List<MessageBase> msg = new List<MessageBase>();
-
+            var o2str = System.Text.Encoding.UTF8.GetString(obj.ToArray());
             while (true)
             {
                 sub = new List<byte>(GetTags(ref obj));
                 if (sub.Count == 0) break;
+                var s2str = System.Text.Encoding.UTF8.GetString(sub.ToArray());
 
                 sub = new List<byte>(CryptoServices.DecryptAES(sub.ToArray(), encKey));
 

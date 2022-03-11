@@ -9,4 +9,10 @@
     <ProjectReference Include="..\Net\Net.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="Net">
+      <HintPath>..\Net\bin\Debug\net5.0\Net.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>

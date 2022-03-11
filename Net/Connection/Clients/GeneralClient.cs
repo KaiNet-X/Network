@@ -78,8 +78,11 @@
 
         internal void StartConnectionPoll()
         {
+            if (stage != EncryptionMessage.Stage.SYNACK) return;
+            if (ConnectionState != ConnectState.CONNECTED) return;
             AwaitingPoll = true;
             (Timer ??= new Stopwatch()).Start();
+            SendMessage(new ConnectionPollMessage { PollState = ConnectionPollMessage.PollMessage.SYN });
         }
 
         private void PollConnected()
@@ -157,6 +160,8 @@
 
         public override void SendMessage(MessageBase message)
         {
+            if (ConnectionState != ConnectState.CONNECTED) return;
+
             List<byte> bytes = message.Serialize();
             if (Settings != null && Settings.UseEncryption)
                 bytes = stage switch
@@ -166,8 +171,15 @@
                     EncryptionMessage.Stage.SYNACK => new List<byte>(CryptoServices.EncryptAES(bytes.ToArray(), Key)),
                     EncryptionMessage.Stage.NONE => bytes
                 };
-
-            Soc.Send(MessageParser.AddTags(bytes).ToArray());
+            try
+            {
+                Soc.Send(MessageParser.AddTags(bytes).ToArray());
+            }
+            catch
+            {
+                Close();
+                OnDisconnect?.Invoke();
+            }
         }
 
         protected override IEnumerable<MessageBase> RecieveMessages()
@@ -177,18 +189,21 @@
 
             while (true)
             {
+                if (ConnectionState != ConnectState.CONNECTED) yield break;
                 int available;
+
+                if (AwaitingPoll && Timer.ElapsedMilliseconds >= DisconnectedThreshold)
+                {
+                    Close();
+                    OnDisconnect?.Invoke();
+                    yield break;
+                }
+
                 lock (LockObject)
                 {
                     available = Soc.Available;
                     if (available == 0)
                     {
-                        if (AwaitingPoll && Timer.ElapsedMilliseconds >= DisconnectedThreshold)
-                        {
-                            Close();
-                            OnDisconnect?.Invoke();
-                            yield break;
-                        }
                         yield return null;
                         continue;
                     }
@@ -198,7 +213,16 @@
 
                 buffer = new byte[available];
                 Task.Delay(10).Wait();
-                Soc.Receive(buffer);
+
+                try
+                {
+                    Soc.Receive(buffer);
+                }
+                catch
+                {
+                    Close();
+                    OnDisconnect?.Invoke();
+                }
 
                 allBytes.AddRange(buffer);
                 List<MessageBase> messages = null;

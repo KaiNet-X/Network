@@ -4,13 +4,14 @@ using System.Threading.Tasks;
 
 namespace Net.Messages
 {
+    [Attributes.RegisterMessageAttribute]
     class SettingsMessage : MpMessage
     {
-        public override string MessageType => "settings";
+        public override string MessageType => GetType().Name;
         public SettingsMessage(NetSettings settings)
         {
             //RegisterMessage<SettingsMessage>();
-            RegisterMessage();
+            //RegisterMessage();
             Content = MessagePackSerializer.Serialize(settings, ResolveOptions);
         }
 

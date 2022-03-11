@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Reflection;
 using System.Threading.Tasks;
+using System.Linq;
+using Net.Attributes;
 
 namespace Net.Messages
 {
@@ -12,21 +15,38 @@ namespace Net.Messages
         private static Dictionary<string, Type> Registered { get; set; } = new Dictionary<string, Type>();
         public virtual string MessageType { get; set; }
 
+        public static void InitializeMessages()
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+            var types =
+                from type in assembly.GetTypes()
+                where type.IsDefined(typeof(RegisterMessageAttribute), false)
+                select type;
+
+            foreach (var v in types)
+            {
+                if (!Registered.ContainsKey(v.Name)) Registered[v.Name] = v;
+            }
+        }
         public static MessageBase Deserialize(byte[] obj)
         {
             string str = Encoding.UTF8.GetString(obj);
             MessageBase msg = JsonSerializer.Deserialize<MessageBase>(str);
 
+            if (Registered.Count == 0)
+            {
+                InitializeMessages();
+            }
             Type t = Registered[msg.MessageType];
 
             return JsonSerializer.Deserialize(str, t) as MessageBase;
         }
 
-        protected void RegisterMessage()
-        {
-            Type type = GetType();
-            if (!Registered.ContainsKey(type.Name)) Registered[MessageType] = type;
-        }
+        //protected void RegisterMessage()
+        //{
+        //    Type type = GetType();
+        //    if (!Registered.ContainsKey(type.Name)) Registered[MessageType] = type;
+        //}
 
         internal protected virtual List<byte> Serialize() =>
             new List<byte>(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(this, GetType())));

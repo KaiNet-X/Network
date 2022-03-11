@@ -3,15 +3,16 @@ using System;
 
 namespace Net.Messages
 {
+    [Attributes.RegisterMessageAttribute]
     public class ObjectMessage : MpMessage
     {
-        public override string MessageType => "object";
+        public override string MessageType => GetType().Name;
         public string TypeName { get; set; }
 
         public ObjectMessage(object obj)
         {
             //RegisterMessage<ObjectMessage>();
-            RegisterMessage();
+            //RegisterMessage();
             Type t = obj.GetType();
             TypeName = t.Name;
             Content = MessagePackSerializer.Serialize(t, obj, ResolveOptions);

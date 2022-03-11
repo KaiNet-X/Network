@@ -2,15 +2,15 @@
 
 namespace Net.Messages
 {
+    [Attributes.RegisterMessageAttribute]
     class ConfirmationMessage : MpMessage
     {
-        public override string MessageType => "confirmation";
+        public override string MessageType => GetType().Name;
         public ConfirmationMessage(string @for)
         {
             Content = MessagePackSerializer.Serialize(@for, ResolveOptions);
-            //RegisterMessage<ConfirmationMessage>();
-            RegisterMessage();
         }
+
         public ConfirmationMessage() { }
         protected internal override object GetValue()
         {

@@ -1,8 +1,9 @@
 ﻿namespace Net.Messages
 {
+    [Attributes.RegisterMessageAttribute]
     public class ConnectionPollMessage : MessageBase
     {
-        public override string MessageType => "ConnectionPoll";
+        public override string MessageType => GetType().Name;
 
         public PollMessage PollState { get; set; }
 

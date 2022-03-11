@@ -25,7 +25,7 @@
             this.Address = Address; 
             this.Port = Port;
             this.MaxClients = MaxClients;
-            this.Settings = settings;
+            this.Settings = new NetSettings() { SingleThreadedServer = false };
 
             Clients = new List<ServerClient>();
 
@@ -64,7 +64,7 @@
                     lock (Clients)
                         Clients.Add(c);
 
-                    if (!Settings.SingleThreadedServer)
+                    if (Settings?.SingleThreadedServer == false)
                         Task.Run(() =>
                         {
                             while (true) 

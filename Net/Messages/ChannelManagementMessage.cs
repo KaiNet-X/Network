@@ -2,16 +2,17 @@
 
 namespace Net.Messages
 {
+    [Attributes.RegisterMessageAttribute]
     public class ChannelManagementMessage : MpMessage
     {
-        public override string MessageType => "Channel";
+        public override string MessageType => GetType().Name;
         public Guid Id { get; set; }
         public int Port { get; set; }
         public Mode ManageMode { get; set; }
 
         public ChannelManagementMessage(Guid guid, int port, Mode mode)
         {
-            RegisterMessage();
+            //RegisterMessage();
             Id = guid;
             Port = port;
             ManageMode = mode;
@@ -19,7 +20,7 @@ namespace Net.Messages
 
         public ChannelManagementMessage(Guid guid, Mode mode)
         {
-            RegisterMessage();
+            //RegisterMessage();
             Id = guid;
             ManageMode = mode;
         }
