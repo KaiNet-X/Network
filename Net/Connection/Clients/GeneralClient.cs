@@ -3,8 +3,8 @@
     using Messages;
     using Net.Connection.Channels;
     using System;
-    using System.Collections;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
     using System.Net;
     using System.Net.Sockets;
@@ -13,6 +13,8 @@
 
     public abstract class GeneralClient : ClientBase, IClosable
     {
+        private object LockObject = "lock";
+
         protected RSAParameters? RsaKey;
         protected volatile byte[] Key;
 
@@ -21,18 +23,26 @@
         public volatile List<Channel> Channels = new List<Channel>();
 
         public bool Connected { get; private set; }
-        IClosable.ConnectState IClosable.ConnectionState { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+
+        protected bool AwaitingPoll;
+        protected Stopwatch Timer;
+        protected int DisconnectedThreshold = 8000;
+
+        public ConnectState ConnectionState { get; protected set; } = ConnectState.PENDING;
 
         private EncryptionMessage.Stage stage = EncryptionMessage.Stage.NONE;
 
         public Action<object> OnRecieveObject;
         public Action<Guid> OnChannelOpened;
         public Action<MessageBase> OnRecievedCustomMessage;
+        public Action OnDisconnect;
 
         public Dictionary<string, Action<MessageBase>> MessageHandlers;
 
-        public void SendObject<T>(T obj) =>
+        public void SendObject<T>(T obj)
+        {
             SendMessage(new ObjectMessage(obj));
+        }
        
         public async Task SendObjectAsync<T>(T obj) =>
             await SendMessageAsync(new ObjectMessage(obj));
@@ -65,6 +75,18 @@
 
         public async Task<byte[]> RecieveBytesFromChannelAsync(Guid id) =>
             await Channels.First(c => c.Id == id).RecieveBytesAsync();
+
+        internal void StartConnectionPoll()
+        {
+            AwaitingPoll = true;
+            (Timer ??= new Stopwatch()).Start();
+        }
+
+        private void PollConnected()
+        {
+            Timer?.Reset();
+            AwaitingPoll = false;
+        }
 
         protected void HandleMessage(MessageBase message)
         {
@@ -123,7 +145,7 @@
                             SendMessage(new ConnectionPollMessage { PollState = ConnectionPollMessage.PollMessage.ACK });
                             break;
                         case ConnectionPollMessage.PollMessage.ACK:
-
+                            PollConnected();
                             break;
                     }
                     break;
@@ -155,12 +177,24 @@
 
             while (true)
             {
-                int available = Soc.Available;
-                if (available == 0)
+                int available;
+                lock (LockObject)
                 {
-                    yield return null;
-                    continue;
+                    available = Soc.Available;
+                    if (available == 0)
+                    {
+                        if (AwaitingPoll && Timer.ElapsedMilliseconds >= DisconnectedThreshold)
+                        {
+                            Close();
+                            OnDisconnect?.Invoke();
+                            yield break;
+                        }
+                        yield return null;
+                        continue;
+                    }
                 }
+
+                PollConnected();
 
                 buffer = new byte[available];
                 Task.Delay(10).Wait();
@@ -199,23 +233,25 @@
 
         public void Close()
         {
-            Soc.Close();
-            Channels.ForEach(c => c.Dispose());
-        }
-
-        public Task CloseAsync()
-        {
-            throw new NotImplementedException();
-        }
-
-        void IClosable.Close()
-        {
-            throw new NotImplementedException();
+            lock (LockObject)
+            {
+                Soc.Close();
+                Soc = null;
+                ConnectionState = ConnectState.CLOSED;
+                Channels.ForEach(c => c.Dispose());
+            }
         }
 
         Task IClosable.CloseAsync()
         {
             throw new NotImplementedException();
         }
+    }
+
+    public enum ConnectState
+    {
+        PENDING,
+        CONNECTED,
+        CLOSED
     }
 }

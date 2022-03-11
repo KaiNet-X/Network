@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace Net.Messages
@@ -9,7 +10,7 @@ namespace Net.Messages
     public class MessageBase
     {
         private static Dictionary<string, Type> Registered { get; set; } = new Dictionary<string, Type>();
-        public virtual string MessageType { get; }
+        public virtual string MessageType { get; set; }
 
         public static MessageBase Deserialize(byte[] obj)
         {

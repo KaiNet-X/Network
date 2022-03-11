@@ -7,22 +7,18 @@
 
     public class ServerClient : GeneralClient
     {
-        //public Action<object, EndPoint> OnRecieve;
         private IEnumerator<MessageBase> Reciever;
 
         internal ServerClient(Socket soc, NetSettings settings = default) 
         {
             if (settings == default) settings = new NetSettings();
 
+            ConnectionState = ConnectState.CONNECTED;
+
             this.Settings = settings;
             this.Soc = soc;
 
             Reciever = RecieveMessages().GetEnumerator();
-
-            //OnRecieveObject = delegate (object o)
-            //{
-            //    OnRecieve(o, Soc.RemoteEndPoint);
-            //};
 
             SendMessage(new SettingsMessage(Settings));
             if (!settings.UseEncryption) return;
@@ -38,6 +34,7 @@
         {
             var msg = Reciever.Current;
             if (msg != null) HandleMessage(msg);
+            else StartConnectionPoll();
             Reciever.MoveNext();
         }
     }

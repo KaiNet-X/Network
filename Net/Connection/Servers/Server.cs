@@ -18,6 +18,7 @@
 
         public Action<Guid, ServerClient> OnClientChannelOpened;
         public Action<object, ServerClient> OnClientObjectReceived;
+        public Action<ServerClient> OnClientConnected;
 
         public Server(IPAddress Address, uint Port, ushort MaxClients, NetSettings settings = default)
         {
@@ -39,7 +40,7 @@
             if (ServerSoc == null)
                 InitializeSocket();
 
-            if (Settings.SingleThreadedServer)
+            if (Settings?.SingleThreadedServer == true)
                 Task.Run(() =>
                 {
                     while (true)
@@ -72,6 +73,7 @@
                     while (!c.Connected) ;
 
                     c.SendMessage(new ConfirmationMessage("done"));
+                    OnClientConnected?.Invoke(c);
                 }
             });
         }

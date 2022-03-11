@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Net", "Net\Net.csproj", "{A
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Testing", "Testing\Testing.csproj", "{C22188B4-9092-45F4-B9C5-9B5CA040179C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinForms", "WinForms\WinForms.csproj", "{4C3306AA-F0DB-4906-B5FD-EA5B4A7B06C7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp1", "ConsoleApp1\ConsoleApp1.csproj", "{C85BC000-EF6D-448C-ACF2-48C7010BA15E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,10 +23,10 @@ Global
 		{C22188B4-9092-45F4-B9C5-9B5CA040179C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C22188B4-9092-45F4-B9C5-9B5CA040179C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C22188B4-9092-45F4-B9C5-9B5CA040179C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4C3306AA-F0DB-4906-B5FD-EA5B4A7B06C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4C3306AA-F0DB-4906-B5FD-EA5B4A7B06C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4C3306AA-F0DB-4906-B5FD-EA5B4A7B06C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4C3306AA-F0DB-4906-B5FD-EA5B4A7B06C7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C85BC000-EF6D-448C-ACF2-48C7010BA15E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C85BC000-EF6D-448C-ACF2-48C7010BA15E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C85BC000-EF6D-448C-ACF2-48C7010BA15E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C85BC000-EF6D-448C-ACF2-48C7010BA15E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
