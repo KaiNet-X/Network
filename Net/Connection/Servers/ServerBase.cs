@@ -10,11 +10,7 @@
         protected virtual NetSettings Settings { get; init; }
         public abstract void StartServer();
 
-        public virtual void SendMessageToAll(MessageBase msg)
-        {
-            lock (Clients)
-                foreach (TClient c in Clients) c.SendMessage(msg);
-        }
+        public abstract void SendMessageToAll(MessageBase msg);
 
         public virtual void ShutDown()
         {

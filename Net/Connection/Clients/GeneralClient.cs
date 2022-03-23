@@ -18,31 +18,26 @@
         protected RSAParameters? RsaKey;
         protected volatile byte[] Key;
 
-        protected Socket Soc;
+        protected volatile Socket Soc;
 
         public volatile List<Channel> Channels = new List<Channel>();
 
-        public bool Connected { get; private set; }
-
         protected bool AwaitingPoll;
         protected Stopwatch Timer;
-        protected int DisconnectedThreshold = 8000;
 
         public ConnectState ConnectionState { get; protected set; } = ConnectState.PENDING;
 
         private EncryptionMessage.Stage stage = EncryptionMessage.Stage.NONE;
 
-        public Action<object> OnRecieveObject;
-        public Action<Guid> OnChannelOpened;
-        public Action<MessageBase> OnRecievedCustomMessage;
-        public Action OnDisconnect;
+        public event Action<object> OnRecieveObject;
+        public event Action<Guid> OnChannelOpened;
+        public event Action <MessageBase> OnRecievedCustomMessage;
+        public event Action OnDisconnect;
 
-        public Dictionary<string, Action<MessageBase>> MessageHandlers;
+        public Dictionary<string, Action<MessageBase>> CustomMessageHandlers;
 
-        public void SendObject<T>(T obj)
-        {
+        public void SendObject<T>(T obj) =>
             SendMessage(new ObjectMessage(obj));
-        }
        
         public async Task SendObjectAsync<T>(T obj) =>
             await SendMessageAsync(new ObjectMessage(obj));
@@ -76,13 +71,23 @@
         public async Task<byte[]> RecieveBytesFromChannelAsync(Guid id) =>
             await Channels.First(c => c.Id == id).RecieveBytesAsync();
 
-        internal void StartConnectionPoll()
+        internal void StartConnectionPoll(bool server = true)
         {
-            if (stage != EncryptionMessage.Stage.SYNACK) return;
-            if (ConnectionState != ConnectState.CONNECTED) return;
-            AwaitingPoll = true;
-            (Timer ??= new Stopwatch()).Start();
-            SendMessage(new ConnectionPollMessage { PollState = ConnectionPollMessage.PollMessage.SYN });
+            if (server)
+            {
+                if (stage != EncryptionMessage.Stage.SYNACK) return;
+                if (ConnectionState != ConnectState.CONNECTED) return;
+                AwaitingPoll = true;
+                (Timer ??= new Stopwatch()).Start();
+                SendMessage(new ConnectionPollMessage { PollState = ConnectionPollMessage.PollMessage.SYN });
+            }
+            else
+            {
+                if (stage != EncryptionMessage.Stage.SYNACK) return;
+                if (ConnectionState != ConnectState.CONNECTED) return;
+                AwaitingPoll = true;
+                (Timer ??= new Stopwatch()).Start();
+            }
         }
 
         private void PollConnected()
@@ -96,10 +101,10 @@
             switch (message)
             {
                 case ConfirmationMessage m:
-                    Connected = true;
+                    ConnectionState = ConnectState.CONNECTED;
                     break;
                 case ObjectMessage m:
-                    OnRecieveObject?.Invoke(m.GetValue());
+                    Task.Run(() => OnRecieveObject?.Invoke(m.GetValue()));
                     break;
                 case SettingsMessage m:
                     Settings = m.GetValue() as NetSettings;
@@ -131,7 +136,7 @@
                         var c = new Channel(ipAddr, remoteEndpoint, val);
                         c.Connected = true;
                         Channels.Add(c);
-                        OnChannelOpened?.Invoke(val);
+                        Task.Run(() => OnChannelOpened?.Invoke(val));
                         SendMessage(new ChannelManagementMessage(val, c.Port, ChannelManagementMessage.Mode.Confirm));
                     }
                     else if (m.ManageMode == ChannelManagementMessage.Mode.Confirm)
@@ -146,6 +151,7 @@
                     {
                         case ConnectionPollMessage.PollMessage.SYN:
                             SendMessage(new ConnectionPollMessage { PollState = ConnectionPollMessage.PollMessage.ACK });
+                            StartConnectionPoll(false);
                             break;
                         case ConnectionPollMessage.PollMessage.ACK:
                             PollConnected();
@@ -153,7 +159,7 @@
                     }
                     break;
                 default:
-                    MessageHandlers[message.MessageType]?.Invoke(message);
+                    Task.Run(() => CustomMessageHandlers[message.MessageType]?.Invoke(message));
                     break;
             }
         }
@@ -192,21 +198,18 @@
                 if (ConnectionState != ConnectState.CONNECTED) yield break;
                 int available;
 
-                if (AwaitingPoll && Timer.ElapsedMilliseconds >= DisconnectedThreshold)
+                if (AwaitingPoll && Timer?.ElapsedMilliseconds >= Settings.ConnectionPollTimeout)
                 {
                     Close();
                     OnDisconnect?.Invoke();
                     yield break;
                 }
 
-                lock (LockObject)
+                available = Soc.Available;
+                if (available == 0)
                 {
-                    available = Soc.Available;
-                    if (available == 0)
-                    {
-                        yield return null;
-                        continue;
-                    }
+                    yield return null;
+                    continue;
                 }
 
                 PollConnected();
@@ -248,10 +251,7 @@
                     }
                 else messages = MessageParser.GetMessages(ref allBytes);
 
-                foreach (MessageBase msg in messages)
-                {
-                    yield return msg;
-                }
+                foreach (MessageBase msg in messages) yield return msg;
             }
         }
 

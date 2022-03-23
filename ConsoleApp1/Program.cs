@@ -7,11 +7,12 @@ namespace ConsoleApp1
     class Program
     {
         public static Server s;
-
+        public static object o = 1;
         static void Main(string[] args)
         {
-            s = new Server(System.Net.IPAddress.Loopback, 6969, 1);
+            s = new Server(System.Net.IPAddress.Loopback, 6969, 3);
             s.OnClientConnected = connected;
+            s.OnClientObjectReceived += recieved;
             s.StartServer();
 
             while (true)
@@ -23,7 +24,13 @@ namespace ConsoleApp1
         static void connected(ServerClient c)
         {
             Console.WriteLine("Connected");
-            c.OnDisconnect = () => Console.WriteLine("Disconnected");
+            c.OnDisconnect += () => Console.WriteLine("Disconnected");
+        }
+
+        static void recieved(object obj, ServerClient c)
+        {
+            lock (o)
+                Console.WriteLine(obj);
         }
     }
 }

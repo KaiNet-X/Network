@@ -7,14 +7,16 @@
     using System.Net.Sockets;
     using System.Threading.Tasks;
     using System;
+    using System.Threading;
 
     public class Server : ServerBase<ServerClient>
     {
+        private Socket ServerSoc;
+        private SemaphoreSlim _semaphore;
+
         public readonly IPAddress Address;
         public readonly uint Port;
         public volatile ushort MaxClients;
-
-        private Socket ServerSoc;
 
         public Action<Guid, ServerClient> OnClientChannelOpened;
         public Action<object, ServerClient> OnClientObjectReceived;
@@ -25,15 +27,15 @@
             this.Address = Address; 
             this.Port = Port;
             this.MaxClients = MaxClients;
-            this.Settings = new NetSettings() { SingleThreadedServer = false };
+            this.Settings = settings ?? new NetSettings();
 
             Clients = new List<ServerClient>();
-
+            _semaphore = new SemaphoreSlim(1, 1);
             InitializeSocket();
         }
 
         public void SendObjectToAll<T>(T obj) =>
-            base.SendMessageToAll(new ObjectMessage(obj));
+            SendMessageToAll(new ObjectMessage(obj));
 
         public override void StartServer()
         {
@@ -45,9 +47,11 @@
                 {
                     while (true)
                     {
-                        lock (Clients)
+                        Utilities.ConcurrentAccess(() =>
+                        {
                             foreach (ServerClient c in Clients)
                                 c.GetNextMessage();
+                        }, _semaphore);
                     }
                 });
 
@@ -55,14 +59,18 @@
             {
                 ServerSoc.Listen();
                 ServerClient c;
-                while (Clients.Count <= MaxClients)
+                while (Clients.Count < MaxClients)
                 {
                     c = new ServerClient(ServerSoc.Accept(), Settings);
-                    c.OnChannelOpened = (guid) => OnClientChannelOpened?.Invoke(guid, c);
-                    c.OnRecieveObject = (obj) => OnClientObjectReceived?.Invoke(obj, c);
-
-                    lock (Clients)
-                        Clients.Add(c);
+                    c.OnChannelOpened += (guid) => OnClientChannelOpened?.Invoke(guid, c);
+                    c.OnRecieveObject += (obj) => OnClientObjectReceived?.Invoke(obj, c);
+                    c.OnDisconnect += () =>
+                    {
+                        Utilities.ConcurrentAccess(() =>
+                            Clients.Remove(c), _semaphore);
+                    };
+                    Utilities.ConcurrentAccess(() =>
+                        Clients.Add(c), _semaphore);
 
                     if (Settings?.SingleThreadedServer == false)
                         Task.Run(() =>
@@ -70,7 +78,7 @@
                             while (true) 
                                 c.GetNextMessage();
                         });
-                    while (!c.Connected) ;
+                    while (c.ConnectionState == ConnectState.PENDING) ;
 
                     c.SendMessage(new ConfirmationMessage("done"));
                     OnClientConnected?.Invoke(c);
@@ -95,6 +103,15 @@
                 new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
 
             ServerSoc.Bind(new IPEndPoint(Address, (int)Port));
+        }
+
+        public override void SendMessageToAll(MessageBase msg)
+        {
+            Utilities.ConcurrentAccess(() =>
+            {
+                foreach (var c in Clients)
+                    c.SendMessage(msg);
+            }, _semaphore);
         }
     }
 }

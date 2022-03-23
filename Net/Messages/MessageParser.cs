@@ -47,12 +47,10 @@ namespace Net.Messages
         {
             List<byte> sub = new List<byte>();
             List<MessageBase> msg = new List<MessageBase>();
-            var o2str = System.Text.Encoding.UTF8.GetString(obj.ToArray());
             while (true)
             {
                 sub = new List<byte>(GetTags(ref obj));
                 if (sub.Count == 0) break;
-                var s2str = System.Text.Encoding.UTF8.GetString(sub.ToArray());
 
                 sub = new List<byte>(CryptoServices.DecryptAES(sub.ToArray(), encKey));
 
@@ -85,6 +83,8 @@ namespace Net.Messages
             byte[] arr = b.ToArray();
             int start = Utilities.IndexInByteArray(arr, Start);
             int end = Utilities.IndexInByteArray(arr, End);
+
+            var s2str = System.Text.Encoding.UTF8.GetString(b.ToArray());
 
             if (end == -1 || start == -1) 
                 return new List<byte>();

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace Net
 {
@@ -118,6 +119,19 @@ namespace Net
             for (int i = 0; i <= dimensions; i++)
                 lengths[i] = 0;
             return Array.CreateInstance(baseType, lengths).GetType();
+        }
+
+        public static void ConcurrentAccess(Action a, SemaphoreSlim s)
+        {
+            s.Wait();
+            try
+            {
+                a();
+            }
+            finally
+            {
+                s.Release();
+            }
         }
     }
 }

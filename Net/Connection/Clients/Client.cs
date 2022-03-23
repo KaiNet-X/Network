@@ -2,7 +2,6 @@
 {
     using System.Net;
     using System.Net.Sockets;
-    using System.Threading;
     using System.Threading.Tasks;
 
     public class Client : GeneralClient, IConnectable
@@ -18,15 +17,12 @@
             this.Address = address;
             this.Port = port;
 
-            Thread t = new Thread(() =>
+            Task.Run(() =>
             {
                 foreach (var msg in RecieveMessages())
                     if (msg != null) 
                         HandleMessage(msg);
             });
-
-            t.IsBackground = true;
-            t.Start();
         }
 
         public void Connect()

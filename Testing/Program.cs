@@ -15,40 +15,21 @@ namespace Testing
 {
     public class Program
     {
+        static Client c1 = new Client(IPAddress.Loopback, 6969);
+
         static void Main(string[] args)
         {
-            Client c1 = new Client(IPAddress.Loopback, 6969);
-            c1.OnRecieveObject = rec;
+            c1.OnRecieveObject += rec;
             c1.Connect();
             Console.WriteLine("Connected");
             Console.ReadKey();
+            c1.Close();
         }
 
         static void rec(object obj)
         {
             Console.WriteLine(JsonSerializer.Serialize(obj));
-        }
-
-        public class test
-        {
-            public string[] arr { get; set; }
-            public string name { get; set; } = "peen";
-
-            public test() { }
-
-            public static test GetTest()
-            {
-                test t = new test();
-                t.arr = new string[]
-                {
-                    "sdaaSdASfag",
-                    "ifgsfhasfhrs",
-                    "AAsfgegg",
-                    "HERRO"
-                };
-
-                return t;
-            }
+            c1.SendObject($"Thanks for {obj}");
         }
 
         public class UDPSocket

@@ -2,23 +2,26 @@
 {
     using Net.Messages;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Net.Sockets;
     using System.Security.Cryptography;
 
     public class ServerClient : GeneralClient
     {
-        private IEnumerator<MessageBase> Reciever;
+        private IEnumerator<MessageBase> _reciever;
+        private Stopwatch _timer = new Stopwatch();
+        private object Lock = "lock";
 
-        internal ServerClient(Socket soc, NetSettings settings = default) 
+        internal ServerClient(Socket soc, NetSettings settings = null) 
         {
             if (settings == default) settings = new NetSettings();
 
             ConnectionState = ConnectState.CONNECTED;
 
-            this.Settings = settings;
+            this.Settings = settings ?? new NetSettings();
             this.Soc = soc;
 
-            Reciever = RecieveMessages().GetEnumerator();
+            _reciever = RecieveMessages().GetEnumerator();
 
             SendMessage(new SettingsMessage(Settings));
             if (!settings.UseEncryption) return;
@@ -32,10 +35,23 @@
 
         internal void GetNextMessage()
         {
-            var msg = Reciever.Current;
-            if (msg != null) HandleMessage(msg);
-            else StartConnectionPoll();
-            Reciever.MoveNext();
+            lock (Lock)
+            {
+                var msg = _reciever.Current;
+                if (msg != null) 
+                    HandleMessage(msg);
+                else
+                {
+                    if (_timer?.ElapsedMilliseconds == 0)
+                        _timer.Restart();
+                    if (_timer.ElapsedMilliseconds >= 1000)
+                    {
+                        _timer.Reset();
+                        StartConnectionPoll();
+                    }
+                }
+                _reciever.MoveNext();
+            }
         }
     }
 }
