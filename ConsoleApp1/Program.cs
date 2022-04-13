@@ -36,7 +36,7 @@ namespace ConsoleApp1
         static void recieved(object obj, ServerClient c)
         {
             lock (o)
-                Console.WriteLine(obj);
+                Console.WriteLine($"{c.Endpoint}: {obj}");
         }
     }
 }

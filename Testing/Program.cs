@@ -15,7 +15,7 @@ namespace Testing
 {
     public class Program
     {
-        static Client c1 = new Client(IPAddress.Loopback, 6969);
+        static Client c1 = new Client(IPAddress.Parse("127.0.0.1"), 6969);
 
         static void Main(string[] args)
         {

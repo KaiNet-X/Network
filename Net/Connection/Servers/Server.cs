@@ -52,13 +52,15 @@
                 {
                     while (true)
                     {
-                        await Utilities.ConcurrentAccess(() =>
+                        await Utilities.ConcurrentAccess((ct) =>
                         {
                             foreach (ServerClient c in Clients)
                             {
+                                if (ct.IsCancellationRequested)
+                                    return Task.FromCanceled(ct);
                                 c.GetNextMessage();
                             }
-                            return Task.CompletedTask;
+                            return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
                         }, _semaphore);
                         await Task.Delay(10);
                     }
@@ -74,18 +76,18 @@
                     c.OnRecieveObject += (obj) => OnClientObjectReceived?.Invoke(obj, c);
                     c.OnDisconnect += async () =>
                     {
-                        await Utilities.ConcurrentAccess(() =>
+                        await Utilities.ConcurrentAccess((ct) =>
                         {
                             Clients.Remove(c);
-                            return Task.CompletedTask;
+                            return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
                         } , _semaphore);
 
                         OnClientDisconnected?.Invoke(c);
                     };
-                    await Utilities.ConcurrentAccess(() =>
+                    await Utilities.ConcurrentAccess((ct) =>
                     {
                         Clients.Add(c);
-                        return Task.CompletedTask;
+                        return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
                     }, _semaphore);
 
                     if (Settings?.SingleThreadedServer == false)
@@ -105,11 +107,13 @@
 
         public override void ShutDown()
         {
-            Utilities.ConcurrentAccess(() =>
+            Utilities.ConcurrentAccess((ct) =>
             {
                 foreach (var c in Clients)
+                {
                     c.Close();
-                return Task.CompletedTask;
+                }
+                return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
             }, _semaphore).Wait();
         }
 
@@ -123,10 +127,14 @@
 
         public override async Task SendMessageToAllAsync(MessageBase msg)
         {
-            await Utilities.ConcurrentAccess(() =>
+            await Utilities.ConcurrentAccess((ct) =>
             {
                 foreach (var c in Clients)
+                {
+                    if (ct.IsCancellationRequested)
+                        return Task.FromCanceled(ct);
                     c.SendMessage(msg);
+                }
                 return Task.CompletedTask;
             }, _semaphore);
         }

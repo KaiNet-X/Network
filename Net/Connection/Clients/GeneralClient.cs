@@ -20,7 +20,7 @@
         protected volatile byte[] Key;
 
         protected volatile Socket Soc;
-
+        public IPEndPoint Endpoint => Soc.LocalEndPoint as IPEndPoint;
         public volatile Dictionary<Guid, Channel> Channels = new Dictionary<Guid, Channel>();
 
         protected bool AwaitingPoll;
@@ -257,7 +257,7 @@
 
         public async Task CloseAsync()
         {
-            await Utilities.ConcurrentAccess(() =>
+            await Utilities.ConcurrentAccess((ct) =>
             {
                 Soc.Close();
                 Soc = null;
@@ -267,7 +267,7 @@
                     c.Value.Dispose();
                 }
                 Channels = null;
-                return Task.CompletedTask;
+                return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
             }, _semaphore);
         }
     }
