@@ -13,6 +13,7 @@
     {
         private Socket ServerSoc;
         private volatile SemaphoreSlim _semaphore;
+        new public List<ServerClient> Clients => base.Clients;
 
         public readonly IPAddress Address;
         public readonly uint Port;
@@ -30,13 +31,16 @@
             this.MaxClients = MaxClients;
             this.Settings = settings ?? new NetSettings();
 
-            Clients = new List<ServerClient>();
+            base.Clients = new List<ServerClient>();
             _semaphore = new SemaphoreSlim(1, 1);
             InitializeSocket();
         }
 
         public void SendObjectToAll<T>(T obj) =>
             SendMessageToAll(new ObjectMessage(obj));
+
+        public async Task SendObjectToAllAsync<T>(T obj) =>
+            await SendObjectToAllAsync(new ObjectMessage(obj));
 
         public override void StartServer()
         {
@@ -112,15 +116,6 @@
         public void RegisterType<T>() =>
             Utilities.RegisterType(typeof(T));
 
-        private void InitializeSocket()
-        {
-            ServerSoc = Address.AddressFamily == AddressFamily.InterNetwork ? 
-                new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp) :
-                new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
-
-            ServerSoc.Bind(new IPEndPoint(Address, (int)Port));
-        }
-
         public override void SendMessageToAll(MessageBase msg)
         {
             Task.Run(async () => await SendMessageToAllAsync(msg)).Wait();
@@ -134,6 +129,15 @@
                     c.SendMessage(msg);
                 return Task.CompletedTask;
             }, _semaphore);
+        }
+
+        private void InitializeSocket()
+        {
+            ServerSoc = Address.AddressFamily == AddressFamily.InterNetwork ? 
+                new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp) :
+                new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
+
+            ServerSoc.Bind(new IPEndPoint(Address, (int)Port));
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Net.Connection.Clients;
 using Net.Connection.Servers;
 using System;
+using System.Text;
 
 namespace ConsoleApp1
 {
@@ -18,7 +19,11 @@ namespace ConsoleApp1
 
             while (true)
             {
-                s.SendObjectToAll(Console.ReadLine());
+                var l = Console.ReadLine();
+                if (l.ToLowerInvariant().StartsWith("send channel"))
+                    s.Clients[0].SendBytesOnChannel(Encoding.UTF8.GetBytes(l.Substring(13)), s.Clients[0].OpenChannel());
+                else
+                    s.SendObjectToAll(l);
             }
         }
 

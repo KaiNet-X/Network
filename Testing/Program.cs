@@ -21,10 +21,19 @@ namespace Testing
         {
             c1.OnRecieveObject += rec;
             c1.OnDisconnect += C1_OnDisconnect;
+            c1.OnChannelOpened += C1_OnChannelOpened;
             c1.Connect();
             Console.WriteLine("Connected");
             Console.ReadKey();
             c1.Close();
+        }
+
+        private static async void C1_OnChannelOpened(Guid obj)
+        {
+            var bytes = await c1.RecieveBytesFromChannelAsync(obj);
+            Console.WriteLine($"{obj}: {Encoding.UTF8.GetString(bytes)}");
+            c1.Channels[obj].Dispose();
+            c1.Channels.Remove(obj);
         }
 
         private static void C1_OnDisconnect()

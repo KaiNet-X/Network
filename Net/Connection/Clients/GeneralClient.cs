@@ -21,7 +21,7 @@
 
         protected volatile Socket Soc;
 
-        public volatile List<Channel> Channels = new List<Channel>();
+        public volatile Dictionary<Guid, Channel> Channels = new Dictionary<Guid, Channel>();
 
         protected bool AwaitingPoll;
         protected Stopwatch Timer;
@@ -47,7 +47,7 @@
         {
             var localEP = (Soc.LocalEndPoint as IPEndPoint);
             Channel c = new Channel(localEP.Address);
-            Channels.Add(c);
+            Channels.Add(c.Id, c);
             SendMessage(new ChannelManagementMessage(c.Id, c.Port, ChannelManagementMessage.Mode.Create));
             return c.Id;
         }
@@ -55,22 +55,22 @@
         public async Task<Guid> OpenChannelAsync()
         {
             Channel c = new Channel((Soc.LocalEndPoint as IPEndPoint).Address);
-            Channels.Add(c);
+            Channels.Add(c.Id, c);
             await SendMessageAsync(new ChannelManagementMessage(c.Id, c.Port, ChannelManagementMessage.Mode.Create));
             return c.Id;
         }
 
         public void SendBytesOnChannel(byte[] bytes, Guid id) =>
-            Channels.First(c => c.Id == id).SendBytes(bytes);
+            Channels[id].SendBytes(bytes);
 
         public async Task SendBytesOnChannelAsync(byte[] bytes, Guid id) =>
-            await Channels.First(c => c.Id == id).SendBytesAsync(bytes);
+            await Channels[id].SendBytesAsync(bytes);
 
         public byte[] RecieveBytesFromChannel(Guid id) =>
-            Channels.First(c => c.Id == id).RecieveBytes();
+            Channels[id].RecieveBytes();
 
         public async Task<byte[]> RecieveBytesFromChannelAsync(Guid id) =>
-            await Channels.First(c => c.Id == id).RecieveBytesAsync();
+            await Channels[id].RecieveBytesAsync();
 
         internal void StartConnectionPoll(bool server = true)
         {
@@ -128,13 +128,13 @@
                         var remoteEndpoint = new IPEndPoint((Soc.RemoteEndPoint as IPEndPoint).Address, m.Port);
                         var c = new Channel(ipAddr, remoteEndpoint, val);
                         c.Connected = true;
-                        Channels.Add(c);
+                        Channels.Add(c.Id, c);
                         Task.Run(() => OnChannelOpened?.Invoke(val));
                         SendMessage(new ChannelManagementMessage(val, c.Port, ChannelManagementMessage.Mode.Confirm));
                     }
                     else if (m.ManageMode == ChannelManagementMessage.Mode.Confirm)
                     {
-                        var c = Channels.First(c => c.Id == val);
+                        var c = Channels[val];
                         c.SetRemote(new IPEndPoint((Soc.RemoteEndPoint as IPEndPoint).Address, m.Port));
                         c.Connected = true;
                     }
@@ -262,7 +262,11 @@
                 Soc.Close();
                 Soc = null;
                 ConnectionState = ConnectState.CLOSED;
-                Channels.ForEach(c => c.Dispose());
+                foreach (var c in Channels)
+                {
+                    c.Value.Dispose();
+                }
+                Channels = null;
                 return Task.CompletedTask;
             }, _semaphore);
         }
