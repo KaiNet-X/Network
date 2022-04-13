@@ -12,7 +12,7 @@
     public class Server : ServerBase<ServerClient>
     {
         private Socket ServerSoc;
-        private SemaphoreSlim _semaphore;
+        private volatile SemaphoreSlim _semaphore;
 
         public readonly IPAddress Address;
         public readonly uint Port;
@@ -21,6 +21,7 @@
         public Action<Guid, ServerClient> OnClientChannelOpened;
         public Action<object, ServerClient> OnClientObjectReceived;
         public Action<ServerClient> OnClientConnected;
+        public Action<ServerClient> OnClientDisconnected;
 
         public Server(IPAddress Address, uint Port, ushort MaxClients, NetSettings settings = default)
         {
@@ -43,34 +44,45 @@
                 InitializeSocket();
 
             if (Settings?.SingleThreadedServer == true)
-                Task.Run(() =>
+                Task.Run(async () =>
                 {
                     while (true)
                     {
-                        Utilities.ConcurrentAccess(() =>
+                        await Utilities.ConcurrentAccess(() =>
                         {
                             foreach (ServerClient c in Clients)
+                            {
                                 c.GetNextMessage();
+                            }
+                            return Task.CompletedTask;
                         }, _semaphore);
+                        await Task.Delay(10);
                     }
                 });
 
-            Task.Run(() =>
+            Task.Run(async () =>
             {
                 ServerSoc.Listen();
-                ServerClient c;
                 while (Clients.Count < MaxClients)
                 {
-                    c = new ServerClient(ServerSoc.Accept(), Settings);
+                    var c = new ServerClient(ServerSoc.Accept(), Settings);
                     c.OnChannelOpened += (guid) => OnClientChannelOpened?.Invoke(guid, c);
                     c.OnRecieveObject += (obj) => OnClientObjectReceived?.Invoke(obj, c);
-                    c.OnDisconnect += () =>
+                    c.OnDisconnect += async () =>
                     {
-                        Utilities.ConcurrentAccess(() =>
-                            Clients.Remove(c), _semaphore);
+                        await Utilities.ConcurrentAccess(() =>
+                        {
+                            Clients.Remove(c);
+                            return Task.CompletedTask;
+                        } , _semaphore);
+
+                        OnClientDisconnected?.Invoke(c);
                     };
-                    Utilities.ConcurrentAccess(() =>
-                        Clients.Add(c), _semaphore);
+                    await Utilities.ConcurrentAccess(() =>
+                    {
+                        Clients.Add(c);
+                        return Task.CompletedTask;
+                    }, _semaphore);
 
                     if (Settings?.SingleThreadedServer == false)
                         Task.Run(() =>
@@ -83,14 +95,18 @@
                     c.SendMessage(new ConfirmationMessage("done"));
                     OnClientConnected?.Invoke(c);
                 }
+                ServerSoc.Close();
             });
         }
 
         public override void ShutDown()
         {
-            lock (Clients)
+            Utilities.ConcurrentAccess(() =>
+            {
                 foreach (var c in Clients)
                     c.Close();
+                return Task.CompletedTask;
+            }, _semaphore).Wait();
         }
 
         public void RegisterType<T>() =>
@@ -107,10 +123,16 @@
 
         public override void SendMessageToAll(MessageBase msg)
         {
-            Utilities.ConcurrentAccess(() =>
+            Task.Run(async () => await SendMessageToAllAsync(msg)).Wait();
+        }
+
+        public override async Task SendMessageToAllAsync(MessageBase msg)
+        {
+            await Utilities.ConcurrentAccess(() =>
             {
                 foreach (var c in Clients)
                     c.SendMessage(msg);
+                return Task.CompletedTask;
             }, _semaphore);
         }
     }

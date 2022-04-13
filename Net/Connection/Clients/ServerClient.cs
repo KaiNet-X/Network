@@ -10,7 +10,7 @@
     {
         private IEnumerator<MessageBase> _reciever;
         private Stopwatch _timer = new Stopwatch();
-        private object Lock = "lock";
+        //private object Lock = "lock";
 
         internal ServerClient(Socket soc, NetSettings settings = null) 
         {
@@ -35,23 +35,23 @@
 
         internal void GetNextMessage()
         {
-            lock (Lock)
+            //lock (Lock)
+            //{
+            var msg = _reciever.Current;
+            if (msg != null) 
+                HandleMessage(msg);
+            else
             {
-                var msg = _reciever.Current;
-                if (msg != null) 
-                    HandleMessage(msg);
-                else
+                if (_timer?.ElapsedMilliseconds == 0)
+                    _timer.Restart();
+                if (_timer.ElapsedMilliseconds >= 1000)
                 {
-                    if (_timer?.ElapsedMilliseconds == 0)
-                        _timer.Restart();
-                    if (_timer.ElapsedMilliseconds >= 1000)
-                    {
-                        _timer.Reset();
-                        StartConnectionPoll();
-                    }
+                    _timer.Reset();
+                    StartConnectionPoll();
                 }
-                _reciever.MoveNext();
             }
+            _reciever.MoveNext();
+            //}
         }
     }
 }

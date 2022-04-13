@@ -20,10 +20,16 @@ namespace Testing
         static void Main(string[] args)
         {
             c1.OnRecieveObject += rec;
+            c1.OnDisconnect += C1_OnDisconnect;
             c1.Connect();
             Console.WriteLine("Connected");
             Console.ReadKey();
             c1.Close();
+        }
+
+        private static void C1_OnDisconnect()
+        {
+            Console.WriteLine("Disconnected");
         }
 
         static void rec(object obj)

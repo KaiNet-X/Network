@@ -2,17 +2,11 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Net\Net.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="Net">
-      <HintPath>..\Net\bin\Debug\net5.0\Net.dll</HintPath>
-    </Reference>
   </ItemGroup>
 
 </Project>

@@ -11,32 +11,36 @@
 
         public Client(IPAddress address, uint port)
         {
+            this.ConnectionState = ConnectState.PENDING;
             this.Address = address;
             InitializeSocket();
 
             this.Address = address;
             this.Port = port;
-
-            Task.Run(() =>
-            {
-                foreach (var msg in RecieveMessages())
-                    if (msg != null) 
-                        HandleMessage(msg);
-            });
         }
 
         public void Connect()
         {
-            if (Soc == null) InitializeSocket();
-
-            Soc.Connect(new IPEndPoint(Address, (int)Port));
-            while (!Soc.Connected) ;
-            ConnectionState = ConnectState.CONNECTED;
+            Task.Run(async () => await ConnectAsync()).Wait();
         }
 
         public async Task ConnectAsync()
         {
             if (Soc == null) InitializeSocket();
+
+            Task.Run(() =>
+            {
+                try
+                {
+                    foreach (var msg in RecieveMessages())
+                        if (msg != null)
+                            HandleMessage(msg);
+                }
+                catch (System.Exception ex)
+                {
+
+                }
+            });
 
             await Soc.ConnectAsync(new IPEndPoint(Address, (int)Port));
             ConnectionState = ConnectState.CONNECTED;

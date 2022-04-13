@@ -9,11 +9,12 @@
     using System.Net;
     using System.Net.Sockets;
     using System.Security.Cryptography;
+    using System.Threading;
     using System.Threading.Tasks;
 
-    public abstract class GeneralClient : ClientBase, IClosable
+    public abstract class GeneralClient : ClientBase
     {
-        private object LockObject = "lock";
+        private SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
         protected RSAParameters? RsaKey;
         protected volatile byte[] Key;
@@ -73,21 +74,13 @@
 
         internal void StartConnectionPoll(bool server = true)
         {
+            if (stage != EncryptionMessage.Stage.SYNACK) return;
+            if (ConnectionState != ConnectState.CONNECTED) return;
+            AwaitingPoll = true;
+            (Timer ??= new Stopwatch()).Start();
+
             if (server)
-            {
-                if (stage != EncryptionMessage.Stage.SYNACK) return;
-                if (ConnectionState != ConnectState.CONNECTED) return;
-                AwaitingPoll = true;
-                (Timer ??= new Stopwatch()).Start();
                 SendMessage(new ConnectionPollMessage { PollState = ConnectionPollMessage.PollMessage.SYN });
-            }
-            else
-            {
-                if (stage != EncryptionMessage.Stage.SYNACK) return;
-                if (ConnectionState != ConnectState.CONNECTED) return;
-                AwaitingPoll = true;
-                (Timer ??= new Stopwatch()).Start();
-            }
         }
 
         private void PollConnected()
@@ -195,7 +188,9 @@
 
             while (true)
             {
-                if (ConnectionState != ConnectState.CONNECTED) yield break;
+                if (ConnectionState == ConnectState.CLOSED) 
+                    yield break;
+
                 int available;
 
                 if (AwaitingPoll && Timer?.ElapsedMilliseconds >= Settings.ConnectionPollTimeout)
@@ -257,18 +252,19 @@
 
         public void Close()
         {
-            lock (LockObject)
+            Task.Run(async () => await CloseAsync());
+        }
+
+        public async Task CloseAsync()
+        {
+            await Utilities.ConcurrentAccess(() =>
             {
                 Soc.Close();
                 Soc = null;
                 ConnectionState = ConnectState.CLOSED;
                 Channels.ForEach(c => c.Dispose());
-            }
-        }
-
-        Task IClosable.CloseAsync()
-        {
-            throw new NotImplementedException();
+                return Task.CompletedTask;
+            }, _semaphore);
         }
     }
 

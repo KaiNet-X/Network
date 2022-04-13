@@ -8,6 +8,7 @@ namespace ConsoleApp1
     {
         public static Server s;
         public static object o = 1;
+
         static void Main(string[] args)
         {
             s = new Server(System.Net.IPAddress.Loopback, 6969, 3);

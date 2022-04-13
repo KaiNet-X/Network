@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Net
 {
@@ -121,12 +122,20 @@ namespace Net
             return Array.CreateInstance(baseType, lengths).GetType();
         }
 
-        public static void ConcurrentAccess(Action a, SemaphoreSlim s)
+        public static async Task ConcurrentAccess(Func<Task> a, SemaphoreSlim s, int timeout = 2500)
         {
-            s.Wait();
+            await s.WaitAsync();
             try
             {
-                a();
+                var t1 = a();
+                if (await Task.WhenAny(new[] { t1, Task.Delay(timeout) }).ConfigureAwait(false) == t1)
+                {
+
+                }
+                else
+                {
+
+                }
             }
             finally
             {
