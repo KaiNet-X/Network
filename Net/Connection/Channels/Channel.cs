@@ -23,6 +23,11 @@ public class Channel : IChannel
                     _sendBytes.RemoveAt(0);
                 }
             }
+            Task.Run(() => 
+            {
+                while (Connected)
+                    _receiveBlocks.Add(Udp.Receive(ref remoteEndpoint));
+            });
         }
     }
 
@@ -32,6 +37,7 @@ public class Channel : IChannel
     private bool disposedValue;
     private readonly UdpClient Udp;
     private List<byte[]> _sendBytes = new List<byte[]>();
+    private List<byte[]> _receiveBlocks = new List<byte[]>();
 
     public Channel(IPAddress localAddr, IPEndPoint remote, Guid? id = null)
     {
@@ -70,37 +76,31 @@ public class Channel : IChannel
     public async Task<byte[]> RecieveBytesAsync() =>
         (await Udp.ReceiveAsync()).Buffer;
 
+    public void SetRemote(IPEndPoint remote)
+    {
+        remoteEndpoint = remote;
+        Udp.Connect(remoteEndpoint);
+    }
+
     protected virtual void Dispose(bool disposing)
     {
         if (!disposedValue)
         {
             if (disposing)
             {
-                // TODO: dispose managed state (managed objects)
                 Udp.Dispose();
             }
-
-            // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-            // TODO: set large fields to null
             disposedValue = true;
         }
     }
 
-    public void SetRemote(IPEndPoint remote)
-    {
-        remoteEndpoint = remote;
-        Udp.Connect(remoteEndpoint);
-    }
-    // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
     ~Channel()
     {
-        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
         Dispose(disposing: false);
     }
 
     public void Dispose()
     {
-        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
         Dispose(disposing: true);
         GC.SuppressFinalize(this);
     }
