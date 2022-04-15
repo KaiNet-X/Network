@@ -10,7 +10,8 @@
         public enum PollMessage
         {
             SYN,
-            ACK
+            ACK,
+            DISCONNECT
         }
     }
 }

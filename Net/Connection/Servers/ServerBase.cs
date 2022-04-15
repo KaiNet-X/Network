@@ -11,14 +11,22 @@
         protected virtual NetSettings Settings { get; init; }
 
         public abstract void StartServer();
+        public virtual Task StartServerasync()
+        {
+            throw new System.NotImplementedException();
+        }
 
         public abstract void SendMessageToAll(MessageBase msg);
+        public abstract Task SendMessageToAllAsync(MessageBase msg);
 
         public virtual void ShutDown()
         {
-            
+            throw new System.NotImplementedException();
         }
 
-        public abstract Task SendMessageToAllAsync(MessageBase msg);
+        public virtual Task ShutDownAsync()
+        {
+            throw new System.NotImplementedException();
+        }
     }
 }

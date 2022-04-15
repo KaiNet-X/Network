@@ -5,7 +5,6 @@
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
-    using System.Linq;
     using System.Net;
     using System.Net.Sockets;
     using System.Security.Cryptography;
@@ -32,7 +31,7 @@
 
         public event Action<object> OnRecieveObject;
         public event Action<Guid> OnChannelOpened;
-        public event Action <MessageBase> OnRecievedCustomMessage;
+        public event Action<MessageBase> OnRecievedCustomMessage;
         public event Action OnDisconnect;
 
         public Dictionary<string, Action<MessageBase>> CustomMessageHandlers;
@@ -72,15 +71,14 @@
         public async Task<byte[]> RecieveBytesFromChannelAsync(Guid id) =>
             await Channels[id].RecieveBytesAsync();
 
-        internal void StartConnectionPoll(bool server = true)
+        internal void StartConnectionPoll()
         {
-            if (stage != EncryptionMessage.Stage.SYNACK) return;
+            if (stage != EncryptionMessage.Stage.SYNACK && stage != EncryptionMessage.Stage.NONE) return;
             if (ConnectionState != ConnectState.CONNECTED) return;
             AwaitingPoll = true;
             (Timer ??= new Stopwatch()).Start();
 
-            if (server)
-                SendMessage(new ConnectionPollMessage { PollState = ConnectionPollMessage.PollMessage.SYN });
+            SendMessage(new ConnectionPollMessage { PollState = ConnectionPollMessage.PollMessage.SYN });
         }
 
         private void PollConnected()
@@ -89,7 +87,23 @@
             AwaitingPoll = false;
         }
 
-        protected void HandleMessage(MessageBase message)
+        private void Disconnected()
+        {
+            Timer?.Stop();
+            Timer = null;
+            AwaitingPoll = false;
+
+            Soc.Close();
+            Soc = null;
+            ConnectionState = ConnectState.CLOSED;
+            foreach (var c in Channels)
+            {
+                c.Value.Dispose();
+            }
+            Channels = null;
+        }
+
+        protected async Task HandleMessage(MessageBase message)
         {
             switch (message)
             {
@@ -129,8 +143,8 @@
                         var c = new Channel(ipAddr, remoteEndpoint, val);
                         c.Connected = true;
                         Channels.Add(c.Id, c);
-                        Task.Run(() => OnChannelOpened?.Invoke(val));
                         SendMessage(new ChannelManagementMessage(val, c.Port, ChannelManagementMessage.Mode.Confirm));
+                        Task.Run(() => OnChannelOpened?.Invoke(val));
                     }
                     else if (m.ManageMode == ChannelManagementMessage.Mode.Confirm)
                     {
@@ -144,10 +158,17 @@
                     {
                         case ConnectionPollMessage.PollMessage.SYN:
                             SendMessage(new ConnectionPollMessage { PollState = ConnectionPollMessage.PollMessage.ACK });
-                            StartConnectionPoll(false);
                             break;
                         case ConnectionPollMessage.PollMessage.ACK:
                             PollConnected();
+                            break;
+                        case ConnectionPollMessage.PollMessage.DISCONNECT:
+                            await Utilities.ConcurrentAccess((ct) =>
+                            {
+                                Disconnected();
+                                Task.Run(() => OnDisconnect?.Invoke());
+                                return Task.CompletedTask;
+                            }, _semaphore);
                             break;
                     }
                     break;
@@ -176,8 +197,8 @@
             }
             catch
             {
-                Close();
-                OnDisconnect?.Invoke();
+                Disconnected();
+                Task.Run(() => OnDisconnect?.Invoke());
             }
         }
 
@@ -195,8 +216,8 @@
 
                 if (AwaitingPoll && Timer?.ElapsedMilliseconds >= Settings.ConnectionPollTimeout)
                 {
-                    Close();
-                    OnDisconnect?.Invoke();
+                    Disconnected();
+                    Task.Run(() => OnDisconnect?.Invoke());
                     yield break;
                 }
 
@@ -218,8 +239,9 @@
                 }
                 catch
                 {
-                    Close();
-                    OnDisconnect?.Invoke();
+                    Disconnected();
+                    Task.Run(() => OnDisconnect?.Invoke());
+                    yield break;
                 }
 
                 allBytes.AddRange(buffer);
@@ -252,22 +274,17 @@
 
         public void Close()
         {
-            Task.Run(async () => await CloseAsync());
+            Task.Run(async () => await CloseAsync()).GetAwaiter().GetResult();
         }
 
         public async Task CloseAsync()
         {
             await Utilities.ConcurrentAccess((ct) =>
             {
-                Soc.Close();
-                Soc = null;
-                ConnectionState = ConnectState.CLOSED;
-                foreach (var c in Channels)
-                {
-                    c.Value.Dispose();
-                }
-                Channels = null;
-                return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
+                SendMessage(new ConnectionPollMessage { PollState = ConnectionPollMessage.PollMessage.DISCONNECT });
+                Soc.LingerState = new LingerOption(true, 1);
+                Disconnected();
+                return Task.CompletedTask;
             }, _semaphore);
         }
     }
