@@ -18,7 +18,7 @@ class Program
         s.OnClientConnected = connected;
         s.OnClientObjectReceived += recieved;
         s.StartServer();
-
+        Console.WriteLine($"Hosting on {s.Address}");
         while (true)
         {
             var l = Console.ReadLine();
