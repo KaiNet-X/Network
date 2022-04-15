@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Net;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Net.Connection.Clients;
 
@@ -51,6 +50,7 @@ public class Program
     private static void C1_OnDisconnect()
     {
         Console.WriteLine("Disconnected");
+        c1.Connect(15);
     }
 
     static void rec(object obj)

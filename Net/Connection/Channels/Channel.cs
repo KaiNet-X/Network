@@ -23,14 +23,14 @@ public class Channel : IChannel
                     _sendBytes.RemoveAt(0);
                 }
             }
-            Task.Run(() => 
-            {
-                while (Connected)
-                    _receiveBlocks.Add(Udp.Receive(ref remoteEndpoint));
-            });
+            //Task.Run(() => 
+            //{
+            //    while (Connected)
+            //        _receiveBlocks.Add(Udp.Receive(ref remoteEndpoint));
+            //});
         }
     }
-
+    public byte[] AesKey { get; set; }
     public readonly Guid Id;
     public int Port => (Udp.Client.LocalEndPoint as IPEndPoint).Port;
     private IPEndPoint remoteEndpoint;
@@ -57,24 +57,32 @@ public class Channel : IChannel
     {
         if (!Connected)
         {
-            _sendBytes.Add(data);
+            data = AesKey == null ? data : CryptoServices.EncryptAES(data, AesKey);
+            _sendBytes.Add(CryptoServices.DecryptAES(data, AesKey));
             return;
         }
         Udp.Send(data, data.Length);
     }
 
-    public byte[] RecieveBytes() =>
-        Udp.Receive(ref remoteEndpoint);
+    public byte[] RecieveBytes()
+    {
+        byte[] buffer = Udp.Receive(ref remoteEndpoint);
+        return AesKey == null ? buffer : CryptoServices.DecryptAES(buffer, AesKey);
+    }
 
     public async Task SendBytesAsync(byte[] data)
     {
         while (!Connected) ;
+        data = AesKey == null ? data : CryptoServices.EncryptAES(data, AesKey);
         await Udp.SendAsync(data, data.Length);
         Udp.Dispose();
     }
 
-    public async Task<byte[]> RecieveBytesAsync() =>
-        (await Udp.ReceiveAsync()).Buffer;
+    public async Task<byte[]> RecieveBytesAsync()
+    {
+        byte[] buffer = (await Udp.ReceiveAsync()).Buffer;
+        return AesKey == null ? buffer : CryptoServices.DecryptAES(buffer, AesKey);
+    }
 
     public void SetRemote(IPEndPoint remote)
     {

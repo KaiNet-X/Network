@@ -1,7 +1,9 @@
 ﻿using Net.Connection.Clients;
 using Net.Connection.Servers;
 using System;
+using System.Net;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace TestServer;
 
@@ -10,9 +12,9 @@ class Program
     public static Server s;
     public static object o = 1;
 
-    static void Main(string[] args)
+    static async Task Main(string[] args)
     {
-        s = new Server(System.Net.IPAddress.Loopback, 6969, 3, new Net.NetSettings { UseEncryption = false, ConnectionPollTimeout = 5000});
+        s = new Server(IPAddress.Parse("192.168.0.10"), 6969, 3, new Net.NetSettings { UseEncryption = true, ConnectionPollTimeout = 5000});
         s.OnClientConnected = connected;
         s.OnClientObjectReceived += recieved;
         s.StartServer();
@@ -21,7 +23,7 @@ class Program
         {
             var l = Console.ReadLine();
             if (l.ToLowerInvariant().StartsWith("send channel"))
-                s.Clients[0].SendBytesOnChannel(Encoding.UTF8.GetBytes(l.Substring(13)), s.Clients[0].OpenChannel());
+                await s.Clients[0].SendBytesOnChannelAsync(Encoding.UTF8.GetBytes(l.Substring(13)), await s.Clients[0].OpenChannelAsync());
             else if (l == "EXIT") s.ShutDown();
             else
                 s.SendObjectToAll(l);
