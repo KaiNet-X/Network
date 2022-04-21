@@ -26,8 +26,7 @@ public class ServerClient : GeneralClient
         SendMessage(new SettingsMessage(Settings));
         if (!settings.UseEncryption) return;
 
-        RSAParameters p;
-        CryptoServices.GenerateKeyPair(out RSAParameters Public, out p);
+        CryptoServices.GenerateKeyPair(out RSAParameters Public, out RSAParameters p);
         RsaKey = p;
 
         SendMessage(new EncryptionMessage(Public));

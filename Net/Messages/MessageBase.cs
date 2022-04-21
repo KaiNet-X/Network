@@ -23,19 +23,17 @@ public class MessageBase
             select type;
 
         foreach (var v in types)
-        {
             if (!Registered.ContainsKey(v.Name)) Registered[v.Name] = v;
-        }
     }
+
     public static MessageBase Deserialize(byte[] obj)
     {
         string str = Encoding.UTF8.GetString(obj);
         MessageBase msg = JsonSerializer.Deserialize<MessageBase>(str);
 
         if (Registered.Count == 0)
-        {
             InitializeMessages();
-        }
+
         Type t = Registered[msg.MessageType];
 
         return JsonSerializer.Deserialize(str, t) as MessageBase;

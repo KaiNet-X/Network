@@ -22,10 +22,7 @@ public class MpMessage : MessageBase
     internal virtual async Task<object> GetValueAsync(Type t) =>
         await MessagePackSerializer.DeserializeAsync(t, new MemoryStream(Content), ResolveOptions);
 
-    internal protected virtual object GetValue()
-    {
-        return null;
-    }
+    internal protected virtual object GetValue() => null;
 
     internal protected virtual Task<object> GetValueAsync() => Task.FromResult(GetValue());
 }

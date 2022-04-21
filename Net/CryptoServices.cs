@@ -12,19 +12,16 @@ internal static class CryptoServices
             return algorithm.ComputeHash(input);
     }
 
-    public static byte[] CreateHash(string input)
-    {
-        return CreateHash(Encoding.UTF8.GetBytes(input));
-    }
+    public static byte[] CreateHash(string input) =>
+        CreateHash(Encoding.UTF8.GetBytes(input));
 
     public static byte[] KeyFromHash(byte[] hash)
     {
         byte[] key = new byte[16];
 
         for (int i = 0; i < 16; i++)
-        {
             key[i] = hash[i % hash.Length];
-        }
+
         return key;
     }
 

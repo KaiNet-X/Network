@@ -19,15 +19,11 @@ public class ChannelManagementMessage : MpMessage
 
     public ChannelManagementMessage(Guid guid, Mode mode)
     {
-        //RegisterMessage();
         Id = guid;
         ManageMode = mode;
     }
 
-    public ChannelManagementMessage()
-    {
-
-    }
+    public ChannelManagementMessage() { }
 
     protected internal override object GetValue() => Id;
 

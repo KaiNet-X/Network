@@ -23,10 +23,8 @@ public class Client : GeneralClient
         this.Port = port;
     }
 
-    public void Connect(int maxAttempts = 0, bool throwWhenExausted = false)
-    {
+    public void Connect(int maxAttempts = 0, bool throwWhenExausted = false) =>
         Task.Run(async () => await ConnectAsync(maxAttempts, throwWhenExausted)).GetAwaiter().GetResult();
-    }
 
     public async Task ConnectAsync(int maxAttempts = 0, bool throwWhenExausted = false)
     {

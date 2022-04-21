@@ -272,13 +272,10 @@ public abstract class GeneralClient : ClientBase
         }
     }
 
-    public void Close()
-    {
+    public void Close() =>
         Task.Run(async () => await CloseAsync()).GetAwaiter().GetResult();
-    }
 
-    public async Task CloseAsync()
-    {
+    public async Task CloseAsync() =>
         await Utilities.ConcurrentAccess((ct) =>
         {
             SendMessage(new ConnectionPollMessage { PollState = ConnectionPollMessage.PollMessage.DISCONNECT });
@@ -286,7 +283,6 @@ public abstract class GeneralClient : ClientBase
             Disconnected();
             return Task.CompletedTask;
         }, _semaphore);
-    }
 }
 
 public enum ConnectState

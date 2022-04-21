@@ -7,6 +7,7 @@ using System.Text.Json.Serialization;
 class SettingsMessage : MpMessage
 {
     public override string MessageType => GetType().Name;
+
     public SettingsMessage(NetSettings settings)
     {
         Content = MessagePackSerializer.Serialize(settings, ResolveOptions);
@@ -15,8 +16,6 @@ class SettingsMessage : MpMessage
     [JsonConstructor]
     public SettingsMessage() { }
 
-    protected internal override object GetValue()
-    {
-        return GetValue(typeof(NetSettings));
-    }
+    protected internal override object GetValue() =>
+        GetValue(typeof(NetSettings));
 }
