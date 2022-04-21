@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace Net.Attributes;
 
-namespace Net.Attributes
+using System;
+
+[AttributeUsage(AttributeTargets.Class)]
+class RegisterMessageAttribute : Attribute
 {
-    [AttributeUsage(AttributeTargets.Class)]
-    class RegisterMessageAttribute : Attribute
-    {
 
-    }
 }

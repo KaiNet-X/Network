@@ -1,13 +1,12 @@
-﻿using System;
+﻿namespace Net.Messages;
 
-namespace Net.Messages
+using System;
+
+class StreamMessage : MpMessage
 {
-    class StreamMessage : MpMessage
+    public StreamMessage() { }
+    protected internal override object GetValue()
     {
-        public StreamMessage() { }
-        protected internal override object GetValue()
-        {
-            throw new NotImplementedException();
-        }
+        throw new NotImplementedException();
     }
 }

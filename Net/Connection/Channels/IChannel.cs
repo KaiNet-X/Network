@@ -1,7 +1,7 @@
-﻿using System;
-using System.Threading.Tasks;
+﻿namespace Net.Connection.Channels;
 
-namespace Net.Connection.Channels;
+using System;
+using System.Threading.Tasks;
 
 public interface IChannel : IDisposable
 {

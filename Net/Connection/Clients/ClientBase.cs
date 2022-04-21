@@ -1,19 +1,18 @@
-﻿namespace Net.Connection.Clients
+﻿namespace Net.Connection.Clients;
+
+using Messages;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+public abstract class ClientBase
 {
-    using Messages;
-    using System.Collections.Generic;
-    using System.Threading.Tasks;
+    protected volatile NetSettings Settings;
 
-    public abstract class ClientBase
-    {
-        protected volatile NetSettings Settings;
+    protected volatile bool Initialized = false;
+    protected volatile bool Waiting = false;
 
-        protected volatile bool Initialized = false;
-        protected volatile bool Waiting = false;
+    public abstract void SendMessage(MessageBase message);
+    public virtual Task SendMessageAsync(MessageBase message) => Task.Run(() => SendMessage(message));
 
-        public abstract void SendMessage(MessageBase message);
-        public virtual Task SendMessageAsync(MessageBase message) => Task.Run(() => SendMessage(message));
-
-        protected abstract IEnumerable<MessageBase> RecieveMessages();
-    }
+    protected abstract IEnumerable<MessageBase> RecieveMessages();
 }

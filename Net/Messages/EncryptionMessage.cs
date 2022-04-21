@@ -1,49 +1,48 @@
-﻿using MessagePack;
+﻿namespace Net.Messages;
+
+using MessagePack;
 using System.Security.Cryptography;
 
-namespace Net.Messages
+[Attributes.RegisterMessageAttribute]
+class EncryptionMessage : MpMessage
 {
-    [Attributes.RegisterMessageAttribute]
-    class EncryptionMessage : MpMessage
+    public override string MessageType => GetType().Name;
+
+    public Stage stage { get; set; }
+    public RSAParameters RSA { get; set; }
+    public byte[] AES { get; set; }
+
+    public EncryptionMessage(RSAParameters param)
     {
-        public override string MessageType => GetType().Name;
+        stage = Stage.SYN;
+        RSA = param;
+        Content = MessagePackSerializer.Serialize(param, ResolveOptions);
+    }
 
-        public Stage stage { get; set; }
-        public RSAParameters RSA { get; set; }
-        public byte[] AES { get; set; }
+    public EncryptionMessage(byte[] param)
+    {
+        stage = Stage.ACK;
+        Content = AES = param;
+    }
 
-        public EncryptionMessage(RSAParameters param)
-        {
-            stage = Stage.SYN;
-            RSA = param;
-            Content = MessagePackSerializer.Serialize(param, ResolveOptions);
-        }
+    public EncryptionMessage(Stage stage)
+    {
+        this.stage = stage;
+    }
 
-        public EncryptionMessage(byte[] param)
-        {
-            stage = Stage.ACK;
-            Content = AES = param;
-        }
+    public EncryptionMessage() { }
 
-        public EncryptionMessage(Stage stage)
-        {
-            this.stage = stage;
-        }
+    protected internal override object GetValue()
+    {
+        if (stage == Stage.ACK) return Content;
+        else return MessagePackSerializer.Deserialize<RSAParameters>(Content, ResolveOptions);
+    }
 
-        public EncryptionMessage() { }
-
-        protected internal override object GetValue()
-        {
-            if (stage == Stage.ACK) return Content;
-            else return MessagePackSerializer.Deserialize<RSAParameters>(Content, ResolveOptions);
-        }
-
-        public enum Stage
-        {
-            NONE,
-            SYN,
-            ACK,
-            SYNACK
-        }
+    public enum Stage
+    {
+        NONE,
+        SYN,
+        ACK,
+        SYNACK
     }
 }

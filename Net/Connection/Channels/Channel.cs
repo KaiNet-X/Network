@@ -1,10 +1,10 @@
-﻿using System;
+﻿namespace Net.Connection.Channels;
+
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
-
-namespace Net.Connection.Channels;
 
 public class Channel : IChannel
 {

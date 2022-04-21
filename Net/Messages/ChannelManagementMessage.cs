@@ -1,41 +1,39 @@
-﻿using System;
+﻿namespace Net.Messages;
 
-namespace Net.Messages
+using System;
+
+[Attributes.RegisterMessageAttribute]
+public class ChannelManagementMessage : MpMessage
 {
-    [Attributes.RegisterMessageAttribute]
-    public class ChannelManagementMessage : MpMessage
+    public override string MessageType => GetType().Name;
+    public Guid Id { get; set; }
+    public int Port { get; set; }
+    public Mode ManageMode { get; set; }
+
+    public ChannelManagementMessage(Guid guid, int port, Mode mode)
     {
-        public override string MessageType => GetType().Name;
-        public Guid Id { get; set; }
-        public int Port { get; set; }
-        public Mode ManageMode { get; set; }
+        Id = guid;
+        Port = port;
+        ManageMode = mode;
+    }
 
-        public ChannelManagementMessage(Guid guid, int port, Mode mode)
-        {
-            //RegisterMessage();
-            Id = guid;
-            Port = port;
-            ManageMode = mode;
-        }
+    public ChannelManagementMessage(Guid guid, Mode mode)
+    {
+        //RegisterMessage();
+        Id = guid;
+        ManageMode = mode;
+    }
 
-        public ChannelManagementMessage(Guid guid, Mode mode)
-        {
-            //RegisterMessage();
-            Id = guid;
-            ManageMode = mode;
-        }
+    public ChannelManagementMessage()
+    {
 
-        public ChannelManagementMessage()
-        {
+    }
 
-        }
+    protected internal override object GetValue() => Id;
 
-        protected internal override object GetValue() => Id;
-
-        public enum Mode
-        {
-            Create,
-            Confirm
-        }
+    public enum Mode
+    {
+        Create,
+        Confirm
     }
 }

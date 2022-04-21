@@ -1,20 +1,19 @@
-﻿using MessagePack;
+﻿namespace Net.Messages;
 
-namespace Net.Messages
+using MessagePack;
+
+[Attributes.RegisterMessageAttribute]
+class ConfirmationMessage : MpMessage
 {
-    [Attributes.RegisterMessageAttribute]
-    class ConfirmationMessage : MpMessage
+    public override string MessageType => GetType().Name;
+    public ConfirmationMessage(string @for)
     {
-        public override string MessageType => GetType().Name;
-        public ConfirmationMessage(string @for)
-        {
-            Content = MessagePackSerializer.Serialize(@for, ResolveOptions);
-        }
+        Content = MessagePackSerializer.Serialize(@for, ResolveOptions);
+    }
 
-        public ConfirmationMessage() { }
-        protected internal override object GetValue()
-        {
-            return MessagePackSerializer.Deserialize<string>(Content);
-        }
+    public ConfirmationMessage() { }
+    protected internal override object GetValue()
+    {
+        return MessagePackSerializer.Deserialize<string>(Content);
     }
 }
