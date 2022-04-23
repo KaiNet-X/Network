@@ -24,12 +24,6 @@ public class ServerClient : GeneralClient
         _reciever = RecieveMessages().GetEnumerator();
 
         SendMessage(new SettingsMessage(Settings));
-        if (!settings.UseEncryption) return;
-
-        CryptoServices.GenerateKeyPair(out RSAParameters Public, out RSAParameters p);
-        RsaKey = p;
-
-        SendMessage(new EncryptionMessage(Public));
     }
 
     internal async Task GetNextMessage()

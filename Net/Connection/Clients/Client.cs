@@ -73,9 +73,8 @@ public class Client : GeneralClient
 
     private void InitializeSocket()
     {
-        if (Address.AddressFamily == AddressFamily.InterNetwork)
-            Soc = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        else
-            Soc = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
+        Soc = Address.AddressFamily == AddressFamily.InterNetwork ?
+            new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp) :
+            new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
     }
 }

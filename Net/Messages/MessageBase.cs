@@ -3,10 +3,12 @@
 using Net.Attributes;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 public class MessageBase
@@ -35,13 +37,17 @@ public class MessageBase
             InitializeMessages();
 
         Type t = Registered[msg.MessageType];
-
+        
         return JsonSerializer.Deserialize(str, t) as MessageBase;
     }
 
     internal protected virtual List<byte> Serialize() =>
         new List<byte>(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(this, GetType())));
 
-    internal protected virtual Task<List<byte>> SerializeAsync() =>
-        Task.FromResult(Serialize());
+    internal protected virtual async Task<List<byte>> SerializeAsync(CancellationToken token)
+    {
+        using MemoryStream stream = new MemoryStream();
+        await JsonSerializer.SerializeAsync(stream, this, GetType(), cancellationToken: token);
+        return new List<byte>(stream.ToArray());
+    }
 }

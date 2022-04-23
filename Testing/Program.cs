@@ -8,24 +8,26 @@ namespace ClientTest;
 
 public class Program
 {
-    public static Client c1;
+    public static Client Client;
+    public static IPAddress Addr;
 
     static async Task Main(string[] args)
     {
         while (true)
         {
+            Addr = IPAddress.Parse("192.168.0.10");
             Console.Write("Server IP: ");
-            if(IPAddress.TryParse(Console.ReadLine(), out IPAddress addr))
+            break;
+            if (IPAddress.TryParse(Console.ReadLine(), out IPAddress addr))
             {
-                c1 = new Client(addr, 6969);
+                Addr = addr;
+                InitializeClient();
                 break;
             }
         }
+        InitializeClient();
 
-        c1.OnRecieveObject += rec;
-        c1.OnDisconnect += C1_OnDisconnect;
-        c1.OnChannelOpened += C1_OnChannelOpened;
-        await c1.ConnectAsync(15);
+        await Client.ConnectAsync(15);
         Console.WriteLine("Connected");
 
         Console.Write("Enter your name: ");
@@ -33,29 +35,37 @@ public class Program
 
         string l;
         while ((l = Console.ReadLine()) != "EXIT")
-        {
-            c1.SendObject(new MSG { Message = l, Sender = uname});
-        }
-        await c1.CloseAsync();
+            Client.SendObject(new MSG { Message = l, Sender = uname});
+
+        await Client.CloseAsync();
     }
 
     private static async void C1_OnChannelOpened(Guid obj)
     {
-        var bytes = await c1.RecieveBytesFromChannelAsync(obj);
+        var bytes = await Client.RecieveBytesFromChannelAsync(obj);
         Console.WriteLine($"{obj}: {Encoding.UTF8.GetString(bytes)}");
-        c1.Channels[obj].Dispose();
-        c1.Channels.Remove(obj);
+        Client.Channels[obj].Dispose();
+        Client.Channels.Remove(obj);
     }
 
     private static void C1_OnDisconnect()
     {
         Console.WriteLine("Disconnected");
-        c1.Connect(15);
+        //InitializeClient();
+        Client.Connect(15);
     }
 
     static void rec(object obj)
     {
         if (obj is MSG msg)
             Console.WriteLine($"{msg.Sender}: {msg.Message}");
+    }
+
+    static void InitializeClient()
+    {
+        Client = new Client(Addr, 6969);
+        Client.OnRecieveObject += rec;
+        Client.OnDisconnect += C1_OnDisconnect;
+        Client.OnChannelOpened += C1_OnChannelOpened;
     }
 }

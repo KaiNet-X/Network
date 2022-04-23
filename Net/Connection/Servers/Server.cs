@@ -12,13 +12,10 @@ using System.Threading.Tasks;
 public class Server : ServerBase<ServerClient>
 {
     private List<Socket> _bindingSockets;
-
-    private Socket ServerSoc;
+    public IPEndPoint[] Endpoints { get; private set; } 
     private volatile SemaphoreSlim _semaphore;
     new public List<ServerClient> Clients => base.Clients;
 
-    public readonly IPAddress Address;
-    public readonly int Port;
     public volatile ushort MaxClients;
 
     public Action<Guid, ServerClient> OnClientChannelOpened;
@@ -26,31 +23,23 @@ public class Server : ServerBase<ServerClient>
     public Action<ServerClient> OnClientConnected;
     public Action<ServerClient> OnClientDisconnected;
 
-    public Server(IPAddress Address, int Port, ushort maxClients, NetSettings settings = default)
-    {
-        this.Address = Address; 
-        this.Port = Port;
-        this.MaxClients = maxClients;
-        this.Settings = settings ?? new NetSettings();
-
-        base.Clients = new List<ServerClient>();
-        _semaphore = new SemaphoreSlim(1, 1);
-        InitializeSocket();
-    }
+    public Server(IPAddress address, int port, ushort maxClients, NetSettings settings = default) : 
+        this(new IPEndPoint(address, port), maxClients, settings) { }
 
     public Server(IPEndPoint endpoint, ushort maxClients, NetSettings settings = default) : 
-        this(endpoint.Address, endpoint.Port, maxClients, settings) { }
+        this(new List<IPEndPoint> { endpoint}, maxClients, settings) { }
 
     public Server(List<IPEndPoint> endpoints, ushort maxClients, NetSettings settings = default)
     {
-        this.MaxClients = maxClients;
-        this.Settings = settings ?? new NetSettings();
-        this._bindingSockets = new List<Socket>();
-        this._semaphore = new SemaphoreSlim(1, 1);
+        MaxClients = maxClients;
+        Settings = settings ?? new NetSettings();
+        Endpoints = endpoints.ToArray();
+        _bindingSockets = new List<Socket>();
+        _semaphore = new SemaphoreSlim(1, 1);
 
         base.Clients = new List<ServerClient>();
 
-        InitializeSockets(endpoints);
+        InitializeSockets(Endpoints);
     }
 
     public void SendObjectToAll<T>(T obj) =>
@@ -61,8 +50,8 @@ public class Server : ServerBase<ServerClient>
 
     public override void StartServer()
     {
-        if (ServerSoc == null)
-            InitializeSocket();
+        if (_bindingSockets.Count == 0)
+            InitializeSockets(Endpoints);
 
         if (Settings?.SingleThreadedServer == true)
             Task.Run(async () =>
@@ -84,14 +73,15 @@ public class Server : ServerBase<ServerClient>
 
         Task.Run(async () =>
         {
-            ServerSoc.Listen();
+            StartListening();
             while (Clients.Count < MaxClients)
             {
-                var c = new ServerClient(ServerSoc.Accept(), Settings);
+                var c = new ServerClient(await GetNextConnection(), Settings);
                 c.OnChannelOpened += (guid) => OnClientChannelOpened?.Invoke(guid, c);
                 c.OnRecieveObject += (obj) => OnClientObjectReceived?.Invoke(obj, c);
                 c.OnDisconnect += async () =>
                 {
+                    await c.CloseAsync();
                     await Utilities.ConcurrentAccess((ct) =>
                     {
                         Clients.Remove(c);
@@ -117,19 +107,22 @@ public class Server : ServerBase<ServerClient>
                 c.SendMessage(new ConfirmationMessage("done"));
                 OnClientConnected?.Invoke(c);
             }
-            ServerSoc.Close();
+            _bindingSockets.ForEach(socket => socket.Close());
         });
     }
 
-    public override void ShutDown()
-    {
+    public override void ShutDown() =>
         ShutDownAsync().GetAwaiter().GetResult();
-    }
 
     public override async Task ShutDownAsync()
     {
         await Utilities.ConcurrentAccess((ct) =>
         {
+            while (_bindingSockets.Count > 0)
+            {
+                _bindingSockets[0].Close();
+                _bindingSockets.Remove(_bindingSockets[0]);
+            }
             foreach (var c in Clients)
             {
                 c.Close();
@@ -141,10 +134,8 @@ public class Server : ServerBase<ServerClient>
     public void RegisterType<T>() =>
         Utilities.RegisterType(typeof(T));
 
-    public override void SendMessageToAll(MessageBase msg)
-    {
+    public override void SendMessageToAll(MessageBase msg) =>
         Task.Run(async () => await SendMessageToAllAsync(msg)).GetAwaiter().GetResult();
-    }
 
     public override async Task SendMessageToAllAsync(MessageBase msg)
     {
@@ -160,16 +151,7 @@ public class Server : ServerBase<ServerClient>
         }, _semaphore);
     }
 
-    private void InitializeSocket()
-    {
-        ServerSoc = Address.AddressFamily == AddressFamily.InterNetwork ?
-            new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp) :
-            new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
-
-        ServerSoc.Bind(new IPEndPoint(Address, (int)Port));
-    }
-
-    private void InitializeSockets(List<IPEndPoint> endpoints)
+    private void InitializeSockets(IPEndPoint[] endpoints)
     {
         foreach (IPEndPoint endpoint in endpoints)
         {
@@ -180,5 +162,26 @@ public class Server : ServerBase<ServerClient>
             s.Bind(endpoint);
             _bindingSockets.Add(s);
         }
+    }
+
+    private void StartListening()
+    {
+        foreach (Socket s in _bindingSockets)
+            s.Listen();
+    }
+
+    private async Task<Socket> GetNextConnection()
+    {
+        CancellationTokenSource cts = new CancellationTokenSource();
+        List<Task<Socket>> tasks = new List<Task<Socket>>();
+
+        foreach(Socket s in _bindingSockets)
+        {
+            tasks.Add(s.AcceptAsync(cts.Token).AsTask());
+        }
+        var connection = await await Task<Socket>.WhenAny(tasks);
+        cts.Cancel();
+
+        return connection;
     }
 }
