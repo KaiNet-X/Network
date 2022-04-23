@@ -140,4 +140,13 @@ internal static class Utilities
             s.Release();
         }
     }
+
+    public static bool MatchAny<T>(T original, params T[] matches)
+    {
+        foreach (var match in matches)
+        {
+            if (original.Equals(match)) return true;
+        }
+        return false;
+    }
 }

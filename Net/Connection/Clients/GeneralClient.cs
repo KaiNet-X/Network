@@ -26,7 +26,7 @@ public abstract class GeneralClient : ClientBase
     protected bool AwaitingPoll;
     protected Stopwatch Timer;
 
-    public ConnectState ConnectionState { get; protected set; } = ConnectState.PENDING;
+    public ConnectState ConnectionState { get; protected set; } = ConnectState.NONE;
 
     private EncryptionMessage.Stage _encryptionStage = EncryptionMessage.Stage.NONE;
 
@@ -45,7 +45,12 @@ public abstract class GeneralClient : ClientBase
 
     public override void SendMessage(MessageBase message)
     {
-        if (ConnectionState != ConnectState.CONNECTED) return;
+        if (!(ConnectionState == ConnectState.CONNECTED ||
+            (ConnectionState == ConnectState.PENDING &&
+            Utilities.MatchAny(message.GetType(),
+            typeof(EncryptionMessage),
+            typeof(SettingsMessage),
+            typeof(ConfirmationMessage))))) return;
 
         List<byte> bytes = message.Serialize();
         if (Settings != null && Settings.UseEncryption)
@@ -185,7 +190,11 @@ public abstract class GeneralClient : ClientBase
                 break;
             case SettingsMessage m:
                 Settings = m.GetValue() as NetSettings;
-                if (!Settings.UseEncryption) SendMessage(new ConfirmationMessage("resolved"));
+                if (!Settings.UseEncryption)
+                {
+                    SendMessage(new ConfirmationMessage("resolved"));
+                    ConnectionState = ConnectState.CONNECTED;
+                }
                 else SendMessage(new ConfirmationMessage("encryption"));
                 break;
             case EncryptionMessage m:
@@ -203,7 +212,10 @@ public abstract class GeneralClient : ClientBase
                     _encryptionStage = EncryptionMessage.Stage.SYNACK;
                 }
                 else if (_encryptionStage == EncryptionMessage.Stage.SYNACK)
+                {
                     SendMessage(new ConfirmationMessage("resolved"));
+                    ConnectionState = ConnectState.CONNECTED;
+                }
                 break;
             case ChannelManagementMessage m:
                 var val = (Guid)m.GetValue();
@@ -338,6 +350,7 @@ public abstract class GeneralClient : ClientBase
 
 public enum ConnectState
 {
+    NONE,
     PENDING,
     CONNECTED,
     CLOSED

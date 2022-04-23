@@ -16,7 +16,7 @@ public class ServerClient : GeneralClient
     {
         if (settings == default) settings = new NetSettings();
 
-        ConnectionState = ConnectState.CONNECTED;
+        ConnectionState = ConnectState.PENDING;
 
         this.Settings = settings ?? new NetSettings();
         this.Soc = soc;
@@ -31,7 +31,7 @@ public class ServerClient : GeneralClient
         var msg = _reciever.Current;
         if (msg != null) 
             await HandleMessage(msg);
-        else
+        else if (ConnectionState == ConnectState.CONNECTED)
         {
             if (_timer == null) _timer = Stopwatch.StartNew();
             else if (_timer?.ElapsedMilliseconds == 0)
