@@ -34,7 +34,8 @@ server.CustomMessageHandlers.Add(FileRequestMessage.Type, async (msg, c) =>
         case FileRequestMessage.FileRequestType.Download:
             using (FileStream fs = File.OpenRead(@$"{workingDirectory}\{fMsg.PathRequest}"))
             {
-                var newMsg = new FileRequestMessage() { RequestType = FileRequestMessage.FileRequestType.Upload};
+                var newMsg = new FileRequestMessage() { RequestType = FileRequestMessage.FileRequestType.Upload, FileName = fMsg.PathRequest.Split('\\')[^1]};
+                newMsg.FileData = new byte[fs.Length];
                 await fs.ReadAsync(newMsg.FileData);
                 await c.SendMessageAsync(newMsg);
             }
@@ -47,6 +48,7 @@ server.CustomMessageHandlers.Add(FileRequestMessage.Type, async (msg, c) =>
             break;
         case FileRequestMessage.FileRequestType.Tree:
             var tree = GetTree(workingDirectory);
+            tree.Value = "Root";
             await c.SendObjectAsync(tree);
             break;
     }

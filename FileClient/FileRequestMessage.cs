@@ -7,6 +7,7 @@ namespace FileClient;
 internal class FileRequestMessage : MessageBase
 {
     public FileRequestType RequestType { get; set; }
+    public string FileName { get; set; }
     public byte[] FileData { get; set; }
     public string PathRequest { get; set; }
     public static string Type => "FileRequestMessage";
