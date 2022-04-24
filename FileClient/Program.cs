@@ -17,7 +17,7 @@ namespace FileClient
             // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
             Client = new Client(IPAddress.Parse("192.168.0.10"), 6969);
-            Client.Connect();
+            Client.Connect(15);
             Application.Run(new MainForm());
         }
     }

@@ -4,10 +4,9 @@ using Net.Messages;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Sockets;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
 
-public class ServerClient : GeneralClient
+public class ServerClient : CompatibleClient
 {
     private IEnumerator<MessageBase> _reciever;
     private Stopwatch _timer = new Stopwatch();
@@ -23,7 +22,7 @@ public class ServerClient : GeneralClient
 
         _reciever = RecieveMessages().GetEnumerator();
 
-        SendMessage(new SettingsMessage(Settings));
+        (this as GeneralClient).SendMessage(new SettingsMessage(Settings));
     }
 
     internal async Task GetNextMessage()

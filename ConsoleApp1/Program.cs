@@ -36,6 +36,7 @@ class Program
             else
                 s.SendObjectToAll(l);
         }
+        await Task.Delay(1000);
     }
 
     static void connected(ServerClient c)

@@ -20,9 +20,9 @@ server.OnClientConnected += delegate (ServerClient sc)
     Console.WriteLine($"{sc.LocalEndpoint} connected");
 };
 
-server.OnClientDisconnected += delegate (ServerClient sc)
+server.OnClientDisconnected += delegate (ServerClient sc, bool g)
 {
-    Console.WriteLine($"{sc.LocalEndpoint} disconnected");
+    Console.WriteLine($"{sc.LocalEndpoint} disconnected {(g ? "gracefully" : "ungracefully")}");
 };
 
 server.CustomMessageHandlers.Add(FileRequestMessage.Type, async (msg, c) => 
@@ -36,7 +36,7 @@ server.CustomMessageHandlers.Add(FileRequestMessage.Type, async (msg, c) =>
             {
                 var newMsg = new FileRequestMessage() { RequestType = FileRequestMessage.FileRequestType.Upload};
                 await fs.ReadAsync(newMsg.FileData);
-                c.SendMessage(newMsg);
+                await c.SendMessageAsync(newMsg);
             }
             break;
         case FileRequestMessage.FileRequestType.Upload:
@@ -44,6 +44,10 @@ server.CustomMessageHandlers.Add(FileRequestMessage.Type, async (msg, c) =>
             {
                 await fs.WriteAsync(fMsg.FileData);
             }
+            break;
+        case FileRequestMessage.FileRequestType.Tree:
+            var tree = GetTree(workingDirectory);
+            await c.SendObjectAsync(tree);
             break;
     }
 });
@@ -55,3 +59,22 @@ foreach (var endpoint in endpoints)
 
 Console.ReadLine();
 await server.ShutDownAsync();
+
+Tree GetTree(string dir)
+{
+    var tree = new Tree()
+    {
+        Nodes = new List<Tree>() 
+    };
+
+    foreach (var file in Directory.EnumerateFiles(dir))
+        tree.Nodes.Add(new Tree() { Value = file.Split('\\')[^1] });
+
+    foreach (var folder in Directory.EnumerateDirectories(dir))
+    {
+        var tr = GetTree(folder);
+        tr.Value = folder.Split('\\')[^1];
+        tree.Nodes.Add(tr);
+    }
+    return tree;
+}

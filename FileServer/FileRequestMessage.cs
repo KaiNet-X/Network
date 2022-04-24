@@ -15,6 +15,7 @@ internal class FileRequestMessage : MessageBase
     public enum FileRequestType
     {
         Download,
-        Upload
+        Upload,
+        Tree
     }
 }

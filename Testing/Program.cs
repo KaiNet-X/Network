@@ -51,7 +51,6 @@ public class Program
     private static void C1_OnDisconnect(bool graceful)
     {
         Console.WriteLine($"Disconnected {(graceful ? "gracefully" : "ungracefully")}");
-        //InitializeClient();
          Client.Connect(15);
     }
 

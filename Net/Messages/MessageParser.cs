@@ -75,7 +75,7 @@ internal static class MessageParser
         return sub;
     }
 
-    public static List<byte> AddTags(List<byte> b)
+    public static List<byte> AddTags(byte[] b)
     {
         List<byte> lst = new List<byte>(Start);
         lst.AddRange(b);

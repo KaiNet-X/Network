@@ -55,33 +55,17 @@ public abstract class GeneralClient : ClientBase
 
     public Dictionary<string, Action<MessageBase>> CustomMessageHandlers;
 
-    public void SendObject<T>(T obj) =>
+    public virtual void SendObject<T>(T obj) =>
         SendMessage(new ObjectMessage(obj));
    
-    public async Task SendObjectAsync<T>(T obj, CancellationToken token = default) =>
+    public virtual async Task SendObjectAsync<T>(T obj, CancellationToken token = default) =>
         await SendMessageAsync(new ObjectMessage(obj), token);
 
     public override void SendMessage(MessageBase message)
     {
-        if (!(ConnectionState == ConnectState.CONNECTED ||
-            (ConnectionState == ConnectState.PENDING &&
-            Utilities.MatchAny(message.GetType(),
-            typeof(EncryptionMessage),
-            typeof(SettingsMessage),
-            typeof(ConfirmationMessage))))) return;
-
-        List<byte> bytes = message.Serialize();
-        if (Settings != null && Settings.UseEncryption)
-            bytes = _encryptionStage switch
-            {
-                EncryptionMessage.Stage.SYN => new List<byte>(CryptoServices.EncryptRSA(bytes.ToArray(), RsaKey.Value)),
-                EncryptionMessage.Stage.ACK => new List<byte>(CryptoServices.EncryptAES(bytes.ToArray(), Key)),
-                EncryptionMessage.Stage.SYNACK => new List<byte>(CryptoServices.EncryptAES(bytes.ToArray(), Key)),
-                EncryptionMessage.Stage.NONE => bytes
-            };
         try
         {
-            Soc.Send(MessageParser.AddTags(bytes).ToArray());
+            Soc.Send(MessageParser.AddTags(GetEncrypted(message.Serialize())).ToArray());
         }
         catch
         {
@@ -91,28 +75,25 @@ public abstract class GeneralClient : ClientBase
 
     public override async Task SendMessageAsync(MessageBase message, CancellationToken token = default)
     {
-        if (ConnectionState != ConnectState.CONNECTED) return;
-
         using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(token, TokenSource.Token);
 
-        List<byte> bytes = await message.SerializeAsync(cts.Token);
-        if (Settings != null && Settings.UseEncryption)
-            bytes = _encryptionStage switch
-            {
-                EncryptionMessage.Stage.SYN => new List<byte>(CryptoServices.EncryptRSA(bytes.ToArray(), RsaKey.Value)),
-                EncryptionMessage.Stage.ACK => new List<byte>(CryptoServices.EncryptAES(bytes.ToArray(), Key)),
-                EncryptionMessage.Stage.SYNACK => new List<byte>(CryptoServices.EncryptAES(bytes.ToArray(), Key)),
-                EncryptionMessage.Stage.NONE => bytes
-            };
         try
         {
-            await Soc.SendAsync(MessageParser.AddTags(bytes).ToArray(), SocketFlags.None, cts.Token);
+            await Soc.SendAsync(MessageParser.AddTags(GetEncrypted(await message.SerializeAsync(cts.Token))).ToArray(), SocketFlags.None, cts.Token);
         }
         catch
         {
             await DisconnectedEvent();
         }
     }
+
+    private byte[] GetEncrypted(byte[] bytes) =>_encryptionStage switch
+    {
+        EncryptionMessage.Stage.SYN => CryptoServices.EncryptRSA(bytes, RsaKey.Value),
+        EncryptionMessage.Stage.ACK => CryptoServices.EncryptAES(bytes, Key),
+        EncryptionMessage.Stage.SYNACK => CryptoServices.EncryptAES(bytes, Key),
+        EncryptionMessage.Stage.NONE => bytes
+    };
 
     public Guid OpenChannel()
     {

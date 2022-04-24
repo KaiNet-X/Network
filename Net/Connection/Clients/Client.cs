@@ -6,7 +6,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
-public class Client : GeneralClient
+public class Client : CompatibleClient
 {
     public readonly IPAddress Address;
     public readonly uint Port;

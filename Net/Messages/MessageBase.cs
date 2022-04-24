@@ -18,9 +18,10 @@ public abstract class MessageBase
 
     public static void InitializeMessages()
     {
-        var assembly = Assembly.GetExecutingAssembly();
+        var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+        //var assembly = Assembly.GetExecutingAssembly();
         var types =
-            from type in assembly.GetTypes()
+            from type in assemblies.SelectMany(a => a.GetTypes())
             where type.IsDefined(typeof(RegisterMessageAttribute), false)
             select type;
 
@@ -31,7 +32,7 @@ public abstract class MessageBase
     public static MessageBase Deserialize(byte[] obj)
     {
         string str = Encoding.UTF8.GetString(obj);
-        Message msg = JsonSerializer.Deserialize<Message>(str);
+        MessageTypeChekcer msg = JsonSerializer.Deserialize<MessageTypeChekcer>(str);
 
         if (Registered.Count == 0)
             InitializeMessages();
@@ -41,13 +42,13 @@ public abstract class MessageBase
         return JsonSerializer.Deserialize(str, t) as MessageBase;
     }
 
-    internal protected virtual List<byte> Serialize() =>
-        new List<byte>(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(this, GetType())));
+    internal protected virtual byte[] Serialize() =>
+        Encoding.UTF8.GetBytes(JsonSerializer.Serialize(this, GetType()));
 
-    internal protected virtual async Task<List<byte>> SerializeAsync(CancellationToken token)
+    internal protected virtual async Task<byte[]> SerializeAsync(CancellationToken token)
     {
         using MemoryStream stream = new MemoryStream();
         await JsonSerializer.SerializeAsync(stream, this, GetType(), cancellationToken: token);
-        return new List<byte>(stream.ToArray());
+        return stream.ToArray();
     }
 }

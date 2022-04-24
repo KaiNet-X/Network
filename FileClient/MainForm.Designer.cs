@@ -28,7 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.treeView1 = new System.Windows.Forms.TreeView();
+            this.treeView = new System.Windows.Forms.TreeView();
             this.label1 = new System.Windows.Forms.Label();
             this.downloadButton = new System.Windows.Forms.Button();
             this.uploadButton = new System.Windows.Forms.Button();
@@ -47,12 +47,13 @@
             this.panel1.SuspendLayout();
             this.SuspendLayout();
             // 
-            // treeView1
+            // treeView
             // 
-            this.treeView1.Location = new System.Drawing.Point(12, 47);
-            this.treeView1.Name = "treeView1";
-            this.treeView1.Size = new System.Drawing.Size(199, 337);
-            this.treeView1.TabIndex = 0;
+            this.treeView.Location = new System.Drawing.Point(12, 47);
+            this.treeView.Name = "treeView";
+            this.treeView.Size = new System.Drawing.Size(199, 337);
+            this.treeView.TabIndex = 0;
+            this.treeView.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.treeView_AfterSelect);
             // 
             // label1
             // 
@@ -228,7 +229,7 @@
             this.Controls.Add(this.uploadButton);
             this.Controls.Add(this.downloadButton);
             this.Controls.Add(this.label1);
-            this.Controls.Add(this.treeView1);
+            this.Controls.Add(this.treeView);
             this.MinimumSize = new System.Drawing.Size(410, 500);
             this.Name = "MainForm";
             this.Text = "File client v1";
@@ -242,7 +243,7 @@
 
         #endregion
 
-        private TreeView treeView1;
+        private TreeView treeView;
         private Label label1;
         private Button downloadButton;
         private Button uploadButton;
