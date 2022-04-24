@@ -48,11 +48,11 @@ public class Program
         Client.Channels.Remove(obj);
     }
 
-    private static void C1_OnDisconnect()
+    private static void C1_OnDisconnect(bool graceful)
     {
-        Console.WriteLine("Disconnected");
+        Console.WriteLine($"Disconnected {(graceful ? "gracefully" : "ungracefully")}");
         //InitializeClient();
-        Client.Connect(15);
+         Client.Connect(15);
     }
 
     static void rec(object obj)

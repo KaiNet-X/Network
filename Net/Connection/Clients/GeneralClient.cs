@@ -14,13 +14,31 @@ using System.Threading.Tasks;
 public abstract class GeneralClient : ClientBase
 {
     private SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
+    private IPEndPoint _localEndpoint;
+    private IPEndPoint _remoteEndpoint;
+
     protected CancellationTokenSource TokenSource = new CancellationTokenSource();
 
     protected RSAParameters? RsaKey;
     protected volatile byte[] Key;
 
     protected volatile Socket Soc;
-    public IPEndPoint Endpoint => Soc.LocalEndPoint as IPEndPoint;
+    public IPEndPoint LocalEndpoint
+    {
+        get
+        {
+            var ep = (Soc?.LocalEndPoint as IPEndPoint);
+            return ep != null ? (_localEndpoint = ep) : _localEndpoint;
+        }
+    }
+    public IPEndPoint RemoteEndpoint
+    {
+        get
+        {
+            var ep = (Soc?.RemoteEndPoint as IPEndPoint);
+            return ep != null ? (_remoteEndpoint = ep) : _remoteEndpoint;
+        }
+    }
     public volatile Dictionary<Guid, Channel> Channels = new Dictionary<Guid, Channel>();
 
     protected bool AwaitingPoll;
@@ -32,8 +50,8 @@ public abstract class GeneralClient : ClientBase
 
     public event Action<object> OnRecieveObject;
     public event Action<Guid> OnChannelOpened;
-    public event Action<MessageBase> OnRecievedCustomMessage;
-    public event Action OnDisconnect;
+    public event Action<MessageBase> OnRecievedUnregisteredCustomMessage;
+    public event Action<bool> OnDisconnect;
 
     public Dictionary<string, Action<MessageBase>> CustomMessageHandlers;
 
@@ -223,7 +241,7 @@ public abstract class GeneralClient : ClientBase
                 {
                     var ipAddr = (Soc.LocalEndPoint as IPEndPoint).Address;
                     var remoteEndpoint = new IPEndPoint((Soc.RemoteEndPoint as IPEndPoint).Address, m.Port);
-                    var c = new Channel(ipAddr, remoteEndpoint, val) { AesKey = Key};
+                    var c = new Channel(ipAddr, remoteEndpoint, val) { AesKey = Key };
                     c.Connected = true;
                     Channels.Add(c.Id, c);
                     SendMessage(new ChannelManagementMessage(val, c.Port, ChannelManagementMessage.Mode.Confirm));
@@ -246,12 +264,17 @@ public abstract class GeneralClient : ClientBase
                         PollConnected();
                         break;
                     case ConnectionPollMessage.PollMessage.DISCONNECT:
-                        await DisconnectedEvent();
+                        await DisconnectedEvent(true);
                         break;
                 }
                 break;
             default:
-                Task.Run(() => CustomMessageHandlers[message.MessageType]?.Invoke(message));
+                Task.Run(() =>
+                {
+                    var msgHandler = CustomMessageHandlers[message.MessageType];
+                    if (msgHandler != null) msgHandler(message);
+                    else OnRecievedUnregisteredCustomMessage?.Invoke(message);
+                });
                 break;
         }
     }
@@ -335,14 +358,14 @@ public abstract class GeneralClient : ClientBase
             Disconnected();
         }, _semaphore);
 
-    private async Task DisconnectedEvent()
+    private async Task DisconnectedEvent(bool graceful = false)
     {
         await Utilities.ConcurrentAccess((c) =>
         {
             if (ConnectionState == ConnectState.CLOSED) return Task.CompletedTask;
 
             Disconnected();
-            OnDisconnect?.Invoke();
+            Task.Run(() => OnDisconnect?.Invoke(graceful));
             return Task.CompletedTask;
         }, _semaphore);
     }

@@ -17,7 +17,7 @@ public class Client : GeneralClient
     {
         this.ConnectionState = ConnectState.PENDING;
         this.Address = address;
-        InitializeSocket();
+        Initialize();
 
         this.Address = address;
         this.Port = port;
@@ -25,8 +25,7 @@ public class Client : GeneralClient
 
     public void Connect(int maxAttempts = 0, bool throwWhenExausted = false)
     {
-        if (Soc == null) InitializeSocket();
-        ConnectionState = ConnectState.PENDING;
+        if (Soc == null) Initialize();
 
         Task.Run(async () =>
         {
@@ -70,8 +69,7 @@ public class Client : GeneralClient
 
     public async Task ConnectAsync(int maxAttempts = 0, bool throwWhenExausted = false)
     {
-        if (Soc == null) InitializeSocket();
-        ConnectionState = ConnectState.PENDING;
+        if (Soc == null) Initialize();
 
         Task.Run(async () =>
         {
@@ -113,10 +111,13 @@ public class Client : GeneralClient
         }
     }
 
-    private void InitializeSocket()
+    private void Initialize()
     {
         Soc = Address.AddressFamily == AddressFamily.InterNetwork ?
             new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp) :
             new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
+
+        ConnectionState = ConnectState.PENDING;
+        TokenSource = new System.Threading.CancellationTokenSource();
     }
 }

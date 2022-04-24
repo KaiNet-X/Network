@@ -3,7 +3,7 @@
 using System;
 
 [AttributeUsage(AttributeTargets.Class)]
-class RegisterMessageAttribute : Attribute
+public class RegisterMessageAttribute : Attribute
 {
 
 }

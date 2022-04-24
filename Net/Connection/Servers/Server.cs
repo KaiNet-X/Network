@@ -21,7 +21,9 @@ public class Server : ServerBase<ServerClient>
     public Action<Guid, ServerClient> OnClientChannelOpened;
     public Action<object, ServerClient> OnClientObjectReceived;
     public Action<ServerClient> OnClientConnected;
-    public Action<ServerClient> OnClientDisconnected;
+    public Action<ServerClient, bool> OnClientDisconnected;
+
+    public Dictionary<string, Action<MessageBase, ServerClient>> CustomMessageHandlers = new Dictionary<string, Action<MessageBase,ServerClient>>();
 
     public Server(IPAddress address, int port, ushort maxClients, NetSettings settings = default) : 
         this(new IPEndPoint(address, port), maxClients, settings) { }
@@ -77,19 +79,21 @@ public class Server : ServerBase<ServerClient>
             while (Clients.Count < MaxClients)
             {
                 var c = new ServerClient(await GetNextConnection(), Settings);
+                c.CustomMessageHandlers = new ();
                 c.OnChannelOpened += (guid) => OnClientChannelOpened?.Invoke(guid, c);
                 c.OnRecieveObject += (obj) => OnClientObjectReceived?.Invoke(obj, c);
-                c.OnDisconnect += async () =>
+                c.OnDisconnect += async (g) =>
                 {
-                    await c.CloseAsync();
                     await Utilities.ConcurrentAccess((ct) =>
                     {
                         Clients.Remove(c);
                         return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
                     } , _semaphore);
 
-                    OnClientDisconnected?.Invoke(c);
+                    OnClientDisconnected?.Invoke(c, g);
                 };
+                foreach (var v in CustomMessageHandlers)
+                    c.CustomMessageHandlers.Add(v.Key, (msg) => v.Value(msg, c));
                 await Utilities.ConcurrentAccess((ct) =>
                 {
                     Clients.Add(c);
@@ -179,7 +183,7 @@ public class Server : ServerBase<ServerClient>
         {
             tasks.Add(s.AcceptAsync(cts.Token).AsTask());
         }
-        var connection = await await Task<Socket>.WhenAny(tasks);
+        var connection = await await Task.WhenAny(tasks);
         cts.Cancel();
 
         return connection;

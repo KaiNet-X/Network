@@ -11,10 +11,10 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-public class MessageBase
+public abstract class MessageBase
 {
     private static Dictionary<string, Type> Registered { get; set; } = new Dictionary<string, Type>();
-    public virtual string MessageType { get; set; }
+    public abstract string MessageType { get; }
 
     public static void InitializeMessages()
     {
@@ -31,7 +31,7 @@ public class MessageBase
     public static MessageBase Deserialize(byte[] obj)
     {
         string str = Encoding.UTF8.GetString(obj);
-        MessageBase msg = JsonSerializer.Deserialize<MessageBase>(str);
+        Message msg = JsonSerializer.Deserialize<Message>(str);
 
         if (Registered.Count == 0)
             InitializeMessages();

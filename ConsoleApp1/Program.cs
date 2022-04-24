@@ -16,6 +16,10 @@ class Program
     {
         s = new Server(IPAddress.Parse("192.168.0.10"), 6969, 3, new Net.NetSettings { UseEncryption = true, ConnectionPollTimeout = 50000});
         s.OnClientConnected = connected;
+        s.OnClientDisconnected = (c, g) =>
+        {
+            Console.WriteLine($"Disconnected {(g ? "gracefully" : "ungracefully")}: {c.RemoteEndpoint}");
+        };
         s.OnClientObjectReceived += recieved;
         s.StartServer();
         Console.WriteLine($"Hosting on {s.Endpoints[0].Address}");
@@ -36,8 +40,7 @@ class Program
 
     static void connected(ServerClient c)
     {
-        Console.WriteLine("Connected");
-        c.OnDisconnect += () => Console.WriteLine("Disconnected");
+        Console.WriteLine($"Connected: {c.RemoteEndpoint}");
     }
 
     static async void recieved(object obj, ServerClient c)

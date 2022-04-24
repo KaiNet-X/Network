@@ -11,10 +11,7 @@ public abstract class ServerBase<TClient> where TClient : ClientBase
     protected virtual NetSettings Settings { get; init; }
 
     public abstract void StartServer();
-    public virtual Task StartServerasync()
-    {
-        throw new System.NotImplementedException();
-    }
+    public virtual Task StartServerAsync() => Task.Run(StartServer);
 
     public abstract void SendMessageToAll(MessageBase msg);
     public abstract Task SendMessageToAllAsync(MessageBase msg);
