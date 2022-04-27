@@ -38,6 +38,18 @@ public partial class MainForm : Form
                 await fs.WriteAsync(fMsg.FileData);
             }
         });
+        _client.OnChannelOpened += async (obj) =>
+        {
+            var bytes = await _client.RecieveBytesFromChannelAsync(obj);
+
+            var dir = @$"{Directory.GetCurrentDirectory()}\Files";
+            Directory.CreateDirectory(dir);
+
+            using (FileStream fs = File.Create($@"{dir}\{"FFFF"}"))
+            {
+                await fs.WriteAsync(bytes);
+            }
+        };
 
         Task.Run(async () =>
         {

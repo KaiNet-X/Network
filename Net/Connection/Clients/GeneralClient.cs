@@ -81,7 +81,7 @@ public abstract class GeneralClient : ClientBase
         {
             await Soc.SendAsync(MessageParser.AddTags(GetEncrypted(await message.SerializeAsync(cts.Token))).ToArray(), SocketFlags.None, cts.Token);
         }
-        catch
+        catch (Exception ex)
         {
             await DisconnectedEvent();
         }
@@ -334,6 +334,7 @@ public abstract class GeneralClient : ClientBase
     public async Task CloseAsync() =>
         await Utilities.ConcurrentAccess(async (ct) =>
         {
+            if (ConnectionState == ConnectState.CLOSED) return;
             await SendMessageAsync(new ConnectionPollMessage { PollState = ConnectionPollMessage.PollMessage.DISCONNECT });
             Soc.LingerState = new LingerOption(true, 1);
             Disconnected();

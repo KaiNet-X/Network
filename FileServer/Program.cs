@@ -1,4 +1,5 @@
 ﻿using FileServer;
+using Net;
 using Net.Connection.Clients;
 using Net.Connection.Servers;
 using System.Net;
@@ -9,7 +10,7 @@ var endpoints = new List<IPEndPoint>();
 foreach (var address in addresses)
     endpoints.Add(new IPEndPoint(address, 6969));
 
-var server = new Server(endpoints, 5);
+var server = new Server(endpoints, 5, new NetSettings { UseEncryption = false, ConnectionPollTimeout = 50000 });
 
 var workingDirectory = @$"{Directory.GetCurrentDirectory()}\Files";
 if (!Directory.Exists(workingDirectory)) 
@@ -34,10 +35,14 @@ server.CustomMessageHandlers.Add(FileRequestMessage.Type, async (msg, c) =>
         case FileRequestMessage.FileRequestType.Download:
             using (FileStream fs = File.OpenRead(@$"{workingDirectory}\{fMsg.PathRequest}"))
             {
-                var newMsg = new FileRequestMessage() { RequestType = FileRequestMessage.FileRequestType.Upload, FileName = fMsg.PathRequest.Split('\\')[^1]};
+                var newMsg = new FileRequestMessage() { RequestType = FileRequestMessage.FileRequestType.Upload, FileName = fMsg.PathRequest.Split('\\')[^1] };
                 newMsg.FileData = new byte[fs.Length];
                 await fs.ReadAsync(newMsg.FileData);
                 await c.SendMessageAsync(newMsg);
+                //var buffer = new byte[fs.Length];
+                //await fs.ReadAsync(buffer);
+                //var g = await c.OpenChannelAsync();
+                //await c.SendBytesOnChannelAsync(buffer, g);
             }
             break;
         case FileRequestMessage.FileRequestType.Upload:
