@@ -23,6 +23,7 @@ public abstract class GeneralClient : ClientBase
     protected volatile byte[] Key;
 
     protected volatile Socket Soc;
+
     public IPEndPoint LocalEndpoint
     {
         get
@@ -81,7 +82,7 @@ public abstract class GeneralClient : ClientBase
         {
             await Soc.SendAsync(MessageParser.AddTags(GetEncrypted(await message.SerializeAsync(cts.Token))).ToArray(), SocketFlags.None, cts.Token);
         }
-        catch (Exception ex)
+        catch
         {
             await DisconnectedEvent();
         }
@@ -97,8 +98,7 @@ public abstract class GeneralClient : ClientBase
 
     public Guid OpenChannel()
     {
-        var localEP = (Soc.LocalEndPoint as IPEndPoint);
-        Channel c = new Channel(localEP.Address) { AesKey = Key };
+        Channel c = new Channel((Soc.LocalEndPoint as IPEndPoint).Address) { AesKey = Key };
         Channels.Add(c.Id, c);
         SendMessage(new ChannelManagementMessage(c.Id, c.Port, ChannelManagementMessage.Mode.Create));
         return c.Id;
@@ -115,18 +115,21 @@ public abstract class GeneralClient : ClientBase
     public void SendBytesOnChannel(byte[] bytes, Guid id) =>
         Channels[id].SendBytes(bytes);
 
-    public async Task SendBytesOnChannelAsync(byte[] bytes, Guid id)
+    public async Task SendBytesOnChannelAsync(byte[] bytes, Guid id, CancellationToken token = default)
     {
-        //using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(token, _cancellationTokenSource.Token);
-        //TODO: implement token
-        await Channels[id].SendBytesAsync(bytes);
+        using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(token, TokenSource.Token);
+        await Channels[id].SendBytesAsync(bytes, cts.Token);
     }
 
     public byte[] RecieveBytesFromChannel(Guid id) =>
         Channels[id].RecieveBytes();
 
-    public async Task<byte[]> RecieveBytesFromChannelAsync(Guid id) =>
-        await Channels[id].RecieveBytesAsync();
+    public async Task<byte[]> RecieveBytesFromChannelAsync(Guid id, CancellationToken token = default)
+    {
+        using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(token, TokenSource.Token);
+
+        return await Channels[id].RecieveBytesAsync(cts.Token);
+    }
 
     internal void StartConnectionPoll()
     {

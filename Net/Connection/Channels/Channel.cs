@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 public class Channel : IChannel
@@ -23,13 +24,9 @@ public class Channel : IChannel
                     _sendBytes.RemoveAt(0);
                 }
             }
-            //Task.Run(() => 
-            //{
-            //    while (Connected)
-            //        _receiveBlocks.Add(Udp.Receive(ref remoteEndpoint));
-            //});
         }
     }
+
     public byte[] AesKey { get; set; }
     public readonly Guid Id;
     public int Port => (Udp.Client.LocalEndPoint as IPEndPoint).Port;
@@ -70,17 +67,19 @@ public class Channel : IChannel
         return AesKey == null ? buffer : CryptoServices.DecryptAES(buffer, AesKey);
     }
 
-    public async Task SendBytesAsync(byte[] data)
+    public async Task SendBytesAsync(byte[] data, CancellationToken token = default)
     {
-        while (!Connected) ;
+        while (!Connected)
+            if (token.IsCancellationRequested) return;
+
         data = AesKey == null ? data : CryptoServices.EncryptAES(data, AesKey);
-        await Udp.SendAsync(data, data.Length);
+        await Udp.SendAsync(new ReadOnlyMemory<byte>(data));
         Udp.Dispose();
     }
 
-    public async Task<byte[]> RecieveBytesAsync()
+    public async Task<byte[]> RecieveBytesAsync(CancellationToken token = default)
     {
-        byte[] buffer = (await Udp.ReceiveAsync()).Buffer;
+        byte[] buffer = (await Udp.ReceiveAsync(token)).Buffer;
         return AesKey == null ? buffer : CryptoServices.DecryptAES(buffer, AesKey);
     }
 
