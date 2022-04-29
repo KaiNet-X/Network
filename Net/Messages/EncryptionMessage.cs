@@ -6,8 +6,6 @@ using System.Security.Cryptography;
 [Attributes.RegisterMessageAttribute]
 class EncryptionMessage : MpMessage
 {
-    public override string MessageType => GetType().Name;
-
     public Stage stage { get; set; }
     public RSAParameters RSA { get; set; }
     public byte[] AES { get; set; }

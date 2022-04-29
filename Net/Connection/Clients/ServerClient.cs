@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
-public class ServerClient : CompatibleClient
+public class ServerClient : ObjectClient
 {
     private IEnumerator<MessageBase> _reciever;
     private Stopwatch _timer = new Stopwatch();
@@ -22,7 +22,7 @@ public class ServerClient : CompatibleClient
 
         _reciever = RecieveMessages().GetEnumerator();
 
-        (this as GeneralClient).SendMessage(new SettingsMessage(Settings));
+        (this as GeneralClient<Channels.Channel>).SendMessage(new SettingsMessage(Settings));
     }
 
     internal async Task GetNextMessage()

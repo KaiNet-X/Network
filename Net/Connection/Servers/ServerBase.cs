@@ -5,7 +5,7 @@ using Messages;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-public abstract class ServerBase<TClient> where TClient : ClientBase
+public abstract class ServerBase<TClient, TChannel> where TClient : ClientBase<TChannel> where TChannel : Channels.IChannel
 {
     protected virtual List<TClient> Clients { get; init; }
     protected virtual NetSettings Settings { get; init; }

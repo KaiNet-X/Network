@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -14,7 +13,16 @@ using System.Threading.Tasks;
 public abstract class MessageBase
 {
     private static Dictionary<string, Type> Registered { get; set; } = new Dictionary<string, Type>();
-    public abstract string MessageType { get; }
+    private string _messageType;
+
+    public string MessageType
+    {
+        get 
+        {
+            if (_messageType == null) _messageType = GetType().Name;
+            return _messageType;
+        }
+    }
 
     public static void InitializeMessages()
     {

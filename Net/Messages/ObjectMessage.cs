@@ -6,7 +6,6 @@ using System;
 [Attributes.RegisterMessageAttribute]
 public class ObjectMessage : MpMessage
 {
-    public override string MessageType => GetType().Name;
     public string TypeName { get; set; }
 
     public ObjectMessage(object obj)

@@ -5,7 +5,6 @@ using System;
 [Attributes.RegisterMessageAttribute]
 public class ChannelManagementMessage : MpMessage
 {
-    public override string MessageType => GetType().Name;
     public Guid Id { get; set; }
     public int Port { get; set; }
     public Mode ManageMode { get; set; }

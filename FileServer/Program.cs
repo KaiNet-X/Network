@@ -26,7 +26,7 @@ server.OnClientDisconnected += delegate (ServerClient sc, bool g)
     Console.WriteLine($"{sc.LocalEndpoint} disconnected {(g ? "gracefully" : "ungracefully")}");
 };
 
-server.CustomMessageHandlers.Add(FileRequestMessage.Type, async (msg, c) => 
+server.CustomMessageHandlers.Add(nameof(FileRequestMessage), async (msg, c) => 
 {
     var fMsg = msg as FileRequestMessage;
 

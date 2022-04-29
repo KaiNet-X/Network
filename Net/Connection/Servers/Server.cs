@@ -9,7 +9,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
-public class Server : ServerBase<ServerClient>
+public class Server : ServerBase<ServerClient, Channels.Channel>
 {
     private List<Socket> _bindingSockets;
     public IPEndPoint[] Endpoints { get; private set; } 
@@ -79,7 +79,6 @@ public class Server : ServerBase<ServerClient>
             while (Clients.Count < MaxClients)
             {
                 var c = new ServerClient(await GetNextConnection(), Settings);
-                c.CustomMessageHandlers = new ();
                 c.OnChannelOpened += (guid) => OnClientChannelOpened?.Invoke(guid, c);
                 c.OnRecieveObject += (obj) => OnClientObjectReceived?.Invoke(obj, c);
                 c.OnDisconnect += async (g) =>

@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 public class Channel : IChannel
@@ -70,17 +71,19 @@ public class Channel : IChannel
         return AesKey == null ? buffer : CryptoServices.DecryptAES(buffer, AesKey);
     }
 
-    public async Task SendBytesAsync(byte[] data)
+    public async Task SendBytesAsync(byte[] data, CancellationToken token = default)
     {
-        while (!Connected) ;
+        while (!Connected) await Task.Delay(10);
         data = AesKey == null ? data : CryptoServices.EncryptAES(data, AesKey);
         await Udp.SendAsync(data, data.Length);
         Udp.Dispose();
     }
 
-    public async Task<byte[]> RecieveBytesAsync()
+    public async Task<byte[]> RecieveBytesAsync(CancellationToken token = default)
     {
-        byte[] buffer = (await Udp.ReceiveAsync()).Buffer;
+        byte[] buffer = (await Udp.ReceiveAsync(token)).Buffer;
+
+        if (token.IsCancellationRequested) return null;
         return AesKey == null ? buffer : CryptoServices.DecryptAES(buffer, AesKey);
     }
 

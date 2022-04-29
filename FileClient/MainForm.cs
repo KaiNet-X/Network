@@ -25,8 +25,7 @@ public partial class MainForm : Form
                 Invoke(() => { treeView.Nodes.Add(ToNode(t)); });
             }
         };
-        _client.CustomMessageHandlers = new();
-        _client.CustomMessageHandlers.Add(FileRequestMessage.Type, async (msg) =>
+        _client.CustomMessageHandlers.Add(nameof(FileRequestMessage), async (msg) =>
         {
             var fMsg = msg as FileRequestMessage;
 
