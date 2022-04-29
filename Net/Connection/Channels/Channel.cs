@@ -24,13 +24,9 @@ public class Channel : IChannel
                     _sendBytes.RemoveAt(0);
                 }
             }
-            //Task.Run(() => 
-            //{
-            //    while (Connected)
-            //        _receiveBlocks.Add(Udp.Receive(ref remoteEndpoint));
-            //});
         }
     }
+
     public byte[] AesKey { get; set; }
     public readonly Guid Id;
     public int Port => (Udp.Client.LocalEndPoint as IPEndPoint).Port;
@@ -73,9 +69,14 @@ public class Channel : IChannel
 
     public async Task SendBytesAsync(byte[] data, CancellationToken token = default)
     {
-        while (!Connected) await Task.Delay(10);
+        while (!Connected)
+        {
+            if (token.IsCancellationRequested) return;
+            await Task.Delay(10);
+        }
+
         data = AesKey == null ? data : CryptoServices.EncryptAES(data, AesKey);
-        await Udp.SendAsync(data, data.Length);
+        await Udp.SendAsync(new ReadOnlyMemory<byte>(data), token);
         Udp.Dispose();
     }
 

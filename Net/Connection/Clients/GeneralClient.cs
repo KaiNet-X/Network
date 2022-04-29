@@ -76,7 +76,7 @@ public abstract class GeneralClient<TChannel> : ClientBase<TChannel> where TChan
         {
             await Soc.SendAsync(MessageParser.AddTags(GetEncrypted(await message.SerializeAsync(cts.Token))).ToArray(), SocketFlags.None, cts.Token);
         }
-        catch (Exception ex)
+        catch
         {
             await DisconnectedEvent();
         }
