@@ -1,4 +1,4 @@
-﻿namespace ClientTest;
+﻿namespace CmdLineMsgClient;
 
 public class MSG
 {

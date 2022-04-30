@@ -1,68 +1,65 @@
 ﻿using System;
 using System.Net;
 using System.Text;
-using System.Threading.Tasks;
+using CmdLineMsgClient;
 using Net.Connection.Channels;
 using Net.Connection.Clients;
 
-namespace ClientTest;
 
-public class Program
+Client client;
+IPAddress Addr;
+
+while (true)
 {
-    public static Client Client;
-    public static IPAddress Addr;
-
-    static async Task Main(string[] args)
+    Console.Write("Server IP: ");
+    if (IPAddress.TryParse(Console.ReadLine(), out IPAddress addr))
     {
-        while (true)
-        {
-            Console.Write("Server IP: ");
-            if (IPAddress.TryParse(Console.ReadLine(), out IPAddress addr))
-            {
-                Addr = addr;
-                InitializeClient();
-                break;
-            }
-        }
+        Addr = addr;
         InitializeClient();
-
-        await Client.ConnectAsync(15);
-        Console.WriteLine("Connected");
-
-        Console.Write("Enter your name: ");
-        var uname = Console.ReadLine();
-
-        string l;
-        while ((l = Console.ReadLine()) != "EXIT")
-            Client.SendObject(new MSG { Message = l, Sender = uname});
-
-        await Client.CloseAsync();
+        break;
     }
+}
 
-    private static async void C1_OnChannelOpened(Channel c)
-    {
-        var bytes = await c.RecieveBytesAsync();
-        Console.WriteLine($"{c.Id}: {Encoding.UTF8.GetString(bytes)}");
-        await Client.CloseChannelAsync(c);
-    }
+InitializeClient();
 
-    private static void C1_OnDisconnect(bool graceful)
-    {
-        Console.WriteLine($"Disconnected {(graceful ? "gracefully" : "ungracefully")}");
-        Client.Connect(15);
-    }
+//Tries to connect up to 5 times, if there is an exception, throw it
+await client.ConnectAsync(5, true);
 
-    static void rec(object obj)
-    {
-        if (obj is MSG msg)
-            Console.WriteLine($"{msg.Sender}: {msg.Message}");
-    }
+Console.WriteLine("Connected");
 
-    static void InitializeClient()
-    {
-        Client = new Client(Addr, 6969);
-        Client.OnReceiveObject += rec;
-        Client.OnDisconnect += C1_OnDisconnect;
-        Client.OnChannelOpened += C1_OnChannelOpened;
-    }
+Console.Write("Enter your name: ");
+var uname = Console.ReadLine();
+
+string l;
+while ((l = Console.ReadLine()) != "EXIT")
+    client.SendObject(new MSG { Message = l, Sender = uname});
+
+await client.CloseAsync();
+
+async void C1_OnChannelOpened(Channel c)
+{
+    var bytes = await c.RecieveBytesAsync();
+    Console.WriteLine($"{c.Id}: {Encoding.UTF8.GetString(bytes)}");
+    await client.CloseChannelAsync(c);
+}
+
+void C1_OnDisconnect(bool graceful)
+{
+    Console.WriteLine($"Disconnected {(graceful ? "gracefully" : "ungracefully")}");
+    client.Connect(15);
+}
+
+void rec(object obj)
+{
+    if (obj is MSG msg)
+        Console.WriteLine($"{msg.Sender}: {msg.Message}");
+}
+
+void InitializeClient()
+{
+    //Target the client to the chosen address and port 5555
+    client = new Client(Addr, 5555);
+    client.OnReceiveObject += rec;
+    client.OnDisconnect += C1_OnDisconnect;
+    client.OnChannelOpened += C1_OnChannelOpened;
 }

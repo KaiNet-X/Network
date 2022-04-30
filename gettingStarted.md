@@ -1,5 +1,11 @@
 # Getting started
 
+This page shows an example of how to use the most important features of this library. To see some "practical" examples, see the example projects in the repository.
+
+#### Note
+
+By default, the connection uses encryption, and both the main connection and udp channels share the same settings.
+
 ## Server
 
 ```c#
@@ -10,7 +16,7 @@ var server = new Server(IPAddress.Any, 5555, 10);
 server.OnClientObjectReceived += RecievedObject;
 server.OnClientConnected += OnConnect;
 server.OnClientDisconnected += OnDisconnect;
-server.OnClientChannelOpened
+server.OnClientChannelOpened += OnChannelOpened;
 // Makes the server start listening for connections
 // Also has an async version
 server.Start();
@@ -54,8 +60,8 @@ void OnChannelOpened(Channel c, ServerClient sc)
 var client = new Client(IPAddress.Localhost, 5555);
 
 client.OnReceiveObject += RecieveObject;
-Client.OnDisconnect += Disconnected;
-Client.OnChannelOpened += ChannelOpened;
+client.OnDisconnect += Disconnected;
+client.OnChannelOpened += ChannelOpened;
 
 // Tries to connect a maximum of 3 times, if it fails do not throw exception
 // There is also an async version
