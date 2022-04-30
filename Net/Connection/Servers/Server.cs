@@ -2,6 +2,7 @@
 
 using Clients;
 using Messages;
+using Channels;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -12,18 +13,20 @@ using System.Threading.Tasks;
 public class Server : ServerBase<ServerClient, Channels.Channel>
 {
     private List<Socket> _bindingSockets;
-    public IPEndPoint[] Endpoints { get; private set; } 
     private volatile SemaphoreSlim _semaphore;
-    new public List<ServerClient> Clients => base.Clients;
+
+    public new List<ServerClient> Clients => base.Clients;
 
     public volatile ushort MaxClients;
 
-    public Action<Guid, ServerClient> OnClientChannelOpened;
+    public Action<Channel, ServerClient> OnClientChannelOpened;
     public Action<object, ServerClient> OnClientObjectReceived;
     public Action<ServerClient> OnClientConnected;
     public Action<ServerClient, bool> OnClientDisconnected;
 
-    public Dictionary<string, Action<MessageBase, ServerClient>> CustomMessageHandlers = new Dictionary<string, Action<MessageBase,ServerClient>>();
+    public Dictionary<string, Action<MessageBase, ServerClient>> CustomMessageHandlers = new();
+
+    public IPEndPoint[] Endpoints { get; private set; } 
 
     public Server(IPAddress address, int port, ushort maxClients, NetSettings settings = default) : 
         this(new IPEndPoint(address, port), maxClients, settings) { }
@@ -50,7 +53,7 @@ public class Server : ServerBase<ServerClient, Channels.Channel>
     public async Task SendObjectToAllAsync<T>(T obj) =>
         await SendMessageToAllAsync(new ObjectMessage(obj));
 
-    public override void StartServer()
+    public override void Start()
     {
         if (_bindingSockets.Count == 0)
             InitializeSockets(Endpoints);
@@ -79,8 +82,8 @@ public class Server : ServerBase<ServerClient, Channels.Channel>
             while (Clients.Count < MaxClients)
             {
                 var c = new ServerClient(await GetNextConnection(), Settings);
-                c.OnChannelOpened += (guid) => OnClientChannelOpened?.Invoke(guid, c);
-                c.OnRecieveObject += (obj) => OnClientObjectReceived?.Invoke(obj, c);
+                c.OnChannelOpened += (ch) => OnClientChannelOpened?.Invoke(ch, c);
+                c.OnReceiveObject += (obj) => OnClientObjectReceived?.Invoke(obj, c);
                 c.OnDisconnect += async (g) =>
                 {
                     await Utilities.ConcurrentAccess((ct) =>
@@ -103,7 +106,9 @@ public class Server : ServerBase<ServerClient, Channels.Channel>
                     Task.Run(async () =>
                     {
                         while (c.ConnectionState == ConnectState.CONNECTED)
+                        {
                             await c.GetNextMessage();
+                        }
                     });
                 while (c.ConnectionState == ConnectState.PENDING) ;
 
@@ -134,9 +139,6 @@ public class Server : ServerBase<ServerClient, Channels.Channel>
         }, _semaphore);
     }
 
-    public void RegisterType<T>() =>
-        Utilities.RegisterType(typeof(T));
-
     public override void SendMessageToAll(MessageBase msg) =>
         Task.Run(async () => await SendMessageToAllAsync(msg)).GetAwaiter().GetResult();
 
@@ -153,6 +155,9 @@ public class Server : ServerBase<ServerClient, Channels.Channel>
             return Task.CompletedTask;
         }, _semaphore);
     }
+
+    public void RegisterType<T>() =>
+        Utilities.RegisterType(typeof(T));
 
     private void InitializeSockets(IPEndPoint[] endpoints)
     {

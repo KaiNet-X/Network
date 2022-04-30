@@ -15,9 +15,7 @@ public class Program
     {
         while (true)
         {
-            Addr = IPAddress.Parse("192.168.0.10");
             Console.Write("Server IP: ");
-            break;
             if (IPAddress.TryParse(Console.ReadLine(), out IPAddress addr))
             {
                 Addr = addr;
@@ -51,7 +49,7 @@ public class Program
     private static void C1_OnDisconnect(bool graceful)
     {
         Console.WriteLine($"Disconnected {(graceful ? "gracefully" : "ungracefully")}");
-         Client.Connect(15);
+        Client.Connect(15);
     }
 
     static void rec(object obj)
@@ -63,7 +61,7 @@ public class Program
     static void InitializeClient()
     {
         Client = new Client(Addr, 6969);
-        Client.OnRecieveObject += rec;
+        Client.OnReceiveObject += rec;
         Client.OnDisconnect += C1_OnDisconnect;
         Client.OnChannelOpened += C1_OnChannelOpened;
     }

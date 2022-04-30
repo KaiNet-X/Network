@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 public abstract class ClientBase<TChannel> where TChannel : IChannel
 {
-    public volatile Dictionary<Guid, TChannel> Channels = new Dictionary<Guid, TChannel>();
+    public volatile Dictionary<Guid, TChannel> Channels = new();
 
     public abstract void SendMessage(MessageBase message);
 

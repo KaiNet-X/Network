@@ -9,8 +9,8 @@ namespace Net.Connection.Clients
 {
     public class ObjectClient : GeneralClient<Channel>
     {
-        public event Action<object> OnRecieveObject;
-        public event Action<Guid> OnChannelOpened;
+        public event Action<object> OnReceiveObject;
+        public event Action<Channel> OnChannelOpened;
 
         public ObjectClient()
         {
@@ -95,7 +95,7 @@ namespace Net.Connection.Clients
                 c.Connected = true;
                 Channels.Add(c.Id, c);
                 SendMessage(new ChannelManagementMessage(val, c.Port, ChannelManagementMessage.Mode.Confirm));
-                Task.Run(() => OnChannelOpened?.Invoke(val));
+                Task.Run(() => OnChannelOpened?.Invoke(c));
             }
             else if (m.ManageMode == ChannelManagementMessage.Mode.Confirm)
             {
@@ -109,7 +109,7 @@ namespace Net.Connection.Clients
         {
             var m = mb as ObjectMessage;
 
-            Task.Run(() => OnRecieveObject?.Invoke(m.GetValue()));
+            Task.Run(() => OnReceiveObject?.Invoke(m.GetValue()));
         }
     }
 }

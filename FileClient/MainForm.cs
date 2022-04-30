@@ -1,5 +1,4 @@
 using Net.Connection.Clients;
-using System.Linq;
 
 namespace FileClient;
 
@@ -17,7 +16,7 @@ public partial class MainForm : Form
         sAddr.Text = _client.RemoteEndpoint.Address.ToString();
         sPort.Text = _client.RemoteEndpoint.Port.ToString();
 
-        _client.OnRecieveObject += (obj) =>
+        _client.OnReceiveObject += (obj) =>
         {
             if (obj is Tree t)
             {
@@ -48,6 +47,11 @@ public partial class MainForm : Form
             {
                 await fs.WriteAsync(bytes);
             }
+        };
+        _client.OnDisconnect += (obj) =>
+        {
+            MessageBox.Show("Server disconnected");
+            Application.Exit();
         };
 
         Task.Run(async () =>

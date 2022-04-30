@@ -2,6 +2,7 @@
 using Net;
 using Net.Connection.Clients;
 using Net.Connection.Servers;
+using Net.Messages;
 using System.Net;
 
 var addresses = await Dns.GetHostAddressesAsync(Dns.GetHostName());
@@ -16,17 +17,50 @@ var workingDirectory = @$"{Directory.GetCurrentDirectory()}\Files";
 if (!Directory.Exists(workingDirectory)) 
     Directory.CreateDirectory(workingDirectory);
 
-server.OnClientConnected += delegate (ServerClient sc) 
+server.OnClientConnected += OnConnect;
+
+server.OnClientDisconnected += OnDisconnect;
+
+server.CustomMessageHandlers.Add(nameof(FileRequestMessage), HandleFileRequest);
+
+await server.StartAsync();
+
+foreach (var endpoint in endpoints)
+    Console.WriteLine($"Hosting on {endpoint}");
+
+Console.ReadLine();
+await server.ShutDownAsync();
+
+Tree GetTree(string dir)
+{
+    var tree = new Tree()
+    {
+        Nodes = new List<Tree>() 
+    };
+
+    foreach (var file in Directory.EnumerateFiles(dir))
+        tree.Nodes.Add(new Tree() { Value = file.Split('\\')[^1] });
+
+    foreach (var folder in Directory.EnumerateDirectories(dir))
+    {
+        var tr = GetTree(folder);
+        tr.Value = folder.Split('\\')[^1];
+        tree.Nodes.Add(tr);
+    }
+    return tree;
+}
+
+void OnConnect(ServerClient sc)
 {
     Console.WriteLine($"{sc.LocalEndpoint} connected");
-};
+}
 
-server.OnClientDisconnected += delegate (ServerClient sc, bool g)
+void OnDisconnect (ServerClient sc, bool g)
 {
     Console.WriteLine($"{sc.LocalEndpoint} disconnected {(g ? "gracefully" : "ungracefully")}");
-};
+}
 
-server.CustomMessageHandlers.Add(nameof(FileRequestMessage), async (msg, c) => 
+async void HandleFileRequest (MessageBase msg, ServerClient c)
 {
     var fMsg = msg as FileRequestMessage;
 
@@ -57,31 +91,4 @@ server.CustomMessageHandlers.Add(nameof(FileRequestMessage), async (msg, c) =>
             await c.SendObjectAsync(tree);
             break;
     }
-});
-
-await server.StartServerAsync();
-
-foreach (var endpoint in endpoints)
-    Console.WriteLine($"Hosting on {endpoint}");
-
-Console.ReadLine();
-await server.ShutDownAsync();
-
-Tree GetTree(string dir)
-{
-    var tree = new Tree()
-    {
-        Nodes = new List<Tree>() 
-    };
-
-    foreach (var file in Directory.EnumerateFiles(dir))
-        tree.Nodes.Add(new Tree() { Value = file.Split('\\')[^1] });
-
-    foreach (var folder in Directory.EnumerateDirectories(dir))
-    {
-        var tr = GetTree(folder);
-        tr.Value = folder.Split('\\')[^1];
-        tree.Nodes.Add(tr);
-    }
-    return tree;
 }

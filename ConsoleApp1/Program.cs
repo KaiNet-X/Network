@@ -21,7 +21,7 @@ class Program
             Console.WriteLine($"Disconnected {(g ? "gracefully" : "ungracefully")}: {c.RemoteEndpoint}");
         };
         s.OnClientObjectReceived += recieved;
-        s.StartServer();
+        s.Start();
         Console.WriteLine($"Hosting on {s.Endpoints[0].Address}");
         while (true)
         {

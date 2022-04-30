@@ -8,19 +8,19 @@ using System.Threading.Tasks;
 
 public class Client : ObjectClient
 {
-    public readonly IPAddress Address;
-    public readonly uint Port;
-
+    public readonly IPEndPoint TargetEndpoint;
     private Stopwatch _timer = new Stopwatch();
 
-    public Client(IPAddress address, uint port)
+    public Client(IPAddress address, int port) : this (new IPEndPoint(address, port)) { }
+
+    public Client(string address, int port) : this(IPAddress.Parse(address), port) { }
+
+    public Client(IPEndPoint ep)
     {
-        this.ConnectionState = ConnectState.PENDING;
-        this.Address = address;
+        ConnectionState = ConnectState.PENDING;
         Initialize();
 
-        this.Address = address;
-        this.Port = port;
+        TargetEndpoint = ep;
     }
 
     public void Connect(int maxAttempts = 0, bool throwWhenExausted = false)
@@ -56,7 +56,7 @@ public class Client : ObjectClient
         {
             try
             {
-                Soc.Connect(new IPEndPoint(Address, (int)Port));
+                Soc.Connect(TargetEndpoint);
                 break;
             }
             catch
@@ -100,7 +100,7 @@ public class Client : ObjectClient
         {
             try
             {
-                await Soc.ConnectAsync(new IPEndPoint(Address, (int)Port));
+                await Soc.ConnectAsync(TargetEndpoint);
                 break;
             }
             catch
@@ -113,7 +113,7 @@ public class Client : ObjectClient
 
     private void Initialize()
     {
-        Soc = Address.AddressFamily == AddressFamily.InterNetwork ?
+        Soc = TargetEndpoint.AddressFamily == AddressFamily.InterNetwork ?
             new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp) :
             new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
 

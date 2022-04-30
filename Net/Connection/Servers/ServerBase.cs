@@ -10,8 +10,8 @@ public abstract class ServerBase<TClient, TChannel> where TClient : ClientBase<T
     protected virtual List<TClient> Clients { get; init; }
     protected virtual NetSettings Settings { get; init; }
 
-    public abstract void StartServer();
-    public virtual Task StartServerAsync() => Task.Run(StartServer);
+    public abstract void Start();
+    public virtual Task StartAsync() => Task.Run(Start);
 
     public abstract void SendMessageToAll(MessageBase msg);
     public abstract Task SendMessageToAllAsync(MessageBase msg);

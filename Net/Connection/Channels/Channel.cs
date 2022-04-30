@@ -9,7 +9,17 @@ using System.Threading.Tasks;
 
 public class Channel : IChannel
 {
+    private const int BLOCK_SIZE = 1024;
     private bool _connected = false;
+    private IPEndPoint remoteEndpoint;
+    private bool disposedValue = false;
+    private readonly UdpClient Udp;
+    private List<byte[]> _sendBytes = new List<byte[]>();
+
+    public readonly Guid Id;
+    public byte[] AesKey { get; set; }
+    public int Port => (Udp.Client.LocalEndPoint as IPEndPoint).Port;
+    public bool Disposed => disposedValue;
     public bool Connected 
     {
         get => _connected;
@@ -26,15 +36,6 @@ public class Channel : IChannel
             }
         }
     }
-
-    public byte[] AesKey { get; set; }
-    public readonly Guid Id;
-    public int Port => (Udp.Client.LocalEndPoint as IPEndPoint).Port;
-    private IPEndPoint remoteEndpoint;
-    private bool disposedValue;
-    private readonly UdpClient Udp;
-    private List<byte[]> _sendBytes = new List<byte[]>();
-    private List<byte[]> _receiveBlocks = new List<byte[]>();
 
     public Channel(IPAddress localAddr, IPEndPoint remote, Guid? id = null)
     {
@@ -54,10 +55,10 @@ public class Channel : IChannel
     {
         if (!Connected)
         {
-            data = AesKey == null ? data : CryptoServices.EncryptAES(data, AesKey);
-            _sendBytes.Add(CryptoServices.DecryptAES(data, AesKey));
+            _sendBytes.Add(data);
             return;
         }
+        data = AesKey == null ? data : CryptoServices.EncryptAES(data, AesKey);
         Udp.Send(data, data.Length);
     }
 
@@ -77,7 +78,6 @@ public class Channel : IChannel
 
         data = AesKey == null ? data : CryptoServices.EncryptAES(data, AesKey);
         await Udp.SendAsync(new ReadOnlyMemory<byte>(data), token);
-        Udp.Dispose();
     }
 
     public async Task<byte[]> RecieveBytesAsync(CancellationToken token = default)
