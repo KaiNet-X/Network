@@ -11,7 +11,7 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 
-public abstract class GeneralClient<TChannel> : ClientBase<TChannel> where TChannel : IChannel
+public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChannel : IChannel
 {
     private SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
     private IPEndPoint _localEndpoint;

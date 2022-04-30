@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-public abstract class ClientBase<TChannel> where TChannel : IChannel
+public abstract class BaseClient<TChannel> where TChannel : IChannel
 {
     public volatile Dictionary<Guid, TChannel> Channels = new();
 

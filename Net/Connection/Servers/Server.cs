@@ -10,7 +10,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
-public class Server : ServerBase<ServerClient, Channel>
+public class Server : BaseServer<ServerClient, Channel>
 {
     private List<Socket> _bindingSockets;
     private volatile SemaphoreSlim _semaphore;
