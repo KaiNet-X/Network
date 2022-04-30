@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 
 public class Channel : IChannel
 {
-    private const int BLOCK_SIZE = 1024;
     private bool _connected = false;
     private IPEndPoint remoteEndpoint;
     private bool disposedValue = false;
@@ -61,7 +60,7 @@ public class Channel : IChannel
         data = AesKey == null ? data : CryptoServices.EncryptAES(data, AesKey);
         Udp.Send(data, data.Length);
     }
-
+     
     public byte[] RecieveBytes()
     {
         byte[] buffer = Udp.Receive(ref remoteEndpoint);
