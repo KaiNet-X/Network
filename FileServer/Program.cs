@@ -5,6 +5,8 @@ using Net.Connection.Servers;
 using Net.Messages;
 using System.Net;
 
+// NOTE: this doesn't work for large files. For that, you would have to send the file in multiple segments and reassemble it on the client
+
 var addresses = await Dns.GetHostAddressesAsync(Dns.GetHostName());
 var endpoints = new List<IPEndPoint>();
 

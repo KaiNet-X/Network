@@ -5,9 +5,9 @@ VisualStudioVersion = 17.1.32328.378
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Net", "Net\Net.csproj", "{A6DF7964-E041-4CF9-BE5B-F53C61B36829}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CmdLineMsgClient", "Testing\CmdLineMsgClient.csproj", "{C22188B4-9092-45F4-B9C5-9B5CA040179C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CmdLineMsgClient", "CmdLineMsgClient\CmdLineMsgClient.csproj", "{C22188B4-9092-45F4-B9C5-9B5CA040179C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MsgServer", "ConsoleApp1\MsgServer.csproj", "{C85BC000-EF6D-448C-ACF2-48C7010BA15E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MsgServer", "MsgServer\MsgServer.csproj", "{C85BC000-EF6D-448C-ACF2-48C7010BA15E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FileServer", "FileServer\FileServer.csproj", "{2B855272-C271-4E0E-A7BE-17DFFA8DEDAF}"
 EndProject
