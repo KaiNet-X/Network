@@ -8,4 +8,4 @@ implementation uses socket communication to send "messages" which encapsulate da
 transmit objects using this message protocol. Your program is notified via the OnObjectRecieved/OnClientObjectRecieved events.
 The default implementations also have the ability to send raw UDP data (doesn't use the message protocol) via channels.
 
-Click [here](https://github.com/KaiNet-X/Network/blob/Develop/gettingStarted.md) to get started, or [here]() for more extensive documentation.
+Click [here](https://github.com/KaiNet-X/Network/blob/master/gettingStarted.md) to get started, or [here]() for more extensive documentation.
