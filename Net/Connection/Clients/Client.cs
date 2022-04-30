@@ -1,6 +1,5 @@
 ﻿namespace Net.Connection.Clients;
 
-using System;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
@@ -8,8 +7,10 @@ using System.Threading.Tasks;
 
 public class Client : ObjectClient
 {
-    public readonly IPEndPoint TargetEndpoint;
     private Stopwatch _timer = new Stopwatch();
+
+    public ushort LoopDelay = 10;
+    public readonly IPEndPoint TargetEndpoint;
 
     public Client(IPAddress address, int port) : this (new IPEndPoint(address, port)) { }
 
@@ -18,39 +19,15 @@ public class Client : ObjectClient
     public Client(IPEndPoint ep)
     {
         ConnectionState = ConnectState.PENDING;
-        Initialize();
-
         TargetEndpoint = ep;
+        Initialize();
     }
 
     public void Connect(int maxAttempts = 0, bool throwWhenExausted = false)
     {
         if (Soc == null) Initialize();
 
-        Task.Run(async () =>
-        {
-            try
-            {
-                foreach (var msg in RecieveMessages())
-                    if (msg != null)
-                        await HandleMessage(msg);
-                    else
-                    {
-                        if (_timer == null) _timer = Stopwatch.StartNew();
-                        else if (_timer?.ElapsedMilliseconds == 0)
-                            _timer.Restart();
-                        else if (_timer.ElapsedMilliseconds >= 1000)
-                        {
-                            _timer.Reset();
-                            StartConnectionPoll();
-                        }
-                    }
-            }
-            catch (Exception ex)
-            {
-
-            }
-        });
+        StartLoop();
 
         for (int i = 0; i <= maxAttempts; i++)
         {
@@ -71,30 +48,7 @@ public class Client : ObjectClient
     {
         if (Soc == null) Initialize();
 
-        Task.Run(async () =>
-        {
-            try
-            {
-                foreach (var msg in RecieveMessages())
-                    if (msg != null)
-                        await HandleMessage(msg);
-                    else
-                    {
-                        if (_timer == null) _timer = Stopwatch.StartNew();
-                        else if (_timer?.ElapsedMilliseconds == 0)
-                            _timer.Restart();
-                        else if (_timer.ElapsedMilliseconds >= 1000)
-                        {
-                            _timer.Reset();
-                            StartConnectionPoll();
-                        }
-                    }
-            }
-            catch (Exception ex)
-            {
-
-            }
-        });
+        StartLoop();
 
         for (int i = 0; i <= maxAttempts; i++)
         {
@@ -119,5 +73,29 @@ public class Client : ObjectClient
 
         ConnectionState = ConnectState.PENDING;
         TokenSource = new System.Threading.CancellationTokenSource();
+    }
+
+    private void StartLoop()
+    {
+        Task.Run(async () =>
+        {
+            foreach (var msg in RecieveMessages())
+            {
+                if (msg != null)
+                    await HandleMessage(msg);
+                else
+                {
+                    if (_timer == null) _timer = Stopwatch.StartNew();
+                    else if (_timer?.ElapsedMilliseconds == 0)
+                        _timer.Restart();
+                    else if (_timer.ElapsedMilliseconds >= 1000)
+                    {
+                        _timer.Reset();
+                        StartConnectionPoll();
+                    }
+                }
+                await Task.Delay(LoopDelay);
+            }
+        });
     }
 }

@@ -19,6 +19,10 @@ public abstract class ClientBase<TChannel> where TChannel : IChannel
 
     public abstract TChannel OpenChannel();
 
+    public abstract void CloseChannel(TChannel c);
+
+    public abstract Task CloseChannelAsync(TChannel c);
+
     public abstract Task<TChannel> OpenChannelAsync(CancellationToken token = default);
 
     public abstract void Close();

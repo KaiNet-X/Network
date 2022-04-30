@@ -3,7 +3,7 @@
 using System;
 
 [Attributes.RegisterMessageAttribute]
-public class ChannelManagementMessage : MpMessage
+public class ChannelManagementMessage : MessageBase
 {
     public Guid Id { get; set; }
     public int Port { get; set; }
@@ -24,11 +24,10 @@ public class ChannelManagementMessage : MpMessage
 
     public ChannelManagementMessage() { }
 
-    protected internal override object GetValue() => Id;
-
     public enum Mode
     {
         Create,
-        Confirm
+        Confirm,
+        Close
     }
 }

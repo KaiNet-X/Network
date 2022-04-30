@@ -34,7 +34,6 @@ public abstract class GeneralClient<TChannel> : ClientBase<TChannel> where TChan
             return ep != null ? (_localEndpoint = ep) : _localEndpoint;
         }
     }
-
     public IPEndPoint RemoteEndpoint
     {
         get

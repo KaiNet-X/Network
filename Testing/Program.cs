@@ -2,6 +2,7 @@
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using Net.Connection.Channels;
 using Net.Connection.Clients;
 
 namespace ClientTest;
@@ -38,12 +39,11 @@ public class Program
         await Client.CloseAsync();
     }
 
-    private static async void C1_OnChannelOpened(Guid obj)
+    private static async void C1_OnChannelOpened(Channel c)
     {
-        var bytes = await Client.RecieveBytesFromChannelAsync(obj);
-        Console.WriteLine($"{obj}: {Encoding.UTF8.GetString(bytes)}");
-        Client.Channels[obj].Dispose();
-        Client.Channels.Remove(obj);
+        var bytes = await c.RecieveBytesAsync();
+        Console.WriteLine($"{c.Id}: {Encoding.UTF8.GetString(bytes)}");
+        await Client.CloseChannelAsync(c);
     }
 
     private static void C1_OnDisconnect(bool graceful)

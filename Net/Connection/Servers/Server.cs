@@ -10,7 +10,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
-public class Server : ServerBase<ServerClient, Channels.Channel>
+public class Server : ServerBase<ServerClient, Channel>
 {
     private List<Socket> _bindingSockets;
     private volatile SemaphoreSlim _semaphore;
@@ -25,6 +25,8 @@ public class Server : ServerBase<ServerClient, Channels.Channel>
     public Action<ServerClient, bool> OnClientDisconnected;
 
     public Dictionary<string, Action<MessageBase, ServerClient>> CustomMessageHandlers = new();
+
+    public ushort LoopDelay = 10;
 
     public IPEndPoint[] Endpoints { get; private set; } 
 
@@ -67,12 +69,12 @@ public class Server : ServerBase<ServerClient, Channels.Channel>
                     {
                         foreach (ServerClient c in Clients)
                         {
-                            if (ct.IsCancellationRequested)
+                            if (ct.IsCancellationRequested || c.ConnectionState == ConnectState.CLOSED)
                                 return;
                             await c.GetNextMessage();
                         }
                     }, _semaphore);
-                    await Task.Delay(10);
+                    await Task.Delay(LoopDelay);
                 }
             });
 
@@ -105,9 +107,10 @@ public class Server : ServerBase<ServerClient, Channels.Channel>
                 if (Settings?.SingleThreadedServer == false)
                     Task.Run(async () =>
                     {
-                        while (c.ConnectionState == ConnectState.CONNECTED)
+                        while (c.ConnectionState != ConnectState.CLOSED)
                         {
                             await c.GetNextMessage();
+                            await Task.Delay(LoopDelay);
                         }
                     });
                 while (c.ConnectionState == ConnectState.PENDING) ;

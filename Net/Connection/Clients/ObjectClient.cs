@@ -45,6 +45,22 @@ namespace Net.Connection.Clients
             return c;
         }
 
+        public void CloseChannel(Guid id) => CloseChannel(Channels[id]);
+
+        public override void CloseChannel(Channel c)
+        {
+            SendMessage(new ChannelManagementMessage(c.Id, ChannelManagementMessage.Mode.Close));
+            Channels.Remove(c.Id);
+            c.Dispose();
+        }
+
+        public override async Task CloseChannelAsync(Channel c)
+        {
+            await SendMessageAsync(new ChannelManagementMessage(c.Id, ChannelManagementMessage.Mode.Close));
+            Channels.Remove(c.Id);
+            c.Dispose();
+        }
+
         public override async Task<Channel> OpenChannelAsync(CancellationToken token = default)
         {
             Channel c = new Channel((Soc.LocalEndPoint as IPEndPoint).Address) { AesKey = Key };
@@ -86,7 +102,7 @@ namespace Net.Connection.Clients
         {
             var m = mb as ChannelManagementMessage;
 
-            var val = (Guid)m.GetValue();
+            var val = m.Id;
             if (m.ManageMode == ChannelManagementMessage.Mode.Create)
             {
                 var ipAddr = (Soc.LocalEndPoint as IPEndPoint).Address;
@@ -102,6 +118,12 @@ namespace Net.Connection.Clients
                 var c = Channels[val];
                 c.SetRemote(new IPEndPoint((Soc.RemoteEndPoint as IPEndPoint).Address, m.Port));
                 c.Connected = true;
+            }
+            else if (m.ManageMode == ChannelManagementMessage.Mode.Close)
+            {
+                var c = Channels[val];
+                Channels.Remove(val);
+                c.Dispose();
             }
         }
 

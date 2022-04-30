@@ -1,4 +1,5 @@
-﻿using Net.Connection.Clients;
+﻿using Net.Connection.Channels;
+using Net.Connection.Clients;
 using Net.Connection.Servers;
 using System;
 using System.Net;
@@ -14,7 +15,7 @@ class Program
 
     static async Task Main(string[] args)
     {
-        s = new Server(IPAddress.Parse("192.168.0.10"), 6969, 3, new Net.NetSettings { UseEncryption = true, ConnectionPollTimeout = 50000});
+        s = new Server(IPAddress.Parse("192.168.0.10"), 6969, 5, new Net.NetSettings { UseEncryption = true, ConnectionPollTimeout = 50000, SingleThreadedServer = false});
         s.OnClientConnected = connected;
         s.OnClientDisconnected = (c, g) =>
         {
@@ -27,7 +28,7 @@ class Program
         {
             var l = Console.ReadLine();
             if (l.ToLowerInvariant().StartsWith("send channel"))
-                await s.Clients[0].SendBytesOnChannelAsync(Encoding.UTF8.GetBytes(l.Substring(13)), await s.Clients[0].OpenChannelAsync());
+                await (await s.Clients[0].OpenChannelAsync()).SendBytesAsync(Encoding.UTF8.GetBytes(l.Substring(13)));
             else if (l == "EXIT")
             {
                 s.ShutDown();
@@ -46,7 +47,7 @@ class Program
 
     static async void recieved(object obj, ServerClient c)
     {
-        foreach (GeneralClient b in s.Clients)
+        foreach (ObjectClient b in s.Clients)
             if (b != c)
                 await b.SendObjectAsync(obj);
     }
