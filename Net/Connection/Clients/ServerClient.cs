@@ -13,12 +13,10 @@ public class ServerClient : ObjectClient
 
     internal ServerClient(Socket soc, NetSettings settings = null) 
     {
-        if (settings == default) settings = new NetSettings();
-
         ConnectionState = ConnectState.PENDING;
 
-        this.Settings = settings ?? new NetSettings();
-        this.Soc = soc;
+        Settings = settings ?? new NetSettings();
+        Soc = soc;
 
         _reciever = RecieveMessages().GetEnumerator();
 

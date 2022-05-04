@@ -2,6 +2,7 @@
 
 using Clients;
 using Messages;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -18,11 +19,21 @@ public abstract class BaseServer<TClient, TChannel> where TClient : BaseClient<T
 
     public virtual void ShutDown()
     {
-        throw new System.NotImplementedException();
+        throw new NotImplementedException();
     }
 
     public virtual Task ShutDownAsync()
     {
-        throw new System.NotImplementedException();
+        throw new NotImplementedException();
+    }
+
+    public virtual void Stop()
+    {
+        throw new NotImplementedException();
+    }
+
+    public virtual Task StopAsync()
+    {
+        throw new NotImplementedException();
     }
 }

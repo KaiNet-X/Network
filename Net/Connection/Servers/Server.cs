@@ -15,28 +15,31 @@ public class Server : BaseServer<ServerClient, Channel>
     private List<Socket> _bindingSockets;
     private volatile SemaphoreSlim _semaphore;
 
+    public bool Active { get; private set; } = false;
+    public bool Listening { get; private set; } = false;
+
     public new List<ServerClient> Clients => base.Clients;
 
     public volatile ushort MaxClients;
 
-    public Action<Channel, ServerClient> OnClientChannelOpened;
-    public Action<object, ServerClient> OnClientObjectReceived;
-    public Action<ServerClient> OnClientConnected;
-    public Action<ServerClient, bool> OnClientDisconnected;
+    public event Action<Channel, ServerClient> OnClientChannelOpened;
+    public event Action<object, ServerClient> OnClientObjectReceived;
+    public event Action<ServerClient> OnClientConnected;
+    public event Action<ServerClient, bool> OnClientDisconnected;
 
     public Dictionary<string, Action<MessageBase, ServerClient>> CustomMessageHandlers = new();
 
     public ushort LoopDelay = 10;
 
-    public IPEndPoint[] Endpoints { get; private set; } 
+    public readonly IPEndPoint[] Endpoints;
 
-    public Server(IPAddress address, int port, ushort maxClients, NetSettings settings = default) : 
+    public Server(IPAddress address, int port, ushort maxClients, NetSettings settings = null) : 
         this(new IPEndPoint(address, port), maxClients, settings) { }
 
-    public Server(IPEndPoint endpoint, ushort maxClients, NetSettings settings = default) : 
+    public Server(IPEndPoint endpoint, ushort maxClients, NetSettings settings = null) : 
         this(new List<IPEndPoint> { endpoint}, maxClients, settings) { }
 
-    public Server(List<IPEndPoint> endpoints, ushort maxClients, NetSettings settings = default)
+    public Server(List<IPEndPoint> endpoints, ushort maxClients, NetSettings settings = null)
     {
         MaxClients = maxClients;
         Settings = settings ?? new NetSettings();
@@ -57,13 +60,15 @@ public class Server : BaseServer<ServerClient, Channel>
 
     public override void Start()
     {
+        Active = Listening = true;
+
         if (_bindingSockets.Count == 0)
             InitializeSockets(Endpoints);
 
         if (Settings?.SingleThreadedServer == true)
             Task.Run(async () =>
             {
-                while (true)
+                while (Active)
                 {
                     await Utilities.ConcurrentAccess(async (ct) =>
                     {
@@ -81,8 +86,14 @@ public class Server : BaseServer<ServerClient, Channel>
         Task.Run(async () =>
         {
             StartListening();
-            while (Clients.Count < MaxClients)
+            while (Listening)
             {
+                if (Clients.Count >= MaxClients)
+                {
+                    await Task.Delay(LoopDelay);
+                    continue;
+                }
+
                 var c = new ServerClient(await GetNextConnection(), Settings);
                 c.OnChannelOpened += (ch) => OnClientChannelOpened?.Invoke(ch, c);
                 c.OnReceiveObject += (obj) => OnClientObjectReceived?.Invoke(obj, c);
@@ -107,7 +118,7 @@ public class Server : BaseServer<ServerClient, Channel>
                 if (Settings?.SingleThreadedServer == false)
                     Task.Run(async () =>
                     {
-                        while (c.ConnectionState != ConnectState.CLOSED)
+                        while (c.ConnectionState != ConnectState.CLOSED && Active)
                         {
                             await c.GetNextMessage();
                             await Task.Delay(LoopDelay);
@@ -127,16 +138,28 @@ public class Server : BaseServer<ServerClient, Channel>
 
     public override async Task ShutDownAsync()
     {
+        await StopAsync();
+        await Utilities.ConcurrentAccess((ct) =>
+        {
+                       foreach (var c in Clients)
+            {
+                c.Close();
+            }
+            return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
+        }, _semaphore);
+    }
+
+    public override void Stop() =>
+        StopAsync().GetAwaiter().GetResult();
+
+    public override async Task StopAsync()
+    {
         await Utilities.ConcurrentAccess((ct) =>
         {
             while (_bindingSockets.Count > 0)
             {
                 _bindingSockets[0].Close();
-                _bindingSockets.Remove(_bindingSockets[0]);
-            }
-            foreach (var c in Clients)
-            {
-                c.Close();
+                _bindingSockets.RemoveAt(0);
             }
             return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
         }, _semaphore);

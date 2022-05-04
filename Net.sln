@@ -15,8 +15,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FileClient", "FileClient\Fi
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{A5608940-AA1C-40BA-888D-024478AAF258}"
 	ProjectSection(SolutionItems) = preProject
+		ExtensiveDocs.md = ExtensiveDocs.md
 		GettingStarted.md = GettingStarted.md
 		Home.md = Home.md
+		Server.md = Server.md
 	EndProjectSection
 EndProject
 Global
