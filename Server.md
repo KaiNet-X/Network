@@ -1,5 +1,5 @@
 # Server
-
+The out-of-the-box server implementation allows sending objects, directly accessing [ServerClient]() objects, and follows an event-based approach for receiving data.
 #### Constructors
 
 - `Server(IPAddress address, int port, ushort maxClients, NetSettings settings = null)` - Server that listens on one address/port combo
@@ -14,6 +14,7 @@
 - `ushort MaxClients` - Maximum number of allowed connections at a given time
 - `ushort LoopDelay` - Delay between client updates; highly reduces CPU usage
 - `readonly IPEndPoint[] Endpoints` - All endpoints the server is listening on
+- `readonly NetSettings Settings` - Settings
 
 #### Events/Delegates
 

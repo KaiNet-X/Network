@@ -1,8 +1,8 @@
 # Docs
 
 ### Most important:
-- [Server]()
-- [Client]()
+- [Server](https://github.com/KaiNet-X/Network/blob/master/Server.md)
+- [Client](https://github.com/KaiNet-X/Network/blob/master/Client.md)
 - [ServerClient]()
 - [Channel]()
 
@@ -12,12 +12,12 @@ This library is meant to be highly extensible, so inherritance is commonly used.
 
 ## Servers
 
-- [Server]() - Manages multiple connections with clients (as ServerClient objects)
+- [Server](https://github.com/KaiNet-X/Network/blob/master/Server.md) - Manages multiple connections with clients (as ServerClient objects)
 - [BaseServer]() - Base class for all servers
 
 ## Clients
 
-- [Client]() - Connects to a server and allows sending of regular objects and messages to and from a server; Ability to manage channels
+- [Client](https://github.com/KaiNet-X/Network/blob/master/Client.md) - Connects to a server and allows sending of regular objects and messages to and from a server; Ability to manage channels
 - [ServerClient]() - Server-side version of a client 
 - [ObjectClient]() - A client that allows sending of objects and usage of channels; base class for Client and ServerClient
 - [GeneralClient]() - Manages connectivity through sockets between client and server; base class for ObjectClient

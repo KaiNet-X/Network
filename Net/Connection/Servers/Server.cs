@@ -17,13 +17,14 @@ public class Server : BaseServer<ServerClient, Channel>
 
     public bool Active { get; private set; } = false;
     public bool Listening { get; private set; } = false;
-
     public new List<ServerClient> Clients => base.Clients;
 
+    public readonly NetSettings Settings;
     public volatile ushort MaxClients;
 
     public event Action<Channel, ServerClient> OnClientChannelOpened;
     public event Action<object, ServerClient> OnClientObjectReceived;
+    public event Action<MessageBase, ServerClient> OnClientReceivedUnregisteredMessege;
     public event Action<ServerClient> OnClientConnected;
     public event Action<ServerClient, bool> OnClientDisconnected;
 
@@ -55,8 +56,8 @@ public class Server : BaseServer<ServerClient, Channel>
     public void SendObjectToAll<T>(T obj) =>
         SendMessageToAll(new ObjectMessage(obj));
 
-    public async Task SendObjectToAllAsync<T>(T obj) =>
-        await SendMessageToAllAsync(new ObjectMessage(obj));
+    public async Task SendObjectToAllAsync<T>(T obj, CancellationToken token = default) =>
+        await SendMessageToAllAsync(new ObjectMessage(obj), token);
 
     public override void Start()
     {
@@ -95,6 +96,7 @@ public class Server : BaseServer<ServerClient, Channel>
                 }
 
                 var c = new ServerClient(await GetNextConnection(), Settings);
+
                 c.OnChannelOpened += (ch) => OnClientChannelOpened?.Invoke(ch, c);
                 c.OnReceiveObject += (obj) => OnClientObjectReceived?.Invoke(obj, c);
                 c.OnDisconnect += async (g) =>
@@ -107,8 +109,14 @@ public class Server : BaseServer<ServerClient, Channel>
 
                     OnClientDisconnected?.Invoke(c, g);
                 };
+                c.OnReceivedUnregisteredCustomMessage += (m) =>
+                {
+                    OnClientReceivedUnregisteredMessege?.Invoke(m, c);
+                };
+
                 foreach (var v in CustomMessageHandlers)
                     c.CustomMessageHandlers.Add(v.Key, (msg) => v.Value(msg, c));
+
                 await Utilities.ConcurrentAccess((ct) =>
                 {
                     Clients.Add(c);
@@ -168,17 +176,12 @@ public class Server : BaseServer<ServerClient, Channel>
     public override void SendMessageToAll(MessageBase msg) =>
         Task.Run(async () => await SendMessageToAllAsync(msg)).GetAwaiter().GetResult();
 
-    public override async Task SendMessageToAllAsync(MessageBase msg)
+    public override async Task SendMessageToAllAsync(MessageBase msg, CancellationToken token = default)
     {
-        await Utilities.ConcurrentAccess((ct) =>
+        await Utilities.ConcurrentAccess(async (ct) =>
         {
             foreach (var c in Clients)
-            {
-                if (ct.IsCancellationRequested)
-                    return Task.FromCanceled(ct);
-                c.SendMessage(msg);
-            }
-            return Task.CompletedTask;
+                await c.SendMessageAsync(msg, token);
         }, _semaphore);
     }
 

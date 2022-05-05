@@ -54,9 +54,9 @@ namespace Net.Connection.Clients
             c.Dispose();
         }
 
-        public override async Task CloseChannelAsync(Channel c)
+        public override async Task CloseChannelAsync(Channel c, CancellationToken token = default)
         {
-            await SendMessageAsync(new ChannelManagementMessage(c.Id, ChannelManagementMessage.Mode.Close));
+            await SendMessageAsync(new ChannelManagementMessage(c.Id, ChannelManagementMessage.Mode.Close), token);
             Channels.Remove(c.Id);
             c.Dispose();
         }
@@ -75,10 +75,10 @@ namespace Net.Connection.Clients
         public async Task SendBytesOnChannelAsync(byte[] bytes, Guid id, CancellationToken token = default) =>
             await Channels[id].SendBytesAsync(bytes, token);
 
-        public byte[] RecieveBytesFromChannel(Guid id) =>
+        public byte[] ReceiveBytesFromChannel(Guid id) =>
             Channels[id].RecieveBytes();
 
-        public async Task<byte[]> RecieveBytesFromChannelAsync(Guid id, CancellationToken token = default) =>
+        public async Task<byte[]> ReceiveBytesFromChannelAsync(Guid id, CancellationToken token = default) =>
             await Channels[id].RecieveBytesAsync(token);
 
         private async void HandleConnectionPoll(MessageBase mb)

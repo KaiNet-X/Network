@@ -10,7 +10,7 @@ public class Client : ObjectClient
     private Stopwatch _timer = new Stopwatch();
 
     public ushort LoopDelay = 10;
-    public readonly IPEndPoint TargetEndpoint;
+    private readonly IPEndPoint _targetEndpoint;
 
     public Client(IPAddress address, int port) : this (new IPEndPoint(address, port)) { }
 
@@ -19,7 +19,7 @@ public class Client : ObjectClient
     public Client(IPEndPoint ep)
     {
         ConnectionState = ConnectState.PENDING;
-        TargetEndpoint = ep;
+        _targetEndpoint = ep;
         Initialize();
     }
 
@@ -33,7 +33,7 @@ public class Client : ObjectClient
         {
             try
             {
-                Soc.Connect(TargetEndpoint);
+                Soc.Connect(_targetEndpoint);
                 break;
             }
             catch
@@ -54,7 +54,7 @@ public class Client : ObjectClient
         {
             try
             {
-                await Soc.ConnectAsync(TargetEndpoint);
+                await Soc.ConnectAsync(_targetEndpoint);
                 break;
             }
             catch
@@ -67,7 +67,7 @@ public class Client : ObjectClient
 
     private void Initialize()
     {
-        Soc = TargetEndpoint.AddressFamily == AddressFamily.InterNetwork ?
+        Soc = _targetEndpoint.AddressFamily == AddressFamily.InterNetwork ?
             new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp) :
             new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
 

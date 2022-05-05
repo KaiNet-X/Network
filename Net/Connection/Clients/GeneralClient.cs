@@ -30,15 +30,16 @@ public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChan
     {
         get
         {
-            var ep = (Soc?.LocalEndPoint as IPEndPoint);
+            var ep = Soc?.LocalEndPoint as IPEndPoint;
             return ep != null ? (_localEndpoint = ep) : _localEndpoint;
         }
     }
+
     public IPEndPoint RemoteEndpoint
     {
         get
         {
-            var ep = (Soc?.RemoteEndPoint as IPEndPoint);
+            var ep = Soc?.RemoteEndPoint as IPEndPoint;
             return ep != null ? (_remoteEndpoint = ep) : _remoteEndpoint;
         }
     }
@@ -50,10 +51,10 @@ public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChan
 
     private EncryptionMessage.Stage _encryptionStage = EncryptionMessage.Stage.NONE;
 
-    public event Action<MessageBase> OnRecievedUnregisteredCustomMessage;
+    public event Action<MessageBase> OnReceivedUnregisteredCustomMessage;
     public event Action<bool> OnDisconnect;
 
-    public Dictionary<string, Action<MessageBase>> CustomMessageHandlers { get; init; } = new();
+    public readonly Dictionary<string, Action<MessageBase>> CustomMessageHandlers = new();
 
     public override void SendMessage(MessageBase message)
     {
@@ -179,7 +180,7 @@ public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChan
                 {
                     var msgHandler = CustomMessageHandlers[message.MessageType];
                     if (msgHandler != null) msgHandler(message);
-                    else OnRecievedUnregisteredCustomMessage?.Invoke(message);
+                    else OnReceivedUnregisteredCustomMessage?.Invoke(message);
                 });
                 break;
 
