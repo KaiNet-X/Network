@@ -1,11 +1,5 @@
-# Client  : [ObjectClient]()
-The out-of-the-box Client implementation allows sending objects to the server, managing UDP channels, and follows an event based approach to receiving data.
-
-#### Constructors
-
-- `Client(IPEndPoint ep)` - Client targeting endpoint
-- `Client(IPAddress address, int port)` - Client targeting endpoint
-- `Client(string address, int port)` - Client targeting endpoint
+# ServerClient  : [ObjectClient]()
+The out-of-the-box ServerClient is similar to the [Client](https://github.com/KaiNet-X/Network/blob/master/Client.md) class, but it is designed to work on the server-side.
 
 #### Fields/Properties
 - `readonly Dictionary<string, Action<`[MessageBase]()`>> CustomMessageHandlers` - Handlers for custom messages
@@ -13,7 +7,6 @@ The out-of-the-box Client implementation allows sending objects to the server, m
 - `IPEndPoint LocalEndpoint` - Local endpoint
 - `IPEndPoint RemoteEndpoint`- Remote endpoint
 - [ConnectState]()` ConnectionState { get; protected set; }` - State of the connection
-- `ushort LoopDelay` - Delay between client updates; highly reduces CPU usage
 
 #### Events/Delegates
 

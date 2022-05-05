@@ -1,5 +1,5 @@
-# Server
-The out-of-the-box server implementation allows sending objects, directly accessing [ServerClient]() objects, and follows an event-based approach for receiving data.
+# Server : [BaseServer]()<[ServerClient](https://github.com/KaiNet-X/Network/blob/master/ServerClient.md), [Channel]()>
+The out-of-the-box server implementation allows sending objects, directly accessing [ServerClient](https://github.com/KaiNet-X/Network/blob/master/ServerClient.md) objects, and follows an event-based approach for receiving data.
 #### Constructors
 
 - `Server(IPAddress address, int port, ushort maxClients, NetSettings settings = null)` - Server that listens on one address/port combo
@@ -10,7 +10,7 @@ The out-of-the-box server implementation allows sending objects, directly access
 
 - `bool Active { get; private set; }` - True when the server is listening and managing connections
 - `bool Listening { get; private set; }` - True when the server is listening for new connections
-- `List<`[ServerClient]()`> Clients`- List of clients
+- `List<`[ServerClient](https://github.com/KaiNet-X/Network/blob/master/ServerClient.md)`> Clients`- List of clients
 - `ushort MaxClients` - Maximum number of allowed connections at a given time
 - `ushort LoopDelay` - Delay between client updates; highly reduces CPU usage
 - `readonly IPEndPoint[] Endpoints` - All endpoints the server is listening on
@@ -18,10 +18,10 @@ The out-of-the-box server implementation allows sending objects, directly access
 
 #### Events/Delegates
 
-- `event Action<Channel, `[ServerClient]()`> OnClientChannelOpened` - Inkvoked when a new channel is opened
-- `event Action<object, `[ServerClient]()`> OnClientObjectReceived` - Invoked when an object gets recieved
-- `event Action<`[ServerClient]()`> OnClientConnected` - Invoked when a client connects
-- `event Action<`[ServerClient]()`, bool> OnClientDisconnected` - Invoked when a client disconnects
+- `event Action<Channel, `[ServerClient](https://github.com/KaiNet-X/Network/blob/master/ServerClient.md)`> OnClientChannelOpened` - Inkvoked when a new channel is opened
+- `event Action<object, `[ServerClient](https://github.com/KaiNet-X/Network/blob/master/ServerClient.md)`> OnClientObjectReceived` - Invoked when an object gets recieved
+- `event Action<`[ServerClient](https://github.com/KaiNet-X/Network/blob/master/ServerClient.md)`> OnClientConnected` - Invoked when a client connects
+- `event Action<`[ServerClient](https://github.com/KaiNet-X/Network/blob/master/ServerClient.md)`, bool> OnClientDisconnected` - Invoked when a client disconnects
 
 #### Methods
 - `void SendObjectToAll<T>(T obj)` - Sends an object of any type to all clients
