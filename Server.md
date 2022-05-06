@@ -1,4 +1,4 @@
-# Server : [BaseServer]()<[ServerClient](https://github.com/KaiNet-X/Network/blob/master/ServerClient.md), [Channel]()>
+# Server : [BaseServer]()<[ServerClient](https://github.com/KaiNet-X/Network/blob/master/ServerClient.md), [Channel](https://github.com/KaiNet-X/Network/blob/master/Channel.md)>
 The out-of-the-box server implementation allows sending objects, directly accessing [ServerClient](https://github.com/KaiNet-X/Network/blob/master/ServerClient.md) objects, and follows an event-based approach for receiving data.
 #### Constructors
 
