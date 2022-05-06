@@ -41,7 +41,7 @@ namespace Net.Connection.Clients
         {
             Channel c = new Channel((Soc.LocalEndPoint as IPEndPoint).Address) { AesKey = Key };
             Channels.Add(c.Id, c);
-            SendMessage(new ChannelManagementMessage(c.Id, c.Port, ChannelManagementMessage.Mode.Create));
+            SendMessage(new ChannelManagementMessage(c.Id, c.LocalEndpoint.Port, ChannelManagementMessage.Mode.Create));
             return c;
         }
 
@@ -65,7 +65,7 @@ namespace Net.Connection.Clients
         {
             Channel c = new Channel((Soc.LocalEndPoint as IPEndPoint).Address) { AesKey = Key };
             Channels.Add(c.Id, c);
-            await SendMessageAsync(new ChannelManagementMessage(c.Id, c.Port, ChannelManagementMessage.Mode.Create));
+            await SendMessageAsync(new ChannelManagementMessage(c.Id, c.LocalEndpoint.Port, ChannelManagementMessage.Mode.Create));
             return c;
         }
 
@@ -110,7 +110,7 @@ namespace Net.Connection.Clients
                 var c = new Channel(ipAddr, remoteEndpoint, val) { AesKey = Key };
                 c.Connected = true;
                 Channels.Add(c.Id, c);
-                SendMessage(new ChannelManagementMessage(val, c.Port, ChannelManagementMessage.Mode.Confirm));
+                SendMessage(new ChannelManagementMessage(val, c.LocalEndpoint.Port, ChannelManagementMessage.Mode.Confirm));
                 Task.Run(() => OnChannelOpened?.Invoke(c));
             }
             else if (m.ManageMode == ChannelManagementMessage.Mode.Confirm)

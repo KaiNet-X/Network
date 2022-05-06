@@ -4,7 +4,7 @@
 - [Server](https://github.com/KaiNet-X/Network/blob/master/Server.md)
 - [Client](https://github.com/KaiNet-X/Network/blob/master/Client.md)
 - [ServerClient](https://github.com/KaiNet-X/Network/blob/master/ServerClient.md)
-- [Channel]()
+- [Channel](https://github.com/KaiNet-X/Network/blob/master/Channel.md)
 
 ### Extensibility
 
@@ -25,7 +25,7 @@ This library is meant to be highly extensible, so inherritance is commonly used.
 
 ## Channels
 
-- [Channel]() - UDP channel 
+- [Channel](https://github.com/KaiNet-X/Network/blob/master/Channel.md) - UDP channel 
 - [IChannel]() - Methods for sending and receiving raw bytes 
 
 ## Messages

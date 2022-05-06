@@ -18,7 +18,7 @@ The out-of-the-box server implementation allows sending objects, directly access
 
 #### Events/Delegates
 
-- `event Action<Channel, `[ServerClient](https://github.com/KaiNet-X/Network/blob/master/ServerClient.md)`> OnClientChannelOpened` - Inkvoked when a new channel is opened
+- `event Action<[Channel](https://github.com/KaiNet-X/Network/blob/master/Channel.md), `[ServerClient](https://github.com/KaiNet-X/Network/blob/master/ServerClient.md)`> OnClientChannelOpened` - Inkvoked when a new channel is opened
 - `event Action<object, `[ServerClient](https://github.com/KaiNet-X/Network/blob/master/ServerClient.md)`> OnClientObjectReceived` - Invoked when an object gets recieved
 - `event Action<`[ServerClient](https://github.com/KaiNet-X/Network/blob/master/ServerClient.md)`> OnClientConnected` - Invoked when a client connects
 - `event Action<`[ServerClient](https://github.com/KaiNet-X/Network/blob/master/ServerClient.md)`, bool> OnClientDisconnected` - Invoked when a client disconnects
