@@ -9,4 +9,4 @@ Click [here](https://github.com/KaiNet-X/Network/blob/master/gettingStarted.md) 
 
 Want to donate? [Buy me a coffee!](https://www.buymeacoffee.com/kainet)
 
-Want to contribute? [See the rules]()
+This documentation is in progress. All the essential classes are covered, but the rest will be added periodically.
