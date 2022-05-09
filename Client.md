@@ -1,4 +1,4 @@
-# Client  : [ObjectClient]()
+# Client  : [ObjectClient](https://github.com/KaiNet-X/Network/blob/master/ObjectClient.md)
 The out-of-the-box Client implementation allows sending objects to the server, managing UDP channels, and follows an event based approach to receiving data.
 
 #### Constructors
@@ -8,16 +8,16 @@ The out-of-the-box Client implementation allows sending objects to the server, m
 - `Client(string address, int port)` - Client targeting endpoint
 
 #### Fields/Properties
-- `readonly Dictionary<string, Action<`[MessageBase]()`>> CustomMessageHandlers` - Handlers for custom messages
+- `readonly Dictionary<string, Action<`[MessageBase](https://github.com/KaiNet-X/Network/blob/master/MessageBase.md)`>> CustomMessageHandlers` - Handlers for custom messages
 - `Dictionary<Guid, `[Channel](https://github.com/KaiNet-X/Network/blob/master/Channel.md)`> Channels` - Dictionary of channels by their ID
 - `IPEndPoint LocalEndpoint` - Local endpoint
 - `IPEndPoint RemoteEndpoint`- Remote endpoint
-- [ConnectState]()` ConnectionState { get; protected set; }` - State of the connection
+- [ConnectState](https://github.com/KaiNet-X/Network/blob/master/ConnectState.md)` ConnectionState { get; protected set; }` - State of the connection
 - `ushort LoopDelay` - Delay between client updates; highly reduces CPU usage
 
 #### Events/Delegates
 
-- `event Action<`[MessageBase]()`> OnReceivedUnregisteredCustomMessage` - Invoked when an unregistered message is recieved
+- `event Action<`[MessageBase](https://github.com/KaiNet-X/Network/blob/master/MessageBase.md)`> OnReceivedUnregisteredCustomMessage` - Invoked when an unregistered message is recieved
 - `event Action<bool> OnDisconnect` - Invoked when disconnected from
 - `event Action<object> OnReceiveObject` - Invoked when an object is received
 - `event Action<`[Channel](https://github.com/KaiNet-X/Network/blob/master/Channel.md)`> OnChannelOpened` - Invoked when a channel is opened
@@ -25,8 +25,8 @@ The out-of-the-box Client implementation allows sending objects to the server, m
 #### Methods
 - `void SendObject<T>(T obj)` - Sends an object to the server
 - `async Task SendObjectAsync<T>(T obj, CancellationToken token = default)` - Sends an object to the server
-- `void SendMessage(`[MessageBase]()` msg)` - Sends a message to the server
-- `async Task SendMessageAsync(`[MessageBase]()` msg)` - Sends a message to the server
+- `void SendMessage(`[MessageBase](https://github.com/KaiNet-X/Network/blob/master/MessageBase.md)` msg)` - Sends a message to the server
+- `async Task SendMessageAsync(`[MessageBase](https://github.com/KaiNet-X/Network/blob/master/MessageBase.md)` msg)` - Sends a message to the server
 - `void Close()` - Closes the connection
 - `void CloseAsync()` - Closes the connection
 - `void OpenChannel()` - Opens a channel

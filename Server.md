@@ -1,4 +1,4 @@
-# Server : [BaseServer]()<[ServerClient](https://github.com/KaiNet-X/Network/blob/master/ServerClient.md), [Channel](https://github.com/KaiNet-X/Network/blob/master/Channel.md)>
+# Server : [BaseServer](https://github.com/KaiNet-X/Network/blob/master/BaseServer.md)<[ServerClient](https://github.com/KaiNet-X/Network/blob/master/ServerClient.md), [Channel](https://github.com/KaiNet-X/Network/blob/master/Channel.md)>
 The out-of-the-box server implementation allows sending objects, directly accessing [ServerClient](https://github.com/KaiNet-X/Network/blob/master/ServerClient.md) objects, and follows an event-based approach for receiving data.
 #### Constructors
 
@@ -26,8 +26,8 @@ The out-of-the-box server implementation allows sending objects, directly access
 #### Methods
 - `void SendObjectToAll<T>(T obj)` - Sends an object of any type to all clients
 - `async Task SendObjectToAllAsync<T>(T obj)` - Sends an object of any type to all clients
-- `void SendMessageToAll(`[MessageBase]()` msg)` - Sends a message to all clients
-- `async Task SendMessageToAllAsync(`[MessageBase]()` msg)` - Sends a message to all clients
+- `void SendMessageToAll(`[MessageBase](https://github.com/KaiNet-X/Network/blob/master/MessageBase.md)` msg)` - Sends a message to all clients
+- `async Task SendMessageToAllAsync(`[MessageBase](https://github.com/KaiNet-X/Network/blob/master/MessageBase.md)` msg)` - Sends a message to all clients
 - `void Start()` - Starts the server and listens for incoming connections
 - `void StartAsync()` - Starts the server and listens for incoming connections
 - `void Stop()` - Stops listening for incoming connections

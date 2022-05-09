@@ -271,7 +271,7 @@ public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChan
 
     protected async Task DisconnectedEvent(bool graceful = false)
     {
-        await Utilities.ConcurrentAccess((c) =>
+         await Utilities.ConcurrentAccess((c) =>
         {
             if (ConnectionState == ConnectState.CLOSED) return Task.CompletedTask;
 

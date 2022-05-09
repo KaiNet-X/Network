@@ -17,7 +17,6 @@ public class Server : BaseServer<ServerClient, Channel>
 
     public bool Active { get; private set; } = false;
     public bool Listening { get; private set; } = false;
-    public new List<ServerClient> Clients => base.Clients;
 
     public readonly NetSettings Settings;
     public volatile ushort MaxClients;
@@ -139,6 +138,11 @@ public class Server : BaseServer<ServerClient, Channel>
             }
             _bindingSockets.ForEach(socket => socket.Close());
         });
+    }
+
+    public override async Task StartAsync()
+    {
+        await Task.Run(Start);
     }
 
     public override void ShutDown() =>

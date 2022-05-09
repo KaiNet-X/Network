@@ -1,11 +1,16 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
+    <PackageId>KaiNet.Net</PackageId>
+    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+    <Description>Net is an extensible networking library that is easy to get running. It is ideal for hobbiest programmers and rapid development as most of the networking features</Description>
+    <RepositoryUrl>https://github.com/KaiNet-X/Network</RepositoryUrl>
+    <Company>KaiNet</Company>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MessagePack" Version="2.2.113" />
+    <PackageReference Include="MessagePack" Version="2.3.85" />
   </ItemGroup>
 
 </Project>

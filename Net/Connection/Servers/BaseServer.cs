@@ -2,38 +2,27 @@
 
 using Clients;
 using Messages;
+using Channels;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-public abstract class BaseServer<TClient, TChannel> where TClient : BaseClient<TChannel> where TChannel : Channels.IChannel
+public abstract class BaseServer<TClient, TChannel> where TClient : BaseClient<TChannel> where TChannel : IChannel
 {
-    protected virtual List<TClient> Clients { get; init; }
+    public virtual List<TClient> Clients { get; init; }
 
     public abstract void Start();
-    public virtual Task StartAsync() => Task.Run(Start);
+    public abstract Task StartAsync();
 
     public abstract void SendMessageToAll(MessageBase msg);
     public abstract Task SendMessageToAllAsync(MessageBase msg, CancellationToken token = default);
 
-    public virtual void ShutDown()
-    {
-        throw new NotImplementedException();
-    }
+    public abstract void ShutDown();
 
-    public virtual Task ShutDownAsync()
-    {
-        throw new NotImplementedException();
-    }
+    public abstract Task ShutDownAsync();
 
-    public virtual void Stop()
-    {
-        throw new NotImplementedException();
-    }
+    public abstract void Stop();
 
-    public virtual Task StopAsync()
-    {
-        throw new NotImplementedException();
-    }
+    public abstract Task StopAsync();
 }

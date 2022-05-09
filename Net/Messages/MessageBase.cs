@@ -15,16 +15,10 @@ public abstract class MessageBase
     private static Dictionary<string, Type> Registered { get; set; } = new Dictionary<string, Type>();
     private string _messageType;
 
-    public string MessageType
-    {
-        get 
-        {
-            if (_messageType == null) _messageType = GetType().Name;
-            return _messageType;
-        }
-    }
+    public string MessageType => 
+        _messageType ??= GetType().Name;
 
-    public static void InitializeMessages()
+    private static void InitializeMessages()
     {
         var assemblies = AppDomain.CurrentDomain.GetAssemblies();
         //var assembly = Assembly.GetExecutingAssembly();
@@ -37,7 +31,7 @@ public abstract class MessageBase
             if (!Registered.ContainsKey(v.Name)) Registered[v.Name] = v;
     }
 
-    public static MessageBase Deserialize(byte[] obj)
+    internal protected static MessageBase Deserialize(byte[] obj)
     {
         string str = Encoding.UTF8.GetString(obj);
         MessageTypeChekcer msg = JsonSerializer.Deserialize<MessageTypeChekcer>(str);
