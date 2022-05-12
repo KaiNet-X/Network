@@ -23,7 +23,7 @@ public class Server : BaseServer<ServerClient, Channel>
 
     public event Action<Channel, ServerClient> OnClientChannelOpened;
     public event Action<object, ServerClient> OnClientObjectReceived;
-    public event Action<MessageBase, ServerClient> OnClientReceivedUnregisteredMessege;
+    public event Action<MessageBase, ServerClient> OnUnregisteredMessege;
     public event Action<ServerClient> OnClientConnected;
     public event Action<ServerClient, bool> OnClientDisconnected;
 
@@ -110,7 +110,7 @@ public class Server : BaseServer<ServerClient, Channel>
                 };
                 c.OnUnregisteredMessage += (m) =>
                 {
-                    OnClientReceivedUnregisteredMessege?.Invoke(m, c);
+                    OnUnregisteredMessege?.Invoke(m, c);
                 };
 
                 foreach (var v in CustomMessageHandlers)

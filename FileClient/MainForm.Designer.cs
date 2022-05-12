@@ -44,6 +44,7 @@
             this.label5 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
+            this.directoryButton = new System.Windows.Forms.Button();
             this.panel1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -51,7 +52,7 @@
             // 
             this.treeView.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.treeView.Location = new System.Drawing.Point(12, 47);
+            this.treeView.Location = new System.Drawing.Point(17, 69);
             this.treeView.Name = "treeView";
             this.treeView.Size = new System.Drawing.Size(199, 337);
             this.treeView.TabIndex = 0;
@@ -60,7 +61,7 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(12, 9);
+            this.label1.Location = new System.Drawing.Point(17, 31);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(92, 20);
             this.label1.TabIndex = 1;
@@ -70,7 +71,7 @@
             // 
             this.downloadButton.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.downloadButton.Location = new System.Drawing.Point(12, 399);
+            this.downloadButton.Location = new System.Drawing.Point(17, 421);
             this.downloadButton.Name = "downloadButton";
             this.downloadButton.Size = new System.Drawing.Size(199, 29);
             this.downloadButton.TabIndex = 2;
@@ -80,8 +81,8 @@
             // 
             // uploadButton
             // 
-            this.uploadButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.uploadButton.Location = new System.Drawing.Point(242, 399);
+            this.uploadButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.uploadButton.Location = new System.Drawing.Point(247, 421);
             this.uploadButton.Name = "uploadButton";
             this.uploadButton.Size = new System.Drawing.Size(207, 29);
             this.uploadButton.TabIndex = 3;
@@ -103,7 +104,7 @@
             this.panel1.Controls.Add(this.label6);
             this.panel1.Controls.Add(this.label5);
             this.panel1.Controls.Add(this.label3);
-            this.panel1.Location = new System.Drawing.Point(242, 47);
+            this.panel1.Location = new System.Drawing.Point(247, 69);
             this.panel1.Name = "panel1";
             this.panel1.Size = new System.Drawing.Size(207, 337);
             this.panel1.TabIndex = 4;
@@ -216,17 +217,28 @@
             // 
             this.label2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(246, 9);
+            this.label2.Location = new System.Drawing.Point(251, 31);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(118, 20);
             this.label2.TabIndex = 0;
             this.label2.Text = "Connection stats";
             // 
+            // directoryButton
+            // 
+            this.directoryButton.Image = global::FileClient.Properties.Resources.icons8_folder_48;
+            this.directoryButton.Location = new System.Drawing.Point(406, 12);
+            this.directoryButton.Name = "directoryButton";
+            this.directoryButton.Size = new System.Drawing.Size(48, 48);
+            this.directoryButton.TabIndex = 5;
+            this.directoryButton.UseVisualStyleBackColor = true;
+            this.directoryButton.Click += new System.EventHandler(this.directoryButton_Click);
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(466, 453);
+            this.ClientSize = new System.Drawing.Size(466, 510);
+            this.Controls.Add(this.directoryButton);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.panel1);
             this.Controls.Add(this.uploadButton);
@@ -262,5 +274,6 @@
         private Label sAddr;
         private Label label6;
         private Label label5;
+        private Button directoryButton;
     }
 }

@@ -82,15 +82,21 @@ async void HandleFileRequest (MessageBase msg, ServerClient c)
             }
             break;
         case FileRequestMessage.FileRequestType.Upload:
-            using (FileStream fs = File.Create(@$"{workingDirectory}\{fMsg.PathRequest}"))
+            Directory.CreateDirectory(@$"{workingDirectory}\{fMsg.PathRequest}");
+            using (FileStream fs = File.Create(@$"{workingDirectory}\{fMsg.PathRequest}\{fMsg.FileName}"))
             {
                 await fs.WriteAsync(fMsg.FileData);
+                var tree = GetTree(workingDirectory);
+                tree.Value = "Root";
+                await c.SendObjectAsync(tree);
             }
             break;
         case FileRequestMessage.FileRequestType.Tree:
-            var tree = GetTree(workingDirectory);
-            tree.Value = "Root";
-            await c.SendObjectAsync(tree);
+            {
+                var tree = GetTree(workingDirectory);
+                tree.Value = "Root";
+                await c.SendObjectAsync(tree);
+            }
             break;
     }
 }

@@ -1,15 +1,30 @@
 using Net.Connection.Clients;
+using System.Net;
+using Microsoft.VisualBasic;
+using System.Diagnostics;
 
 namespace FileClient;
 
 public partial class MainForm : Form
 {
-    private Client _client => Program.Client;
+    private Client _client
+    { 
+        get => Program.Client;
+        set => Program.Client = value;
+    } 
+
     private string _path;
+
+    string _dir = @$"{Directory.GetCurrentDirectory()}\Files";
 
     public MainForm()
     {
         InitializeComponent();
+
+        Directory.CreateDirectory(_dir);
+
+        _client = new Client(IPAddress.Parse(Interaction.InputBox("What is a valid server address?", "Address", "127.0.0.1")), 6969);
+        _client.Connect(15, true);
 
         cAddr.Text = _client.LocalEndpoint.Address.ToString();
         cPort.Text = _client.LocalEndpoint.Port.ToString();
@@ -20,18 +35,20 @@ public partial class MainForm : Form
         {
             if (obj is Tree t)
             {
-                treeView.Nodes.Clear();
-                Invoke(() => { treeView.Nodes.Add(ToNode(t)); });
+                Invoke(() =>
+                {
+                    treeView.Nodes.Clear();
+                    Invoke(() => { treeView.Nodes.Add(ToNode(t)); });
+                });
             }
         };
         _client.CustomMessageHandlers.Add(nameof(FileRequestMessage), async (msg) =>
         {
             var fMsg = msg as FileRequestMessage;
 
-            var dir = @$"{Directory.GetCurrentDirectory()}\Files";
-            Directory.CreateDirectory(dir);
+            Directory.CreateDirectory(_dir);
 
-            using (FileStream fs = File.Create($@"{dir}\{fMsg.FileName}"))
+            using (FileStream fs = File.Create($@"{_dir}\{fMsg.FileName}"))
             {
                 await fs.WriteAsync(fMsg.FileData);
             }
@@ -69,9 +86,17 @@ public partial class MainForm : Form
         _client.SendMessage(new FileRequestMessage { RequestType=FileRequestMessage.FileRequestType.Download, PathRequest = path });
     }
 
-    private void uploadButton_Click(object sender, EventArgs e)
+    private async void uploadButton_Click(object sender, EventArgs e)
     {
-
+        OpenFileDialog ofd = new OpenFileDialog();
+        if (ofd.ShowDialog() == DialogResult.OK)
+        {
+            using FileStream fs = File.OpenRead(ofd.FileName);
+            var newMsg = new FileRequestMessage() { RequestType = FileRequestMessage.FileRequestType.Upload, FileName = ofd.SafeFileName, PathRequest = "upload" };
+            newMsg.FileData = new byte[fs.Length];
+            await fs.ReadAsync(newMsg.FileData);
+            await _client.SendMessageAsync(newMsg);
+        }
     }
 
     private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
@@ -91,9 +116,10 @@ public partial class MainForm : Form
         treeNode.Text = tree.Value;
 
         foreach (var node in tree.Nodes)
-        {
             treeNode.Nodes.Add(ToNode(node));
-        }
         return treeNode;
     }
+
+    private void directoryButton_Click(object sender, EventArgs e) =>
+        Process.Start("explorer.exe", _dir);
 }
