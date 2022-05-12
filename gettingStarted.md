@@ -5,7 +5,7 @@ This page shows an example of how to use the most important features of this lib
 #### Note
 
 By default, the connection uses encryption, and both the main connection and udp channels share the same settings.
-
+See [Server](https://github.com/KaiNet-X/Network/blob/master/Server.md)
 ## Server
 
 ```c#
@@ -54,6 +54,7 @@ void OnChannelOpened(Channel c, ServerClient sc)
 ```
 
 ## Client
+See [Client](https://github.com/KaiNet-X/Network/blob/master/Client.md)
 
 ```c#
 // Creates a client targeting localhost on port 5555
@@ -83,5 +84,28 @@ void Disconnected(bool graceful)
 void ChannelOpened(Channel c)
 {
     // Do stuff with channel
+}
+```
+
+## Custom message
+Here is the filerequestmessage from a sample project. This hasn't been fully engineered to reliably send files of every size, and is just meant as an example.
+Use properties for data you want to transfer. See [MessageBase](https://github.com/KaiNet-X/Network/blob/master/MessageBase.md)
+```c#
+
+// Always make sure to include this, otherwise net won't recognize your custom message
+[RegisterMessage]
+internal class FileRequestMessage : MessageBase
+{
+    public FileRequestType RequestType { get; set; }
+    public string FileName { get; set; }
+    public byte[] FileData { get; set; }
+    public string PathRequest { get; set; }
+
+    public enum FileRequestType
+    {
+        Download,
+        Upload,
+        Tree
+    }
 }
 ```
