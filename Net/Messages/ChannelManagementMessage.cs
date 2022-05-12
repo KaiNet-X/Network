@@ -1,9 +1,10 @@
 ﻿namespace Net.Messages;
 
+using Attributes;
 using System;
 
-[Attributes.RegisterMessageAttribute]
-public class ChannelManagementMessage : MessageBase
+[RegisterMessageAttribute]
+public sealed class ChannelManagementMessage : MessageBase
 {
     public Guid Id { get; set; }
     public int Port { get; set; }

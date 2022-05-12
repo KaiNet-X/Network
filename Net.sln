@@ -20,9 +20,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{A5608940-A
 		Channel.md = Channel.md
 		Client.md = Client.md
 		ExtensiveDocs.md = ExtensiveDocs.md
+		GeneralClient.md = GeneralClient.md
 		GettingStarted.md = GettingStarted.md
-		Home.md = Home.md
 		MessageBase.md = MessageBase.md
+		ObjectClient.md = ObjectClient.md
+		RegisterMessageAttribute.md = RegisterMessageAttribute.md
 		Server.md = Server.md
 		ServerClient.md = ServerClient.md
 	EndProjectSection

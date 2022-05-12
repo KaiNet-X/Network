@@ -1,10 +1,11 @@
 ﻿namespace Net.Messages;
 
+using Attributes;
 using MessagePack;
 using System.Text.Json.Serialization;
 
-[Attributes.RegisterMessageAttribute]
-class SettingsMessage : MpMessage
+[RegisterMessageAttribute]
+sealed class SettingsMessage : MpMessage
 {
     public SettingsMessage(NetSettings settings)
     {

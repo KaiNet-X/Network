@@ -51,7 +51,7 @@ public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChan
 
     private EncryptionMessage.Stage _encryptionStage = EncryptionMessage.Stage.NONE;
 
-    public event Action<MessageBase> OnReceivedUnregisteredCustomMessage;
+    public event Action<MessageBase> OnUnregisteredMessage;
     public event Action<bool> OnDisconnect;
 
     public readonly Dictionary<string, Action<MessageBase>> CustomMessageHandlers = new();
@@ -180,7 +180,7 @@ public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChan
                 {
                     var msgHandler = CustomMessageHandlers[message.MessageType];
                     if (msgHandler != null) msgHandler(message);
-                    else OnReceivedUnregisteredCustomMessage?.Invoke(message);
+                    else OnUnregisteredMessage?.Invoke(message);
                 });
                 break;
 

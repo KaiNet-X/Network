@@ -1,4 +1,11 @@
-﻿namespace Net.Messages;
+# RegisterMessageAttribute
+Put this attribute on any custom message types you create so the library can recognize it. Custom messages can derive from MpMessage or MessageBase
+
+#### Example usage:
+
+This is the implementation of ObjectMessage which derives MpMessage -> MessageBase
+~~~c#
+namespace Net.Messages;
 
 using Attributes;
 using MessagePack;
@@ -21,3 +28,4 @@ public class ObjectMessage : MpMessage
     protected internal override object GetValue() =>
         GetValue(Utilities.GetTypeFromName(TypeName));
 }
+~~~

@@ -1,9 +1,10 @@
 ﻿namespace Net.Messages;
 
+using Attributes;
 using MessagePack;
 
-[Attributes.RegisterMessageAttribute]
-class ConfirmationMessage : MpMessage
+[RegisterMessageAttribute]
+sealed class ConfirmationMessage : MpMessage
 {
     public ConfirmationMessage(string @for)
     {

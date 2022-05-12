@@ -4,7 +4,7 @@ using MessagePack;
 using System.Security.Cryptography;
 
 [Attributes.RegisterMessageAttribute]
-class EncryptionMessage : MpMessage
+sealed class EncryptionMessage : MpMessage
 {
     public Stage stage { get; set; }
     public RSAParameters RSA { get; set; }

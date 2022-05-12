@@ -108,7 +108,7 @@ public class Server : BaseServer<ServerClient, Channel>
 
                     OnClientDisconnected?.Invoke(c, g);
                 };
-                c.OnReceivedUnregisteredCustomMessage += (m) =>
+                c.OnUnregisteredMessage += (m) =>
                 {
                     OnClientReceivedUnregisteredMessege?.Invoke(m, c);
                 };

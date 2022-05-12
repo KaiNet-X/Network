@@ -2,9 +2,9 @@
 The out-of-the-box server implementation allows sending objects, directly accessing [ServerClient](https://github.com/KaiNet-X/Network/blob/master/ServerClient.md) objects, and follows an event-based approach for receiving data.
 #### Constructors
 
-- `Server(IPAddress address, int port, ushort maxClients, NetSettings settings = null)` - Server that listens on one address/port combo
-- `Server(IPEndPoint endpoint, ushort maxClients, NetSettings settings = null)` - Server that listens on one address/port combo
-- `Server(List<IPEndPoint> endpoints, ushort maxClients, NetSettings settings = null)` - Server that listens on multiple address/port combos
+- `Server(IPAddress address, int port, ushort maxClients, `[NetSettings](https://github.com/KaiNet-X/Network/blob/master/NetSettings.md)` settings = null)` - Server that listens on one address/port combo
+- `Server(IPEndPoint endpoint, ushort maxClients, `[NetSettings](https://github.com/KaiNet-X/Network/blob/master/NetSettings.md)` settings = null)` - Server that listens on one address/port combo
+- `Server(List<IPEndPoint> endpoints, ushort maxClients, `[NetSettings](https://github.com/KaiNet-X/Network/blob/master/NetSettings.md)` settings = null)` - Server that listens on multiple address/port combos
 
 #### Fields/Properties
 

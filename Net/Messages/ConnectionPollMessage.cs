@@ -1,7 +1,7 @@
 ﻿namespace Net.Messages;
 
 [Attributes.RegisterMessageAttribute]
-public class ConnectionPollMessage : MessageBase
+public sealed class ConnectionPollMessage : MessageBase
 {
     public PollMessage PollState { get; set; }
 
