@@ -27,7 +27,7 @@ public class ServerClient : ObjectClient
     {
         var msg = _reciever.Current;
         if (msg != null) 
-            await HandleMessage(msg);
+            HandleMessage(msg);
         else if (ConnectionState == ConnectState.CONNECTED)
         {
             if (_timer == null) _timer = Stopwatch.StartNew();

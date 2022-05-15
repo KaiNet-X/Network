@@ -90,7 +90,7 @@ namespace Net.Connection.Clients
                     SendMessage(new ConnectionPollMessage { PollState = ConnectionPollMessage.PollMessage.ACK });
                     break;
                 case ConnectionPollMessage.PollMessage.ACK:
-                    PollConnected();
+                    OnPollConnected();
                     break;
                 case ConnectionPollMessage.PollMessage.DISCONNECT:
                     await DisconnectedEvent(true);

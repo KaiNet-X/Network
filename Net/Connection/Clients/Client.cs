@@ -82,7 +82,7 @@ public class Client : ObjectClient
             foreach (var msg in RecieveMessages())
             {
                 if (msg != null)
-                    await HandleMessage(msg);
+                    HandleMessage(msg);
                 else
                 {
                     if (_timer == null) _timer = Stopwatch.StartNew();

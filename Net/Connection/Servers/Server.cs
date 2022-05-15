@@ -70,7 +70,7 @@ public class Server : BaseServer<ServerClient, Channel>
             {
                 while (Active)
                 {
-                    await Utilities.ConcurrentAccess(async (ct) =>
+                    await Utilities.ConcurrentAccessAsync(async (ct) =>
                     {
                         foreach (ServerClient c in Clients)
                         {
@@ -100,7 +100,7 @@ public class Server : BaseServer<ServerClient, Channel>
                 c.OnReceiveObject += (obj) => OnClientObjectReceived?.Invoke(obj, c);
                 c.OnDisconnect += async (g) =>
                 {
-                    await Utilities.ConcurrentAccess((ct) =>
+                    await Utilities.ConcurrentAccessAsync((ct) =>
                     {
                         Clients.Remove(c);
                         return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
@@ -116,7 +116,7 @@ public class Server : BaseServer<ServerClient, Channel>
                 foreach (var v in CustomMessageHandlers)
                     c.CustomMessageHandlers.Add(v.Key, (msg) => v.Value(msg, c));
 
-                await Utilities.ConcurrentAccess((ct) =>
+                await Utilities.ConcurrentAccessAsync((ct) =>
                 {
                     Clients.Add(c);
                     return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
@@ -151,7 +151,7 @@ public class Server : BaseServer<ServerClient, Channel>
     public override async Task ShutDownAsync()
     {
         await StopAsync();
-        await Utilities.ConcurrentAccess((ct) =>
+        await Utilities.ConcurrentAccessAsync((ct) =>
         {
                        foreach (var c in Clients)
             {
@@ -166,7 +166,7 @@ public class Server : BaseServer<ServerClient, Channel>
 
     public override async Task StopAsync()
     {
-        await Utilities.ConcurrentAccess((ct) =>
+        await Utilities.ConcurrentAccessAsync((ct) =>
         {
             while (_bindingSockets.Count > 0)
             {
@@ -182,7 +182,7 @@ public class Server : BaseServer<ServerClient, Channel>
 
     public override async Task SendMessageToAllAsync(MessageBase msg, CancellationToken token = default)
     {
-        await Utilities.ConcurrentAccess(async (ct) =>
+        await Utilities.ConcurrentAccessAsync(async (ct) =>
         {
             foreach (var c in Clients)
                 await c.SendMessageAsync(msg, token);

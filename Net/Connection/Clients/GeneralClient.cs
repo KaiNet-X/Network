@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 
 public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChannel : IChannel
 {
+    private SemaphoreSlim _sendSemaphore = new SemaphoreSlim(1, 1);
     private SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
     private IPEndPoint _localEndpoint;
     private IPEndPoint _remoteEndpoint;
@@ -60,7 +61,8 @@ public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChan
     {
         try
         {
-            Soc.Send(MessageParser.AddTags(GetEncrypted(message.Serialize())).ToArray());
+            var bytes = MessageParser.AddTags(GetEncrypted(message.Serialize())).ToArray();
+            Utilities.ConcurrentAccess(() => Soc.Send(bytes), _sendSemaphore);
         }
         catch
         {
@@ -74,7 +76,10 @@ public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChan
 
         try
         {
-            await Soc.SendAsync(MessageParser.AddTags(GetEncrypted(await message.SerializeAsync(cts.Token))).ToArray(), SocketFlags.None, cts.Token);
+            var bytes = MessageParser.AddTags(GetEncrypted(await message.SerializeAsync(cts.Token))).ToArray();
+            await Utilities.ConcurrentAccessAsync(async (ct) => 
+                await Soc.SendAsync(bytes, SocketFlags.None, cts.Token), 
+                _sendSemaphore);
         }
         catch
         {
@@ -100,7 +105,7 @@ public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChan
         SendMessage(new ConnectionPollMessage { PollState = ConnectionPollMessage.PollMessage.SYN });
     }
 
-    protected void PollConnected()
+    protected void OnPollConnected()
     {
         Timer?.Reset();
         AwaitingPoll = false;
@@ -128,7 +133,7 @@ public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChan
         Key = null;
     }
 
-    protected Task HandleMessage(MessageBase message)
+    protected virtual void HandleMessage(MessageBase message)
     {
         switch (message)
         {
@@ -185,7 +190,6 @@ public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChan
                 break;
 
         }
-        return Task.CompletedTask;
     }
 
     protected override IEnumerable<MessageBase> RecieveMessages()
@@ -213,10 +217,10 @@ public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChan
                 continue;
             }
 
-            PollConnected();
+            OnPollConnected();
 
             buffer = new byte[available];
-            Task.Delay(10).Wait();
+            Task.Delay(10).GetAwaiter().GetResult();
 
             try
             {
@@ -260,7 +264,7 @@ public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChan
         Task.Run(async () => await CloseAsync()).GetAwaiter().GetResult();
 
     public override async Task CloseAsync() =>
-        await Utilities.ConcurrentAccess(async (ct) =>
+        await Utilities.ConcurrentAccessAsync(async (ct) =>
         {
             if (ConnectionState == ConnectState.CLOSED) return;
                  
@@ -271,7 +275,7 @@ public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChan
 
     protected async Task DisconnectedEvent(bool graceful = false)
     {
-         await Utilities.ConcurrentAccess((c) =>
+        await Utilities.ConcurrentAccessAsync((c) =>
         {
             if (ConnectionState == ConnectState.CLOSED) return Task.CompletedTask;
 

@@ -122,7 +122,21 @@ internal static class Utilities
         return Array.CreateInstance(baseType, lengths).GetType();
     }
 
-    public static async Task ConcurrentAccess(Func<CancellationToken, Task> a, SemaphoreSlim s, int? timeout = 2500)
+    public static void ConcurrentAccess(Action a, SemaphoreSlim s)
+    {
+        s.Wait();
+
+        try
+        {
+            a();
+        }
+        finally
+        {
+            s.Release();
+        }
+    }
+
+    public static async Task ConcurrentAccessAsync(Func<CancellationToken, Task> a, SemaphoreSlim s, int? timeout = 2500)
     {
         using CancellationTokenSource cts = new CancellationTokenSource();
 
