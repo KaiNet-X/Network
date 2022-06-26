@@ -23,7 +23,7 @@ public class ServerClient : ObjectClient
         (this as GeneralClient<Channels.Channel>).SendMessage(new SettingsMessage(Settings));
     }
 
-    internal async Task GetNextMessage()
+    internal void GetNextMessage()
     {
         var msg = _reciever.Current;
         if (msg != null) 

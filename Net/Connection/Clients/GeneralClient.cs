@@ -141,10 +141,10 @@ public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChan
                 Settings = m.GetValue() as NetSettings;
                 if (!Settings.UseEncryption)
                 {
-                    SendMessage(new ConfirmationMessage("resolved"));
+                    SendMessage(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));
                     ConnectionState = ConnectState.CONNECTED;
                 }
-                else SendMessage(new ConfirmationMessage("encryption"));
+                else SendMessage(new ConfirmationMessage(ConfirmationMessage.Confirmation.ENCRYPTION));
                 break;
             case EncryptionMessage m:
                 _encryptionStage = m.stage;
@@ -162,17 +162,17 @@ public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChan
                 }
                 else if (_encryptionStage == EncryptionMessage.Stage.SYNACK)
                 {
-                    SendMessage(new ConfirmationMessage("resolved"));
+                    SendMessage(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));
                     ConnectionState = ConnectState.CONNECTED;
                 }
                 break;
             case ConfirmationMessage m:
-                switch (m.GetValue() as string)
+                switch ((ConfirmationMessage.Confirmation)m.GetValue())
                 {
-                    case "resolved":
+                    case ConfirmationMessage.Confirmation.RESOLVED:
                         ConnectionState = ConnectState.CONNECTED;
                         break;
-                    case "encryption":
+                    case ConfirmationMessage.Confirmation.ENCRYPTION:
                         CryptoServices.GenerateKeyPair(out RSAParameters Public, out RSAParameters p);
                         RsaKey = p;
 
@@ -236,24 +236,13 @@ public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChan
             List<MessageBase> messages = null;
 
             if (Settings != null && Settings.UseEncryption)
-                switch (_encryptionStage)
+                messages = _encryptionStage switch
                 {
-                    case EncryptionMessage.Stage.SYN:
-                        messages = MessageParser.GetMessagesAes(ref allBytes, Key);
-                        break;
-                    case EncryptionMessage.Stage.ACK:
-                        messages = MessageParser.GetMessagesRsa(ref allBytes, RsaKey.Value);
-                        break;
-                    case EncryptionMessage.Stage.SYNACK:
-                        messages = MessageParser.GetMessagesAes(ref allBytes, Key);
-                        break;
-                    default:
-                        if (RsaKey == null)
-                            messages = MessageParser.GetMessages(ref allBytes);
-                        else
-                            messages = MessageParser.GetMessagesRsa(ref allBytes, RsaKey.Value);
-                        break;
-                }
+                    EncryptionMessage.Stage.SYN => MessageParser.GetMessagesAes(ref allBytes, Key),
+                    EncryptionMessage.Stage.ACK => MessageParser.GetMessagesRsa(ref allBytes, RsaKey.Value),
+                    EncryptionMessage.Stage.SYNACK => MessageParser.GetMessagesAes(ref allBytes, Key),
+                    _ => RsaKey == null ? MessageParser.GetMessages(ref allBytes) : MessageParser.GetMessagesRsa(ref allBytes, RsaKey.Value)
+                };
             else messages = MessageParser.GetMessages(ref allBytes);
 
             foreach (MessageBase msg in messages) yield return msg;

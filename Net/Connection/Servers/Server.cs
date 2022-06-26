@@ -65,7 +65,7 @@ public class Server : BaseServer<ServerClient, Channel>
         if (_bindingSockets.Count == 0)
             InitializeSockets(Endpoints);
 
-        if (Settings?.SingleThreadedServer == true)
+        if (Settings.SingleThreadedServer)
             Task.Run(async () =>
             {
                 while (Active)
@@ -76,7 +76,7 @@ public class Server : BaseServer<ServerClient, Channel>
                         {
                             if (ct.IsCancellationRequested || c.ConnectionState == ConnectState.CLOSED)
                                 return;
-                            await c.GetNextMessage();
+                            c.GetNextMessage();
                         }
                     }, _semaphore);
                     await Task.Delay(LoopDelay);
@@ -122,18 +122,18 @@ public class Server : BaseServer<ServerClient, Channel>
                     return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
                 }, _semaphore);
 
-                if (Settings?.SingleThreadedServer == false)
+                if (!Settings.SingleThreadedServer)
                     Task.Run(async () =>
                     {
                         while (c.ConnectionState != ConnectState.CLOSED && Active)
                         {
-                            await c.GetNextMessage();
+                            c.GetNextMessage();
                             await Task.Delay(LoopDelay);
                         }
                     });
                 while (c.ConnectionState == ConnectState.PENDING) ;
 
-                c.SendMessage(new ConfirmationMessage("done"));
+                c.SendMessage(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));
                 OnClientConnected?.Invoke(c);
             }
             _bindingSockets.ForEach(socket => socket.Close());

@@ -13,6 +13,8 @@ var endpoints = new List<IPEndPoint>();
 foreach (var address in addresses)
     endpoints.Add(new IPEndPoint(address, 6969));
 
+endpoints.AddRange(new[] { new IPEndPoint(IPAddress.Any, 6969), new IPEndPoint(IPAddress.IPv6Any, 6969) });
+
 var server = new Server(endpoints, 5, new NetSettings { UseEncryption = false, ConnectionPollTimeout = 50000 });
 
 var workingDirectory = @$"{Directory.GetCurrentDirectory()}\Files";

@@ -12,6 +12,8 @@ public class Client : ObjectClient
     public ushort LoopDelay = 10;
     private readonly IPEndPoint _targetEndpoint;
 
+    public Task _listener { get; private set; }
+
     public Client(IPAddress address, int port) : this (new IPEndPoint(address, port)) { }
 
     public Client(string address, int port) : this(IPAddress.Parse(address), port) { }
@@ -27,13 +29,12 @@ public class Client : ObjectClient
     {
         if (Soc == null) Initialize();
 
-        StartLoop();
-
         for (int i = 0; i <= maxAttempts; i++)
         {
             try
             {
                 Soc.Connect(_targetEndpoint);
+                StartLoop();
                 break;
             }
             catch
@@ -42,19 +43,20 @@ public class Client : ObjectClient
                     throw;
             }
         }
+        while (ConnectionState == ConnectState.PENDING) ;
     }
 
     public async Task ConnectAsync(int maxAttempts = 0, bool throwWhenExausted = false)
     {
         if (Soc == null) Initialize();
 
-        StartLoop();
-
         for (int i = 0; i <= maxAttempts; i++)
         {
             try
             {
                 await Soc.ConnectAsync(_targetEndpoint);
+                StartLoop();
+
                 break;
             }
             catch
@@ -63,6 +65,8 @@ public class Client : ObjectClient
                     throw;
             }
         }
+        while (ConnectionState == ConnectState.PENDING)
+            await Task.Delay(10);
     }
 
     private void Initialize()
@@ -77,7 +81,7 @@ public class Client : ObjectClient
 
     private void StartLoop()
     {
-        Task.Run(async () =>
+        _listener = Task.Run(async () =>
         {
             foreach (var msg in RecieveMessages())
             {
