@@ -1,137 +1,157 @@
-﻿using Net.Connection.Channels;
+﻿namespace Net.Connection.Clients;
+
+using Net.Connection.Channels;
 using Net.Messages;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Net.Connection.Clients
+public class ObjectClient : GeneralClient<UdpChannel>
 {
-    public class ObjectClient : GeneralClient<Channel>
+    public event Action<object> OnReceiveObject;
+    public event Action<UdpChannel> OnChannelOpened;
+    private List<UdpChannel> _connectionWait = new ();
+
+    public ObjectClient()
     {
-        public event Action<object> OnReceiveObject;
-        public event Action<Channel> OnChannelOpened;
+        CustomMessageHandlers.Add(nameof(ConnectionPollMessage), HandleConnectionPoll);
+        CustomMessageHandlers.Add(nameof(ChannelManagementMessage), HandleChannelManagement);
+        CustomMessageHandlers.Add(nameof(ObjectMessage), HandleObject);
+    }
 
-        public ObjectClient()
+    public new void SendMessage(MessageBase message)
+    {
+        if (ConnectionState == ConnectState.CONNECTED)
+            base.SendMessage(message);
+    }
+
+    public new async Task SendMessageAsync(MessageBase message, CancellationToken token = default)
+    {
+        if (ConnectionState == ConnectState.CONNECTED)
+            await base.SendMessageAsync(message, token);
+    }
+
+    public virtual void SendObject<T>(T obj) =>
+        SendMessage(new ObjectMessage(obj));
+
+    public virtual async Task SendObjectAsync<T>(T obj, CancellationToken token = default) =>
+        await SendMessageAsync(new ObjectMessage(obj), token);
+
+    public override void CloseChannel(UdpChannel c)
+    {
+        SendMessage(new ChannelManagementMessage(c.Remote.Port, ChannelManagementMessage.Mode.Close));
+        Channels.Remove(c);
+        c.Dispose();
+    }
+
+    public override async Task CloseChannelAsync(UdpChannel c, CancellationToken token = default)
+    {
+        await SendMessageAsync(new ChannelManagementMessage(c.Remote.Port, ChannelManagementMessage.Mode.Close), token);
+        Channels.Remove(c);
+        c.Dispose();
+    }
+
+    public override UdpChannel OpenChannel()
+    {
+        var key = Settings.EncryptChannels ? CryptoServices.KeyFromHash(CryptoServices.CreateHash(Guid.NewGuid().ToByteArray())) : null;
+
+        UdpChannel c = Settings.EncryptChannels ?
+            new(new IPEndPoint(LocalEndpoint.Address, 0), key) :
+            new(new IPEndPoint(LocalEndpoint.Address, 0));
+
+        ChannelManagementMessage m = Settings.EncryptChannels ?
+            new ChannelManagementMessage(c.Local.Port, ChannelManagementMessage.Mode.Create, key) :
+            new ChannelManagementMessage(c.Local.Port, ChannelManagementMessage.Mode.Create);
+
+        _connectionWait.Add(c);
+
+        SendMessage(m);
+
+        while (_connectionWait.Contains(c))
+            Thread.Sleep(10);
+
+        Channels.Add(c);
+
+        return c;
+    }
+
+    public override async Task<UdpChannel> OpenChannelAsync(CancellationToken token = default)
+    {
+        var key = Settings.EncryptChannels ? CryptoServices.KeyFromHash(CryptoServices.CreateHash(Guid.NewGuid().ToByteArray())) : null;
+
+        UdpChannel c = Settings.EncryptChannels ?
+            new(new IPEndPoint(LocalEndpoint.Address, 0), key) :
+            new(new IPEndPoint(LocalEndpoint.Address, 0));
+
+        ChannelManagementMessage m = Settings.EncryptChannels ?
+            new ChannelManagementMessage(c.Local.Port, ChannelManagementMessage.Mode.Create, key) :
+            new ChannelManagementMessage(c.Local.Port, ChannelManagementMessage.Mode.Create);
+
+        _connectionWait.Add(c);
+
+        await SendMessageAsync(m, token);
+
+        while (_connectionWait.Contains(c))
+            await Task.Delay(10);
+
+        Channels.Add(c);
+
+        return c;
+    }
+
+    private async void HandleConnectionPoll(MessageBase mb)
+    {
+        var m = mb as ConnectionPollMessage;
+        switch (m.PollState)
         {
-            CustomMessageHandlers.Add(nameof(ConnectionPollMessage), HandleConnectionPoll);
-            CustomMessageHandlers.Add(nameof(ChannelManagementMessage), HandleChannelManagement);
-            CustomMessageHandlers.Add(nameof(ObjectMessage), HandleObject);
+            case ConnectionPollMessage.PollMessage.SYN:
+                SendMessage(new ConnectionPollMessage { PollState = ConnectionPollMessage.PollMessage.ACK });
+                break;
+            case ConnectionPollMessage.PollMessage.ACK:
+                OnPollConnected();
+                break;
+            case ConnectionPollMessage.PollMessage.DISCONNECT:
+                await DisconnectedEvent(true);
+                break;
         }
+    }
 
-        public new void SendMessage(MessageBase message)
+    private void HandleChannelManagement(MessageBase mb)
+    {
+        var m = mb as ChannelManagementMessage;
+
+        if (m.ManageMode == ChannelManagementMessage.Mode.Create)
         {
-            if (ConnectionState == ConnectState.CONNECTED)
-                base.SendMessage(message);
-        }
+            var remoteEndpoint = new IPEndPoint(RemoteEndpoint.Address, m.Port);
+            UdpChannel c = Settings.UseEncryption ?
+                new (new IPEndPoint(LocalEndpoint.Address, 0), m.Aes) :
+                new (new IPEndPoint(LocalEndpoint.Address, 0));
 
-        public new async Task SendMessageAsync(MessageBase message, CancellationToken token = default)
+            c.SetRemote(remoteEndpoint);
+            Channels.Add(c);
+            SendMessage(new ChannelManagementMessage(c.Local.Port, ChannelManagementMessage.Mode.Confirm, m.Port));
+            Task.Run(() => OnChannelOpened?.Invoke(c));
+        }
+        else if (m.ManageMode == ChannelManagementMessage.Mode.Confirm)
         {
-            if (ConnectionState == ConnectState.CONNECTED)
-                await base.SendMessageAsync(message, token);
+            var c = _connectionWait.First(c => c.Local.Port == m.IdPort);
+            c.SetRemote(new IPEndPoint(LocalEndpoint.Address, m.Port));
+            _connectionWait.Remove(c);
         }
-
-        public virtual void SendObject<T>(T obj) =>
-            SendMessage(new ObjectMessage(obj));
-
-        public virtual async Task SendObjectAsync<T>(T obj, CancellationToken token = default) =>
-            await SendMessageAsync(new ObjectMessage(obj), token);
-
-        public override Channel OpenChannel()
+        else if (m.ManageMode == ChannelManagementMessage.Mode.Close)
         {
-            Channel c = new Channel((Soc.LocalEndPoint as IPEndPoint).Address) { AesKey = Key };
-            Channels.Add(c.Id, c);
-            SendMessage(new ChannelManagementMessage(c.Id, c.LocalEndpoint.Port, ChannelManagementMessage.Mode.Create));
-            return c;
+            var c = Channels.First(ch => ch.Local.Port == m.Port);
+            Channels.Remove(c);
         }
+    }
 
-        public void CloseChannel(Guid id) => CloseChannel(Channels[id]);
+    private void HandleObject(MessageBase mb)
+    {
+        var m = mb as ObjectMessage;
 
-        public override void CloseChannel(Channel c)
-        {
-            SendMessage(new ChannelManagementMessage(c.Id, ChannelManagementMessage.Mode.Close));
-            Channels.Remove(c.Id);
-            c.Dispose();
-        }
-
-        public override async Task CloseChannelAsync(Channel c, CancellationToken token = default)
-        {
-            await SendMessageAsync(new ChannelManagementMessage(c.Id, ChannelManagementMessage.Mode.Close), token);
-            Channels.Remove(c.Id);
-            c.Dispose();
-        }
-
-        public override async Task<Channel> OpenChannelAsync(CancellationToken token = default)
-        {
-            Channel c = new Channel((Soc.LocalEndPoint as IPEndPoint).Address) { AesKey = Key };
-            Channels.Add(c.Id, c);
-            await SendMessageAsync(new ChannelManagementMessage(c.Id, c.LocalEndpoint.Port, ChannelManagementMessage.Mode.Create));
-            return c;
-        }
-
-        public void SendBytesOnChannel(byte[] bytes, Guid id) =>
-            Channels[id].SendBytes(bytes);
-
-        public async Task SendBytesOnChannelAsync(byte[] bytes, Guid id, CancellationToken token = default) =>
-            await Channels[id].SendBytesAsync(bytes, token);
-
-        public byte[] ReceiveBytesFromChannel(Guid id) =>
-            Channels[id].RecieveBytes();
-
-        public async Task<byte[]> ReceiveBytesFromChannelAsync(Guid id, CancellationToken token = default) =>
-            await Channels[id].RecieveBytesAsync(token);
-
-        private async void HandleConnectionPoll(MessageBase mb)
-        {
-            var m = mb as ConnectionPollMessage;
-            switch (m.PollState)
-            {
-                case ConnectionPollMessage.PollMessage.SYN:
-                    SendMessage(new ConnectionPollMessage { PollState = ConnectionPollMessage.PollMessage.ACK });
-                    break;
-                case ConnectionPollMessage.PollMessage.ACK:
-                    OnPollConnected();
-                    break;
-                case ConnectionPollMessage.PollMessage.DISCONNECT:
-                    await DisconnectedEvent(true);
-                    break;
-            }
-        }
-
-        private void HandleChannelManagement(MessageBase mb)
-        {
-            var m = mb as ChannelManagementMessage;
-
-            var val = m.Id;
-            if (m.ManageMode == ChannelManagementMessage.Mode.Create)
-            {
-                var ipAddr = (Soc.LocalEndPoint as IPEndPoint).Address;
-                var remoteEndpoint = new IPEndPoint((Soc.RemoteEndPoint as IPEndPoint).Address, m.Port);
-                var c = new Channel(ipAddr, remoteEndpoint, val) { AesKey = Key };
-                c.Connected = true;
-                Channels.Add(c.Id, c);
-                SendMessage(new ChannelManagementMessage(val, c.LocalEndpoint.Port, ChannelManagementMessage.Mode.Confirm));
-                Task.Run(() => OnChannelOpened?.Invoke(c));
-            }
-            else if (m.ManageMode == ChannelManagementMessage.Mode.Confirm)
-            {
-                var c = Channels[val];
-                c.SetRemote(new IPEndPoint((Soc.RemoteEndPoint as IPEndPoint).Address, m.Port));
-                c.Connected = true;
-            }
-            else if (m.ManageMode == ChannelManagementMessage.Mode.Close)
-            {
-                var c = Channels[val];
-                Channels.Remove(val);
-                c.Dispose();
-            }
-        }
-
-        private void HandleObject(MessageBase mb)
-        {
-            var m = mb as ObjectMessage;
-
-            Task.Run(() => OnReceiveObject?.Invoke(m.GetValue()));
-        }
+        Task.Run(() => OnReceiveObject?.Invoke(m.GetValue()));
     }
 }

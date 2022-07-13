@@ -2,6 +2,6 @@
 
 public class MSG
 {
-    public string Sender;
-    public string Message;
+    public string Sender { get; set; }
+    public string Message { get; set; }
 }

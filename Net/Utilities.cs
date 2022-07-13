@@ -13,39 +13,23 @@ internal static class Utilities
     public static int IndexInByteArray(byte[] Bytes, byte[] SearchBytes, int offset = 0)
     {
         for (int i = offset; i <= Bytes.Length - SearchBytes.Length; i++)
-        {
             for (int I = 0; I < SearchBytes.Length; I++)
-            {
                 if (!SearchBytes[I].Equals(Bytes[i + I]))
-                {
                     break;
-                }
                 else if (I == SearchBytes.Length - 1 && SearchBytes[I].Equals(Bytes[i + I]))
-                {
                     return i;
-                }
-            }
-        }
+
         return -1;
     }
 
-    public static int IndexInByteArray(IEnumerable<byte> bytes, byte[] SearchBytes, int offset = 0)
+    public static int IndexInByteArray(List<byte> bytes, byte[] SearchBytes, int offset = 0)
     {
-        var byteArray = bytes.ToArray();
-        for (int i = offset; i <= byteArray.Length - SearchBytes.Length; i++)
-        {
+        for (int i = offset; i <= bytes.Count - SearchBytes.Length; i++)
             for (int I = 0; I < SearchBytes.Length; I++)
-            {
-                if (!SearchBytes[I].Equals(byteArray[i + I]))
-                {
+                if (!SearchBytes[I].Equals(bytes[i + I]))
                     break;
-                }
-                else if (I == SearchBytes.Length - 1 && SearchBytes[I].Equals(byteArray[i + I]))
-                {
+                else if (I == SearchBytes.Length - 1 && SearchBytes[I].Equals(bytes[i + I]))
                     return i;
-                }
-            }
-        }
         return -1;
     }
 

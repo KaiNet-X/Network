@@ -1,10 +1,10 @@
 ﻿namespace Net.Messages;
 
-using MessagePack;
 using System.Security.Cryptography;
+using Attributes;
 
-[Attributes.RegisterMessageAttribute]
-sealed class EncryptionMessage : MpMessage
+[RegisterMessage]
+public sealed class EncryptionMessage : MessageBase
 {
     public Stage stage { get; set; }
     public RSAParameters RSA { get; set; }
@@ -14,13 +14,12 @@ sealed class EncryptionMessage : MpMessage
     {
         stage = Stage.SYN;
         RSA = param;
-        Content = MessagePackSerializer.Serialize(param, ResolveOptions);
     }
 
     public EncryptionMessage(byte[] param)
     {
         stage = Stage.ACK;
-        Content = AES = param;
+        AES = param;
     }
 
     public EncryptionMessage(Stage stage)
@@ -29,12 +28,6 @@ sealed class EncryptionMessage : MpMessage
     }
 
     public EncryptionMessage() { }
-
-    protected internal override object GetValue()
-    {
-        if (stage == Stage.ACK) return Content;
-        else return MessagePackSerializer.Deserialize<RSAParameters>(Content, ResolveOptions);
-    }
 
     public enum Stage
     {

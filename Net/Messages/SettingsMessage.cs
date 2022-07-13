@@ -1,20 +1,18 @@
 ﻿namespace Net.Messages;
 
 using Attributes;
-using MessagePack;
 using System.Text.Json.Serialization;
 
-[RegisterMessageAttribute]
-sealed class SettingsMessage : MpMessage
+[RegisterMessage]
+public sealed class SettingsMessage : MessageBase
 {
+    public NetSettings Settings { get; set; }
+
     public SettingsMessage(NetSettings settings)
     {
-        Content = MessagePackSerializer.Serialize(settings, ResolveOptions);
+        Settings = settings;
     }
 
     [JsonConstructor]
     public SettingsMessage() { }
-
-    protected internal override object GetValue() =>
-        GetValue(typeof(NetSettings));
 }

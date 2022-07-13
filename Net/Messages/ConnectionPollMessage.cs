@@ -2,7 +2,7 @@
 
 using Attributes;
 
-[RegisterMessageAttribute]
+[RegisterMessage]
 public sealed class ConnectionPollMessage : MessageBase
 {
     public PollMessage PollState { get; set; }

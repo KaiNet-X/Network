@@ -1,23 +1,23 @@
 ﻿namespace Net.Messages;
 
 using Attributes;
-using MessagePack;
 using System;
 
-[RegisterMessageAttribute]
-public class ObjectMessage : MpMessage
+[RegisterMessage]
+public sealed class ObjectMessage : MessageBase
 {
     public string TypeName { get; set; }
+    public byte[] Data { get; set; }
 
     public ObjectMessage(object obj)
     {
         Type t = obj.GetType();
         TypeName = t.Name;
-        Content = MessagePackSerializer.Serialize(t, obj, ResolveOptions);
+        Data = Serializer.Serialize(obj, t);
     }
 
     public ObjectMessage() { }
 
-    protected internal override object GetValue() =>
-        GetValue(Utilities.GetTypeFromName(TypeName));
+    internal object GetValue() =>
+        Serializer.Deserialize(Data, Utilities.GetTypeFromName(TypeName));
 }

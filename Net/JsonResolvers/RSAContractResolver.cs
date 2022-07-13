@@ -6,7 +6,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-internal class RSAContractResolver : JsonConverter<RSAParameters>
+public class RSAContractResolver : JsonConverter<RSAParameters>
 {
     public RSAContractResolver()
     {
@@ -16,24 +16,38 @@ internal class RSAContractResolver : JsonConverter<RSAParameters>
     public override RSAParameters Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         var rsa = new RSAParameters();
-        var keys = new List<Dictionary<string, byte[]>>();
+        var keys = new Dictionary<string, byte[]>();
 
         var currentProp = "";
-        var currentNumber = 0;
+        List<byte> bytes = new List<byte>();
         while (reader.Read())
         {
             switch (reader.TokenType)
             {
-                case JsonTokenType.StartObject:
-                case JsonTokenType.EndObject:
-                case JsonTokenType.StartArray:
-                case JsonTokenType.EndArray:
-                case JsonTokenType.String:
-                case JsonTokenType.Number:
                 case JsonTokenType.PropertyName:
+                    currentProp = reader.GetString();
                     break;
+                case JsonTokenType.EndArray:
+                    keys[currentProp] = bytes.ToArray();
+                    bytes.Clear();
+                    break;
+                case JsonTokenType.Number:
+                    bytes.Add(reader.GetByte());
+                    break;
+                case JsonTokenType.EndObject:
+                    goto exit;
             }
         }
+        exit:
+        if (keys.ContainsKey("M"))
+            rsa.Modulus = keys["M"];
+        if (keys.ContainsKey("M"))
+            rsa.Exponent = keys["E"];
+        //rsa.DP = keys["DP"];
+        //rsa.D = keys["D"];
+        //rsa.DQ = keys["DQ"];
+        //rsa.P = keys["P"];
+        //rsa.InverseQ = keys["InverseQ"];
 
         return rsa;
     }
@@ -42,24 +56,28 @@ internal class RSAContractResolver : JsonConverter<RSAParameters>
     {
         void Write(byte[] bytes, string name)
         {
+            if (bytes == null)
+            {
+                writer.WriteNull(name);
+                return;
+            }
+
             writer.WriteStartArray(name);
             foreach (byte b in bytes)
-            {
                 writer.WriteNumberValue(b);
-            }
             writer.WriteEndArray();
         }
 
         writer.WriteStartObject();
 
-        Write(value.D, "D");
-        Write(value.DP, "DP");
-        Write(value.DQ, "DQ");
         Write(value.Exponent, "E");
-        Write(value.InverseQ, "IQ");
         Write(value.Modulus, "M");
-        Write(value.Q, "Q");
-        Write(value.P, "P");
+        //Write(value.D, "D");
+        //Write(value.DP, "DP");
+        //Write(value.DQ, "DQ");
+        //Write(value.InverseQ, "IQ");
+        //Write(value.Q, "Q");
+        //Write(value.P, "P");
 
         writer.WriteEndObject();
     }

@@ -7,8 +7,6 @@ using System.Threading.Tasks;
 
 public class Client : ObjectClient
 {
-    private Stopwatch _timer = new Stopwatch();
-
     public ushort LoopDelay = 10;
     private readonly IPEndPoint _targetEndpoint;
 
@@ -56,7 +54,6 @@ public class Client : ObjectClient
             {
                 await Soc.ConnectAsync(_targetEndpoint);
                 StartLoop();
-
                 break;
             }
             catch
@@ -66,7 +63,7 @@ public class Client : ObjectClient
             }
         }
         while (ConnectionState == ConnectState.PENDING)
-            await Task.Delay(10);
+            await Task.Delay(50);
     }
 
     private void Initialize()
@@ -87,17 +84,9 @@ public class Client : ObjectClient
             {
                 if (msg != null)
                     HandleMessage(msg);
-                else
-                {
-                    if (_timer == null) _timer = Stopwatch.StartNew();
-                    else if (_timer?.ElapsedMilliseconds == 0)
-                        _timer.Restart();
-                    else if (_timer.ElapsedMilliseconds >= 1000)
-                    {
-                        _timer.Reset();
-                        StartConnectionPoll();
-                    }
-                }
+                else if (!AwaitingPoll)
+                    StartConnectionPoll();
+
                 await Task.Delay(LoopDelay);
             }
         });

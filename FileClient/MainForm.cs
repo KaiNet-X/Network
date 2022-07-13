@@ -1,9 +1,9 @@
+namespace FileClient;
+
 using Net.Connection.Clients;
 using System.Net;
 using Microsoft.VisualBasic;
 using System.Diagnostics;
-
-namespace FileClient;
 
 public partial class MainForm : Form
 {

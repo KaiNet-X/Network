@@ -10,7 +10,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
-public class Server : BaseServer<ServerClient, Channel>
+public class Server : BaseServer<ServerClient, UdpChannel>
 {
     private List<Socket> _bindingSockets;
     private volatile SemaphoreSlim _semaphore;
@@ -21,7 +21,7 @@ public class Server : BaseServer<ServerClient, Channel>
     public readonly NetSettings Settings;
     public volatile ushort MaxClients;
 
-    public event Action<Channel, ServerClient> OnClientChannelOpened;
+    public event Action<UdpChannel, ServerClient> OnClientChannelOpened;
     public event Action<object, ServerClient> OnClientObjectReceived;
     public event Action<MessageBase, ServerClient> OnUnregisteredMessege;
     public event Action<ServerClient> OnClientConnected;

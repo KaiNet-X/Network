@@ -1,26 +1,27 @@
 ﻿namespace Net.Messages;
 
 using Attributes;
-using System;
 
-[RegisterMessageAttribute]
+[RegisterMessage]
 public sealed class ChannelManagementMessage : MessageBase
 {
-    public Guid Id { get; set; }
     public int Port { get; set; }
+    public int? IdPort { get; set; }
+    public byte[] Aes { get; set; }
     public Mode ManageMode { get; set; }
 
-    public ChannelManagementMessage(Guid guid, int port, Mode mode)
+    public ChannelManagementMessage(int port, Mode mode, byte[] aes = null)
     {
-        Id = guid;
         Port = port;
         ManageMode = mode;
+        Aes = aes;
     }
 
-    public ChannelManagementMessage(Guid guid, Mode mode)
+    public ChannelManagementMessage(int port, Mode mode, int idPort)
     {
-        Id = guid;
+        Port = port;
         ManageMode = mode;
+        IdPort = idPort;
     }
 
     public ChannelManagementMessage() { }

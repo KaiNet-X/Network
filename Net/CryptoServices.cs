@@ -3,9 +3,12 @@
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
 
-internal static class CryptoServices
+public static class CryptoServices
 {
+    private static Aes _aes = GetAes();
+
     public static byte[] CreateHash(byte[] input)
     {
         using (HashAlgorithm algorithm = SHA256.Create())
@@ -47,17 +50,25 @@ internal static class CryptoServices
     {
         using (var provider = new RSACryptoServiceProvider())
         {
-            provider.ImportParameters(PrivateKey);
-            return provider.Decrypt(bytes, false);
+            try
+            {
+                provider.ImportParameters(PrivateKey);
+                return provider.Decrypt(bytes, false);
+
+            }
+            catch (System.Exception ex)
+            {
+                throw;
+            }
         }
     }
 
-    public static byte[] EncryptAES(byte[] input, byte[] key)
+    public static byte[] EncryptAES(byte[] input, byte[] key, byte[] iv)
     {
         byte[] result = null;
         using (MemoryStream memoryStream = new MemoryStream())
         {
-            using (CryptoStream cryptoStream = new CryptoStream(memoryStream, GetCryptoAlgorithm().CreateEncryptor(key, new byte[16]), CryptoStreamMode.Write))
+            using (CryptoStream cryptoStream = new CryptoStream(memoryStream, _aes.CreateEncryptor(key, iv), CryptoStreamMode.Write))
             {
                 cryptoStream.Write(input, 0, input.Length);
                 cryptoStream.FlushFinalBlock();
@@ -69,13 +80,11 @@ internal static class CryptoServices
         return result;
     }
 
-    public static byte[] DecryptAES(byte[] input, byte[] key)
+    public static byte[] DecryptAES(byte[] input, byte[] key, byte[] iv)
     {
-        byte[] outputBytes = input;
-
-        using (MemoryStream memoryStream = new MemoryStream(outputBytes))
+        using (MemoryStream memoryStream = new MemoryStream(input))
         {
-            using (CryptoStream cryptoStream = new CryptoStream(memoryStream, GetCryptoAlgorithm().CreateDecryptor(key, new byte[16]), CryptoStreamMode.Read))
+            using (CryptoStream cryptoStream = new CryptoStream(memoryStream, _aes.CreateDecryptor(key, iv), CryptoStreamMode.Read))
             {
                 using (var outputStream = new MemoryStream())
                 {
@@ -86,13 +95,45 @@ internal static class CryptoServices
         }
     }
 
-    private static RijndaelManaged GetCryptoAlgorithm()
+    public static async Task<byte[]> EncryptAESAsync(byte[] input, byte[] key, byte[] iv)
     {
-        RijndaelManaged algorithm = new RijndaelManaged();
-        algorithm.Padding = PaddingMode.PKCS7;
-        algorithm.Mode = CipherMode.CBC;
-        algorithm.KeySize = 128;
-        algorithm.BlockSize = 128;
-        return algorithm;
+        byte[] result = null;
+        using (MemoryStream memoryStream = new MemoryStream())
+        {
+            using (CryptoStream cryptoStream = new CryptoStream(memoryStream, _aes.CreateEncryptor(key, iv), CryptoStreamMode.Write))
+            {
+                await cryptoStream.WriteAsync(input, 0, input.Length);
+                await cryptoStream.FlushFinalBlockAsync();
+
+                result = memoryStream.ToArray();
+            }
+        }
+
+        return result;
+    }
+
+    public static async Task<byte[]> DecryptAESAsync(byte[] input, byte[] key, byte[] iv)
+    {
+        using (MemoryStream memoryStream = new MemoryStream(input))
+        {
+            using (CryptoStream cryptoStream = new CryptoStream(memoryStream, _aes.CreateDecryptor(key, iv), CryptoStreamMode.Read))
+            {
+                using (var outputStream = new MemoryStream())
+                {
+                    await cryptoStream.CopyToAsync(outputStream);
+                    return outputStream.ToArray();
+                }
+            }
+        }
+    }
+
+    private static Aes GetAes()
+    {
+        var a = Aes.Create();
+        a.Padding = PaddingMode.PKCS7;
+        a.Mode = CipherMode.CBC;
+        a.KeySize = 128;
+        a.BlockSize = 128;
+        return a;
     }
 }

@@ -2,14 +2,13 @@
 
 using Messages;
 using Net.Connection.Channels;
-using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
 public abstract class BaseClient<TChannel> where TChannel : IChannel
 {
-    public volatile Dictionary<Guid, TChannel> Channels = new();
+    public volatile List<TChannel> Channels = new();
 
     public abstract void SendMessage(MessageBase message);
 

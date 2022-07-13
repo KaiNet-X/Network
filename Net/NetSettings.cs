@@ -2,7 +2,8 @@
 
 public class NetSettings
 {
-    public bool UseEncryption = true;
-    public bool SingleThreadedServer = false;
-    public int ConnectionPollTimeout = 8000;
+    public bool UseEncryption { get; set; } = true;
+    public bool EncryptChannels { get; set; } = true;
+    public bool SingleThreadedServer { get; set; } = false;
+    public int ConnectionPollTimeout { get; set; } = 8000;
 }

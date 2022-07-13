@@ -9,11 +9,13 @@ using System.Threading.Tasks;
 var endpoints = new List<IPEndPoint>
 {
     new IPEndPoint(IPAddress.Any, 5555),
-    new IPEndPoint(IPAddress.IPv6Any, 5555)
+    new IPEndPoint(IPAddress.IPv6Any, 5555),
+    new IPEndPoint(IPAddress.Loopback, 5555),
+    new IPEndPoint(IPAddress.IPv6Loopback, 5555)
 };
 
 // Initialize server to listen on all available addresses with a maximum of 5 clients
-Server s = new Server(endpoints, 5, new Net.NetSettings { UseEncryption = true, ConnectionPollTimeout = 10000, SingleThreadedServer = false});
+Server s = new Server(endpoints, 5, new Net.NetSettings { UseEncryption = true, EncryptChannels = false, ConnectionPollTimeout = 40000, SingleThreadedServer = false});
 
 s.OnClientConnected += Connected;
 s.OnClientDisconnected += Disconnected;

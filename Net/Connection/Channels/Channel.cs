@@ -59,7 +59,7 @@ public class Channel : IChannel
             _sendBytes.Add(data);
             return;
         }
-        data = AesKey == null ? data : CryptoServices.EncryptAES(data, AesKey);
+        data = AesKey == null ? data : CryptoServices.EncryptAES(data, AesKey, AesKey);
         Utilities.ConcurrentAccess(() => _udp.Send(data, data.Length), _semaphore);
     }
      
@@ -67,7 +67,7 @@ public class Channel : IChannel
     {
         byte[] buffer = null;
         Utilities.ConcurrentAccess(() => buffer = _udp.Receive(ref _remoteEndpoint), _semaphore);
-        return AesKey == null ? buffer : CryptoServices.DecryptAES(buffer, AesKey);
+        return AesKey == null || buffer == null ? buffer : CryptoServices.DecryptAES(buffer, AesKey, AesKey);
     }
 
     public async Task SendBytesAsync(byte[] data, CancellationToken token = default)
@@ -78,8 +78,8 @@ public class Channel : IChannel
             await Task.Delay(10);
         }
 
-        data = AesKey == null ? data : CryptoServices.EncryptAES(data, AesKey);
-        await Utilities.ConcurrentAccessAsync(async (ct) => await _udp.SendAsync(new ReadOnlyMemory<byte>(data), token), _semaphore);
+        data = AesKey == null ? data : await CryptoServices.EncryptAESAsync(data, AesKey, AesKey);
+        await Utilities.ConcurrentAccessAsync(async (ct) => await _udp.SendAsync(data, token), _semaphore);
     }
 
     public async Task<byte[]> RecieveBytesAsync(CancellationToken token = default)
@@ -88,7 +88,7 @@ public class Channel : IChannel
         await Utilities.ConcurrentAccessAsync(async (ct) => buffer = (await _udp.ReceiveAsync(token)).Buffer, _semaphore);
 
         if (token.IsCancellationRequested) return null;
-        return AesKey == null ? buffer : CryptoServices.DecryptAES(buffer, AesKey);
+        return AesKey == null || buffer == null ? buffer : await CryptoServices.DecryptAESAsync(buffer, AesKey, AesKey);
     }
 
     public void SetRemote(IPEndPoint remote)

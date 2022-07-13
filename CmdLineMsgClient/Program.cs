@@ -5,7 +5,6 @@ using CmdLineMsgClient;
 using Net.Connection.Channels;
 using Net.Connection.Clients;
 
-
 Client client;
 IPAddress Addr;
 
@@ -19,8 +18,6 @@ while (true)
         break;
     }
 }
-
-InitializeClient();
 
 //Tries to connect up to 5 times, if there is an exception, throw it
 await client.ConnectAsync(5, true);
@@ -36,10 +33,13 @@ while ((l = Console.ReadLine()) != "EXIT")
 
 await client.CloseAsync();
 
-async void C1_OnChannelOpened(Channel c)
+async void C1_OnChannelOpened(UdpChannel c)
 {
-    var bytes = await c.RecieveBytesAsync();
-    Console.WriteLine($"{c.Id}: {Encoding.UTF8.GetString(bytes)}");
+    byte[] bytes = null;
+    while (bytes == null || bytes.Length == 0)
+        bytes = await c.RecieveBytesAsync();
+
+    Console.WriteLine($"{c.Local.Port}: {Encoding.UTF8.GetString(bytes)}");
     await client.CloseChannelAsync(c);
 }
 

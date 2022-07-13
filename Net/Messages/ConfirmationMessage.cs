@@ -1,22 +1,18 @@
 ﻿namespace Net.Messages;
 
 using Attributes;
-using MessagePack;
 
-[RegisterMessageAttribute]
-sealed class ConfirmationMessage : MpMessage
+[RegisterMessage]
+public sealed class ConfirmationMessage : MessageBase
 {
+    public Confirmation Confirm { get; set; }
+
     public ConfirmationMessage(Confirmation conf)
     {
-        Content = MessagePackSerializer.Serialize(conf, ResolveOptions);
+        Confirm = conf;
     }
 
     public ConfirmationMessage() { }
-
-    protected internal override object GetValue()
-    {
-        return MessagePackSerializer.Deserialize<Confirmation>(Content);
-    }
 
     public enum Confirmation
     {
