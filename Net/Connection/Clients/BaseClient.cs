@@ -14,7 +14,7 @@ public abstract class BaseClient<TChannel> where TChannel : IChannel
 
     public abstract Task SendMessageAsync(MessageBase message, CancellationToken token = default);
 
-    protected abstract IEnumerable<MessageBase> RecieveMessages();
+    protected abstract IEnumerable<MessageBase> ReceiveMessages();
 
     public abstract TChannel OpenChannel();
 

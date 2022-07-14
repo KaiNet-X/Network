@@ -18,7 +18,6 @@ internal static class Utilities
                     break;
                 else if (I == SearchBytes.Length - 1 && SearchBytes[I].Equals(Bytes[i + I]))
                     return i;
-
         return -1;
     }
 

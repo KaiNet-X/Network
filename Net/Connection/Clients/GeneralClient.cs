@@ -76,7 +76,7 @@ public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChan
 
         try
         {
-            var bytes = MessageParser.Encapsulate(GetEncrypted(await MessageParser.SerializeAsync(message, cts.Token)));
+            var bytes = MessageParser.Encapsulate(await GetEncryptedAsync(await MessageParser.SerializeAsync(message, cts.Token)));
             await Utilities.ConcurrentAccessAsync(async (ct) => 
                 await Soc.SendAsync(bytes, SocketFlags.None, cts.Token), 
                 _sendSemaphore);
@@ -200,14 +200,14 @@ public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChan
         }
     }
 
-    protected override IEnumerable<MessageBase> RecieveMessages()
+    protected override IEnumerable<MessageBase> ReceiveMessages()
     {
         List<byte> allBytes = new List<byte>();
         byte[] buffer;
 
         while (true)
         {
-            if (ConnectionState == ConnectState.CLOSED) 
+            if (ConnectionState == ConnectState.CLOSED)
                 yield break;
 
             int available;
@@ -228,7 +228,6 @@ public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChan
             OnPollConnected();
 
             buffer = new byte[available];
-            //Task.Delay(10).GetAwaiter().GetResult();
 
             try
             {
@@ -241,21 +240,22 @@ public abstract class GeneralClient<TChannel> : BaseClient<TChannel> where TChan
             }
 
             allBytes.AddRange(buffer);
-            List<MessageBase> messages = null;
+            IEnumerable<MessageBase> messages = null;
 
             if (Settings != null && Settings.UseEncryption)
                 messages = _encryptionStage switch
                 {
-                    EncryptionMessage.Stage.SYN => MessageParser.GetMessagesAes(allBytes, Key),
-                    EncryptionMessage.Stage.ACK => MessageParser.GetMessagesRsa(allBytes, RsaKey.Value),
-                    EncryptionMessage.Stage.SYNACK => MessageParser.GetMessagesAes(allBytes, Key),
-                    _ => RsaKey == null ? MessageParser.GetMessages(allBytes) : MessageParser.GetMessagesRsa(allBytes, RsaKey.Value)
+                    EncryptionMessage.Stage.SYN => MessageParser.GetMessagesAesEnum(allBytes, Key),
+                    EncryptionMessage.Stage.ACK => MessageParser.GetMessagesRsaEnum(allBytes, RsaKey.Value),
+                    EncryptionMessage.Stage.SYNACK => MessageParser.GetMessagesAesEnum(allBytes, Key),
+                    _ => RsaKey == null ? MessageParser.GetMessagesEnum(allBytes) : MessageParser.GetMessagesRsaEnum(allBytes, RsaKey.Value)
                 };
-            else messages = MessageParser.GetMessages(allBytes);
+            else messages = MessageParser.GetMessagesEnum(allBytes);
 
             foreach (MessageBase msg in messages) yield return msg;
         }
     }
+
 
     public override void Close() =>
         Task.Run(async () => await CloseAsync()).GetAwaiter().GetResult();

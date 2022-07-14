@@ -80,7 +80,7 @@ public class Client : ObjectClient
     {
         _listener = Task.Run(async () =>
         {
-            foreach (var msg in RecieveMessages())
+            foreach (var msg in ReceiveMessages())
             {
                 if (msg != null)
                     HandleMessage(msg);

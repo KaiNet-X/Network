@@ -37,7 +37,7 @@ async void C1_OnChannelOpened(UdpChannel c)
 {
     byte[] bytes = null;
     while (bytes == null || bytes.Length == 0)
-        bytes = await c.RecieveBytesAsync();
+        bytes = c.RecieveBytes();
 
     Console.WriteLine($"{c.Local.Port}: {Encoding.UTF8.GetString(bytes)}");
     await client.CloseChannelAsync(c);

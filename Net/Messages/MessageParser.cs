@@ -19,18 +19,9 @@ public class MessageParser
 
         byte[] b = new byte[l2];
 
-        Buffer.BlockCopy(Start, 0, b, 0, Start.Length);
-        Buffer.BlockCopy(bytes, 0, b, Start.Length, bytes.Length);
-        Buffer.BlockCopy(End, 0, b, Start.Length + bytes.Length, End.Length);
-
-        //for (int i = 0; i < Start.Length; i++)
-        //    b[i] = Start[i];
-
-        //for (int i = Start.Length; i < l1; i++)
-        //    b[i] = bytes[i - Start.Length];
-
-        //for (int i = l1; i < l2; i++)
-        //    b[i] = End[i - l1];
+        Array.Copy(Start, 0, b, 0, Start.Length);
+        Array.Copy(bytes, 0, b, Start.Length, bytes.Length);
+        Array.Copy(End, 0, b, Start.Length + bytes.Length, End.Length);
 
         return b;
     }
@@ -49,26 +40,24 @@ public class MessageParser
     }
 
     #region GetMessages
-    public static List<MessageBase> GetMessages(List<byte> obj)
+
+    public static IEnumerable<MessageBase> GetMessagesEnum(List<byte> obj)
     {
         byte[] sub = null;
-        List<MessageBase> msg = new List<MessageBase>();
 
         while (true)
         {
             sub = RemoveTags(obj);
             if (sub.Length == 0) break;
 
-            msg.Add(Deserialize(sub));
+            yield return Deserialize(sub);
             if (obj.Count == 0) break;
         }
-        return msg;
     }
 
-    public static List<MessageBase> GetMessagesAes(List<byte> obj, byte[] encKey)
+    public static IEnumerable<MessageBase> GetMessagesAesEnum(List<byte> obj, byte[] encKey)
     {
         byte[] sub = null;
-        List<MessageBase> msg = new List<MessageBase>();
         while (true)
         {
             sub = RemoveTags(obj);
@@ -76,13 +65,12 @@ public class MessageParser
 
             sub = CryptoServices.DecryptAES(sub, encKey, encKey);
 
-            msg.Add(Deserialize(sub));
+            yield return Deserialize(sub);
             if (obj.Count == 0) break;
         }
-        return msg;
     }
 
-    public static List<MessageBase> GetMessagesRsa(List<byte> obj, RSAParameters encKey)
+    public static IEnumerable<MessageBase> GetMessagesRsaEnum(List<byte> obj, RSAParameters encKey)
     {
         byte[] sub = null;
         List<MessageBase> msg = new List<MessageBase>();
@@ -94,10 +82,9 @@ public class MessageParser
 
             sub = CryptoServices.DecryptRSA(sub, encKey);
 
-            msg.Add(Deserialize(sub));
+            yield return Deserialize(sub);
             if (obj.Count == 0) break;
         }
-        return msg;
     }
 
     #endregion

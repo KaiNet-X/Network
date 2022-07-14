@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -12,9 +13,11 @@ public class UdpChannel : IChannel, IDisposable
     private SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
     private UdpClient _udp;
     private ConcurrentQueue<byte> _byteQueue = new();
+    private List<byte> _byteList = new();
     private Task receiver;
     private byte[] _aes;
     private CancellationTokenSource _cts = new CancellationTokenSource();
+    private TaskCompletionSource tcs = new TaskCompletionSource();
 
     public bool Connected { get; private set; }
     public IPEndPoint Remote { get; private set; }
@@ -33,23 +36,45 @@ public class UdpChannel : IChannel, IDisposable
 
     public byte[] RecieveBytes()
     {
-        var buffer = new byte[_byteQueue.Count];
+        byte[] buffer = new byte[0];
+
+        tcs.Task.Wait();
+
         Utilities.ConcurrentAccess(() =>
         {
-            for (int i = 0; i < buffer.Length; i++)
-                if (_byteQueue.TryDequeue(out byte b))
-                    buffer[i] = b;
-                else if (_byteQueue.Count > 0)
-                    i--;
-
+            tcs = new TaskCompletionSource();
+            //for (int i = 0; i < buffer.Length; i++)
+            //    if (_byteQueue.TryDequeue(out byte b))
+            //        buffer[i] = b;
+            //    else if (_byteQueue.Count > 0)
+            //        i--;
+            buffer = _byteList.ToArray();
+            _byteList.Clear();
         }, _semaphore);
 
         return buffer;
     }
 
-    public Task<byte[]> RecieveBytesAsync(CancellationToken token = default)
+    public async Task<byte[]> RecieveBytesAsync(CancellationToken token = default)
     {
-        return Task.FromResult(RecieveBytes());
+        byte[] buffer = new byte[0];
+
+        await tcs.Task;
+
+        await Utilities.ConcurrentAccessAsync((ct) =>
+        {
+            tcs = new TaskCompletionSource();
+            //for (int i = 0; i < buffer.Length; i++)
+            //    if (_byteQueue.TryDequeue(out byte b))
+            //        buffer[i] = b;
+            //    else if (_byteQueue.Count > 0)
+            //        i--;
+            buffer = _byteList.ToArray();
+            _byteList.Clear();
+            return Task.CompletedTask;
+        }, _semaphore);
+
+        return buffer;
     }
 
     public void SendBytes(byte[] data)
@@ -72,25 +97,37 @@ public class UdpChannel : IChannel, IDisposable
     {
         _udp.Connect(Remote = endpoint);
         Connected = true;
-        receiver = ReceiveLoop(_cts.Token);
+        receiver = Task.Run(async () => await ReceiveLoop(_cts.Token));
     }
 
     private async Task ReceiveLoop(CancellationToken ct)
     {
+        var receiveTask = _udp.ReceiveAsync(ct);
         while (Connected)
         {
             if (ct.IsCancellationRequested)
                 return;
 
-            var result = await _udp.ReceiveAsync(ct);
+            var result = await receiveTask;
+            receiveTask = _udp.ReceiveAsync(ct);
             if (_aes == null)
-                foreach (byte b in result.Buffer)
-                    _byteQueue.Enqueue(b);
+                Utilities.ConcurrentAccess(() =>
+                {
+                    //foreach (byte b in result.Buffer)
+                    //    _byteQueue.Enqueue(b);
+                    _byteList.AddRange(result.Buffer);
+                    tcs.SetResult();
+                }, _semaphore);
             else
             {
                 var decrypted = await CryptoServices.DecryptAESAsync(result.Buffer, _aes, _aes);
-                foreach (byte b in decrypted)
-                    _byteQueue.Enqueue(b);
+                Utilities.ConcurrentAccess(() =>
+                {
+                    //foreach (byte b in decrypted)
+                    //    _byteQueue.Enqueue(b);
+                    _byteList.AddRange(decrypted);
+                    tcs.SetResult();
+                }, _semaphore);
             }
         }
     }

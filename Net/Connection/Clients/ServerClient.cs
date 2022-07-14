@@ -15,7 +15,7 @@ public class ServerClient : ObjectClient
         Settings = settings ?? new NetSettings();
         Soc = soc;
 
-        _reciever = RecieveMessages().GetEnumerator();
+        _reciever = ReceiveMessages().GetEnumerator();
 
         (this as GeneralClient<Channels.UdpChannel>).SendMessage(new SettingsMessage(Settings));
     }
