@@ -9,7 +9,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
-public class ObjectClient : GeneralClient<UdpChannel>
+public class ObjectClient : GeneralClient
 {
     public event Action<object> OnReceiveObject;
     public event Action<UdpChannel> OnChannelOpened;
@@ -40,18 +40,22 @@ public class ObjectClient : GeneralClient<UdpChannel>
     public virtual async Task SendObjectAsync<T>(T obj, CancellationToken token = default) =>
         await SendMessageAsync(new ObjectMessage(obj), token);
 
-    public override void CloseChannel(UdpChannel c)
+    public override void CloseChannel(IChannel c)
     {
-        SendMessage(new ChannelManagementMessage(c.Remote.Port, ChannelManagementMessage.Mode.Close));
+        var udp = c as UdpChannel;
+
+        SendMessage(new ChannelManagementMessage(udp.Remote.Port, ChannelManagementMessage.Mode.Close));
         Channels.Remove(c);
-        c.Dispose();
+        c.Close();
     }
 
-    public override async Task CloseChannelAsync(UdpChannel c, CancellationToken token = default)
+    public override async Task CloseChannelAsync(IChannel c, CancellationToken token = default)
     {
-        await SendMessageAsync(new ChannelManagementMessage(c.Remote.Port, ChannelManagementMessage.Mode.Close), token);
+        var udp = c as UdpChannel;
+
+        await SendMessageAsync(new ChannelManagementMessage(udp.Remote.Port, ChannelManagementMessage.Mode.Close), token);
         Channels.Remove(c);
-        c.Dispose();
+        c.Close();
     }
 
     public override UdpChannel OpenChannel()
@@ -78,7 +82,7 @@ public class ObjectClient : GeneralClient<UdpChannel>
         return c;
     }
 
-    public override async Task<UdpChannel> OpenChannelAsync(CancellationToken token = default)
+    public override async Task<IChannel> OpenChannelAsync(CancellationToken token = default)
     {
         var key = Settings.EncryptChannels ? CryptoServices.KeyFromHash(CryptoServices.CreateHash(Guid.NewGuid().ToByteArray())) : null;
 
@@ -122,7 +126,6 @@ public class ObjectClient : GeneralClient<UdpChannel>
     private void HandleChannelManagement(MessageBase mb)
     {
         var m = mb as ChannelManagementMessage;
-
         if (m.ManageMode == ChannelManagementMessage.Mode.Create)
         {
             var remoteEndpoint = new IPEndPoint(RemoteEndpoint.Address, m.Port);
@@ -143,7 +146,7 @@ public class ObjectClient : GeneralClient<UdpChannel>
         }
         else if (m.ManageMode == ChannelManagementMessage.Mode.Close)
         {
-            var c = Channels.First(ch => ch.Local.Port == m.Port);
+            var c = Channels.First(ch => (ch as UdpChannel).Local.Port == m.Port);
             Channels.Remove(c);
         }
     }

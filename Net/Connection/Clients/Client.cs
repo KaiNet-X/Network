@@ -1,6 +1,5 @@
 ﻿namespace Net.Connection.Clients;
 
-using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -23,7 +22,7 @@ public class Client : ObjectClient
         Initialize();
     }
 
-    public void Connect(int maxAttempts = 0, bool throwWhenExausted = false)
+    public bool Connect(int maxAttempts = 0, bool throwWhenExausted = false)
     {
         if (Soc == null) Initialize();
 
@@ -37,14 +36,18 @@ public class Client : ObjectClient
             }
             catch
             {
-                if (i == maxAttempts && throwWhenExausted)
-                    throw;
+                if (i == maxAttempts)
+                    if (throwWhenExausted)
+                        throw;
+                    else
+                        return false;
             }
         }
         while (ConnectionState == ConnectState.PENDING) ;
+        return true;
     }
 
-    public async Task ConnectAsync(int maxAttempts = 0, bool throwWhenExausted = false)
+    public async Task<bool> ConnectAsync(int maxAttempts = 0, bool throwWhenExausted = false)
     {
         if (Soc == null) Initialize();
 
@@ -58,19 +61,22 @@ public class Client : ObjectClient
             }
             catch
             {
-                if (i == maxAttempts && throwWhenExausted) 
-                    throw;
+                if (i == maxAttempts)
+                    if (throwWhenExausted)
+                        throw;
+                    else
+                        return false;
             }
         }
         while (ConnectionState == ConnectState.PENDING)
             await Task.Delay(50);
+
+        return true;
     }
 
     private void Initialize()
     {
-        Soc = _targetEndpoint.AddressFamily == AddressFamily.InterNetwork ?
-            new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp) :
-            new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
+        Soc = new Socket(_targetEndpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
         ConnectionState = ConnectState.PENDING;
         TokenSource = new System.Threading.CancellationTokenSource();
@@ -80,7 +86,7 @@ public class Client : ObjectClient
     {
         _listener = Task.Run(async () =>
         {
-            foreach (var msg in ReceiveMessages())
+            await foreach (var msg in ReceiveMessagesAsync())
             {
                 if (msg != null)
                     HandleMessage(msg);

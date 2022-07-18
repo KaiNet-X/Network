@@ -90,33 +90,27 @@ public class MessageParser
     #endregion
     #region Serialization
 
+    private static readonly byte[] _end = { 0x7d, 0x7d };
+
     public static MessageBase Deserialize(byte[] obj)
     {
-        byte[] start = new byte[] { 0x7b, 0x7b };
-        byte[] end = new byte[] { 0x7d, 0x7d };
+        int e = Utilities.IndexInByteArray(obj, new byte[] { 0x7d });
 
-        int s = Utilities.IndexInByteArray(obj, start);
-        int e = Utilities.IndexInByteArray(obj, end, 2);
-
-        string type = Encoding.UTF8.GetString(obj[2..(e)]);
+        string type = Encoding.UTF8.GetString(obj[..e]);
 
         Type t = MessageBase.Registered[type];
 
-        return MessageBase.Deserialize(obj[(e + 2)..^0], t);
+        return MessageBase.Deserialize(obj[(e + 1)..^0], t);
     }
 
     public static byte[] Serialize(MessageBase message)
     {
         var serializer = MessageBase.Serializer;
         byte[] serialized = serializer.Serialize(message, message.GetType());
-        byte[] bytes = new byte[serialized.Length + message.MessageType.Length + 4];
-        byte[] b = Encoding.UTF8.GetBytes($"{{{{{message.MessageType}}}}}");
+        byte[] bytes = new byte[serialized.Length + message.MessageType.Length + 1];
 
-        for (int i = 0; i < b.Length; i++)
-            bytes[i] = b[i];
-
-        for (int i = b.Length; i < b.Length + serialized.Length; i++)
-            bytes[i] = serialized[i - b.Length];
+        Array.Copy(Encoding.UTF8.GetBytes($"{message.MessageType}}}"), bytes, message.MessageType.Length + 1);
+        Array.Copy(serialized, 0, bytes, message.MessageType.Length + 1, serialized.Length);
         
         return bytes;
     }
@@ -126,14 +120,10 @@ public class MessageParser
         var serializer = MessageBase.Serializer;
         
         byte[] serialized = await serializer.SerializeAsync(message, message.GetType(), token);
-        byte[] bytes = new byte[serialized.Length + message.MessageType.Length + 4];
-        byte[] b = Encoding.UTF8.GetBytes($"{{{{{message.MessageType}}}}}");
-
-        for (int i = 0; i < b.Length; i++)
-            bytes[i] = b[i];
-
-        for (int i = b.Length; i < b.Length + serialized.Length; i++)
-            bytes[i] = serialized[i - b.Length];
+        byte[] bytes = new byte[serialized.Length + message.MessageType.Length + 1];
+        
+        Array.Copy(Encoding.UTF8.GetBytes($"{message.MessageType}}}"), bytes, message.MessageType.Length + 1);
+        Array.Copy(serialized, 0, bytes, message.MessageType.Length + 1, serialized.Length);
 
         return bytes;
     }

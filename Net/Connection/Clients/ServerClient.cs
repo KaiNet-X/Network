@@ -3,10 +3,11 @@
 using Net.Messages;
 using System.Collections.Generic;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 
 public class ServerClient : ObjectClient
 {
-    private IEnumerator<MessageBase> _reciever;
+    private IAsyncEnumerator<MessageBase> _reciever;
 
     internal ServerClient(Socket soc, NetSettings settings = null) 
     {
@@ -15,12 +16,12 @@ public class ServerClient : ObjectClient
         Settings = settings ?? new NetSettings();
         Soc = soc;
 
-        _reciever = ReceiveMessages().GetEnumerator();
+        _reciever = ReceiveMessagesAsync().GetAsyncEnumerator();
 
-        (this as GeneralClient<Channels.UdpChannel>).SendMessage(new SettingsMessage(Settings));
+        (this as GeneralClient).SendMessage(new SettingsMessage(Settings));
     }
 
-    internal void GetNextMessage()
+    internal async Task GetNextMessageAsync()
     {
         var msg = _reciever.Current;
 
@@ -29,6 +30,6 @@ public class ServerClient : ObjectClient
         else if (!AwaitingPoll)
             StartConnectionPoll();
         
-        _reciever.MoveNext();
+        await _reciever.MoveNextAsync();
     }
 }

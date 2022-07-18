@@ -5,7 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
-public static class CryptoServices
+internal static class CryptoServices
 {
     private static Aes _aes = GetAes();
 

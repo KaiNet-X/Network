@@ -1,6 +1,5 @@
 ﻿namespace Net.Connection.Channels;
 
-using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
@@ -8,7 +7,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
-public class UdpChannel : IChannel, IDisposable
+public class UdpChannel : IChannel
 {
     private SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
     private UdpClient _udp;
@@ -43,11 +42,6 @@ public class UdpChannel : IChannel, IDisposable
         Utilities.ConcurrentAccess(() =>
         {
             tcs = new TaskCompletionSource();
-            //for (int i = 0; i < buffer.Length; i++)
-            //    if (_byteQueue.TryDequeue(out byte b))
-            //        buffer[i] = b;
-            //    else if (_byteQueue.Count > 0)
-            //        i--;
             buffer = _byteList.ToArray();
             _byteList.Clear();
         }, _semaphore);
@@ -64,11 +58,6 @@ public class UdpChannel : IChannel, IDisposable
         await Utilities.ConcurrentAccessAsync((ct) =>
         {
             tcs = new TaskCompletionSource();
-            //for (int i = 0; i < buffer.Length; i++)
-            //    if (_byteQueue.TryDequeue(out byte b))
-            //        buffer[i] = b;
-            //    else if (_byteQueue.Count > 0)
-            //        i--;
             buffer = _byteList.ToArray();
             _byteList.Clear();
             return Task.CompletedTask;
@@ -113,8 +102,6 @@ public class UdpChannel : IChannel, IDisposable
             if (_aes == null)
                 Utilities.ConcurrentAccess(() =>
                 {
-                    //foreach (byte b in result.Buffer)
-                    //    _byteQueue.Enqueue(b);
                     _byteList.AddRange(result.Buffer);
                     tcs.SetResult();
                 }, _semaphore);
@@ -123,8 +110,6 @@ public class UdpChannel : IChannel, IDisposable
                 var decrypted = await CryptoServices.DecryptAESAsync(result.Buffer, _aes, _aes);
                 Utilities.ConcurrentAccess(() =>
                 {
-                    //foreach (byte b in decrypted)
-                    //    _byteQueue.Enqueue(b);
                     _byteList.AddRange(decrypted);
                     tcs.SetResult();
                 }, _semaphore);
@@ -132,7 +117,7 @@ public class UdpChannel : IChannel, IDisposable
         }
     }
 
-    public void Dispose()
+    public void Close()
     {
         _cts.Cancel();
         _byteQueue.Clear();

@@ -2,13 +2,11 @@
 
 using Clients;
 using Messages;
-using Channels;
-using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-public abstract class BaseServer<TClient, TChannel> where TClient : BaseClient<TChannel> where TChannel : IChannel
+public abstract class BaseServer<TClient> where TClient : BaseClient
 {
     public virtual List<TClient> Clients { get; init; }
 

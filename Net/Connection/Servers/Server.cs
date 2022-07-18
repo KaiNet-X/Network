@@ -10,7 +10,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
-public class Server : BaseServer<ServerClient, UdpChannel>
+public class Server : BaseServer<ServerClient>
 {
     private List<Socket> _bindingSockets;
     private volatile SemaphoreSlim _semaphore;
@@ -21,7 +21,7 @@ public class Server : BaseServer<ServerClient, UdpChannel>
     public readonly NetSettings Settings;
     public volatile ushort MaxClients;
 
-    public event Action<UdpChannel, ServerClient> OnClientChannelOpened;
+    public event Action<IChannel, ServerClient> OnClientChannelOpened;
     public event Action<object, ServerClient> OnClientObjectReceived;
     public event Action<MessageBase, ServerClient> OnUnregisteredMessege;
     public event Action<ServerClient> OnClientConnected;
@@ -76,7 +76,7 @@ public class Server : BaseServer<ServerClient, UdpChannel>
                         {
                             if (ct.IsCancellationRequested || c.ConnectionState == ConnectState.CLOSED)
                                 return;
-                            c.GetNextMessage();
+                            await c.GetNextMessageAsync();
                         }
                     }, _semaphore);
                     await Task.Delay(LoopDelay);
@@ -127,7 +127,7 @@ public class Server : BaseServer<ServerClient, UdpChannel>
                     {
                         while (c.ConnectionState != ConnectState.CLOSED && Active)
                         {
-                            c.GetNextMessage();
+                            await c.GetNextMessageAsync();
                             await Task.Delay(LoopDelay);
                         }
                     });

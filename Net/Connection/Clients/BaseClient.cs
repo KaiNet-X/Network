@@ -6,9 +6,9 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-public abstract class BaseClient<TChannel> where TChannel : IChannel
+public abstract class BaseClient 
 {
-    public volatile List<TChannel> Channels = new();
+    public volatile List<IChannel> Channels = new();
 
     public abstract void SendMessage(MessageBase message);
 
@@ -16,13 +16,15 @@ public abstract class BaseClient<TChannel> where TChannel : IChannel
 
     protected abstract IEnumerable<MessageBase> ReceiveMessages();
 
-    public abstract TChannel OpenChannel();
+    protected abstract IAsyncEnumerable<MessageBase> ReceiveMessagesAsync();
 
-    public abstract void CloseChannel(TChannel c);
+    public abstract IChannel OpenChannel();
 
-    public abstract Task CloseChannelAsync(TChannel c, CancellationToken token = default);
+    public abstract void CloseChannel(IChannel c);
 
-    public abstract Task<TChannel> OpenChannelAsync(CancellationToken token = default);
+    public abstract Task CloseChannelAsync(IChannel c, CancellationToken token = default);
+
+    public abstract Task<IChannel> OpenChannelAsync(CancellationToken token = default);
 
     public abstract void Close();
 
