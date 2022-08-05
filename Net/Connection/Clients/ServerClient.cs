@@ -30,8 +30,6 @@ public class ServerClient : ObjectClient
 
         if (msg != null) 
             HandleMessage(msg);
-        else if (!AwaitingPoll)
-            StartConnectionPoll();
         
         await _reciever.MoveNextAsync();
     }

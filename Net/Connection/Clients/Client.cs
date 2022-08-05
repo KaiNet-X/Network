@@ -122,8 +122,6 @@ public class Client : ObjectClient
             {
                 if (msg != null)
                     HandleMessage(msg);
-                else if (!AwaitingPoll)
-                    StartConnectionPoll();
 
                 await Task.Delay(LoopDelay);
             }

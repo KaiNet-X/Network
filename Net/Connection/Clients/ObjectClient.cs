@@ -27,7 +27,7 @@ public class ObjectClient : GeneralClient
 
     public ObjectClient()
     {
-        CustomMessageHandlers.Add(nameof(ConnectionPollMessage), HandleConnectionPoll);
+        CustomMessageHandlers.Add(nameof(DisconnectMessage), HandleDisconnect);
         CustomMessageHandlers.Add(nameof(ChannelManagementMessage), HandleChannelManagement);
         CustomMessageHandlers.Add(nameof(ObjectMessage), HandleObject);
     }
@@ -126,23 +126,6 @@ public class ObjectClient : GeneralClient
         return c;
     }
 
-    private async void HandleConnectionPoll(MessageBase mb)
-    {
-        var m = mb as ConnectionPollMessage;
-        switch (m.PollState)
-        {
-            case ConnectionPollMessage.PollMessage.SYN:
-                SendMessage(new ConnectionPollMessage { PollState = ConnectionPollMessage.PollMessage.ACK });
-                break;
-            case ConnectionPollMessage.PollMessage.ACK:
-                OnPollConnected();
-                break;
-            case ConnectionPollMessage.PollMessage.DISCONNECT:
-                await DisconnectedEvent(true);
-                break;
-        }
-    }
-
     private void HandleChannelManagement(MessageBase mb)
     {
         var m = mb as ChannelManagementMessage;
@@ -176,5 +159,10 @@ public class ObjectClient : GeneralClient
         var m = mb as ObjectMessage;
 
         Task.Run(() => OnReceiveObject?.Invoke(m.GetValue()));
+    }
+
+    private void HandleDisconnect(MessageBase mb)
+    {
+        DisconnectedEventAsync(true).GetAwaiter().GetResult();
     }
 }

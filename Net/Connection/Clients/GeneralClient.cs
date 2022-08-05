@@ -54,9 +54,6 @@ public abstract class GeneralClient : BaseClient
         }
     }
 
-    protected bool AwaitingPoll;
-    protected Stopwatch Timer;
-
     /// <summary>
     /// The state of the current connection.
     /// </summary>
@@ -88,7 +85,8 @@ public abstract class GeneralClient : BaseClient
         }
         catch (Exception ex)
         {
-            DisconnectedEvent().GetAwaiter().GetResult();
+            if (ConnectionState != ConnectState.CLOSED)
+                DisconnectedEvent();
         }
     }
 
@@ -105,7 +103,8 @@ public abstract class GeneralClient : BaseClient
         }
         catch
         {
-            await DisconnectedEvent();
+            if (ConnectionState != ConnectState.CLOSED)
+                await DisconnectedEventAsync();
         }
     }
 
@@ -124,45 +123,6 @@ public abstract class GeneralClient : BaseClient
         EncryptionMessage.Stage.SYNACK => await CryptoServices.EncryptAESAsync(bytes, Key, Key),
         EncryptionMessage.Stage.NONE or _ => bytes
     };
-
-    protected internal void StartConnectionPoll()
-    {
-        if (_encryptionStage != EncryptionMessage.Stage.SYNACK && _encryptionStage != EncryptionMessage.Stage.NONE) return;
-        if (ConnectionState != ConnectState.CONNECTED) return;
-        AwaitingPoll = true;
-
-        (Timer ??= new Stopwatch()).Start();
-
-        SendMessage(new ConnectionPollMessage { PollState = ConnectionPollMessage.PollMessage.SYN });
-    }
-
-    protected void OnPollConnected()
-    {
-        Timer?.Reset();
-        AwaitingPoll = false;
-    }
-
-    protected void Disconnected()
-    {
-        Timer?.Stop();
-        Timer = null;
-        AwaitingPoll = false;
-
-        TokenSource.Cancel();
-
-        ConnectionState = ConnectState.CLOSED;
-        Soc.Close();
-        Soc = null;
-
-        foreach (var c in Channels)
-            c.Close();
-
-        Channels.Clear();
-        _encryptionStage = EncryptionMessage.Stage.NONE;
-        Settings = null;
-        RsaKey = null;
-        Key = null;
-    }
 
     protected virtual void HandleMessage(MessageBase message)
     {
@@ -228,27 +188,14 @@ public abstract class GeneralClient : BaseClient
         List<byte> allBytes = new List<byte>();
         ArraySegment<byte> buffer = new byte[buffer_length];
 
-        while (true)
+        while (ConnectionState != ConnectState.CLOSED)
         {
-            if (ConnectionState == ConnectState.CLOSED)
-                yield break;
-
-            int available;
-
-            if (AwaitingPoll && Timer?.ElapsedMilliseconds >= Settings.ConnectionPollTimeout)
-            {
-                DisconnectedEvent().GetAwaiter().GetResult();
-                yield break;
-            }
-
-            available = Soc.Available;
+            int available = Soc.Available;
             if (available == 0)
             {
                 yield return null;
                 continue;
             }
-
-            OnPollConnected();
 
             buffer = new byte[available];
 
@@ -265,7 +212,8 @@ public abstract class GeneralClient : BaseClient
             }
             catch
             {
-                DisconnectedEvent().GetAwaiter().GetResult();
+                if (ConnectionState != ConnectState.CLOSED)
+                    DisconnectedEvent();
                 yield break;
             }
 
@@ -290,27 +238,14 @@ public abstract class GeneralClient : BaseClient
         const int buffer_length = 1024;
         List<byte> allBytes = new List<byte>();
         ArraySegment<byte> buffer = new byte[buffer_length];
-        while (true)
+        while (ConnectionState != ConnectState.CLOSED)
         {
-            if (ConnectionState == ConnectState.CLOSED)
-                yield break;
-
-            int available;
-
-            if (AwaitingPoll && Timer?.ElapsedMilliseconds >= Settings.ConnectionPollTimeout)
-            {
-                await DisconnectedEvent();
-                yield break;
-            }
-
-            available = Soc.Available;
+            int available = Soc.Available;
             if (available == 0)
             {
                 yield return null;
                 continue;
             }
-
-            OnPollConnected();
 
             try
             {
@@ -324,7 +259,8 @@ public abstract class GeneralClient : BaseClient
             }
             catch
             {
-                await DisconnectedEvent();
+                if (ConnectionState != ConnectState.CLOSED)
+                    await DisconnectedEventAsync();
                 yield break;
             }
 
@@ -344,21 +280,45 @@ public abstract class GeneralClient : BaseClient
         }
     }
 
+    protected void Disconnected()
+    {
+        TokenSource.Cancel();
+
+        ConnectionState = ConnectState.CLOSED;
+        Soc.Close();
+        Soc = null;
+
+        foreach (var c in Channels)
+            c.Close();
+
+        Channels.Clear();
+        _encryptionStage = EncryptionMessage.Stage.NONE;
+        Settings = null;
+        RsaKey = null;
+        Key = null;
+    }
+
     public override void Close() =>
-        CloseAsync().GetAwaiter().GetResult();
+        Utilities.ConcurrentAccess(() =>
+        {
+            if (ConnectionState == ConnectState.CLOSED) return;
+
+            SendMessage(new DisconnectMessage());
+            Soc.LingerState = new LingerOption(true, 1);
+            Disconnected();
+        }, _semaphore);
 
     public override async Task CloseAsync() =>
         await Utilities.ConcurrentAccessAsync(async (ct) =>
         {
             if (ConnectionState == ConnectState.CLOSED) return;
                  
-            await SendMessageAsync(new ConnectionPollMessage { PollState = ConnectionPollMessage.PollMessage.DISCONNECT });
+            await SendMessageAsync(new DisconnectMessage());
             Soc.LingerState = new LingerOption(true, 1);
             Disconnected();
         }, _semaphore);
 
-    protected async Task DisconnectedEvent(bool graceful = false)
-    {
+    protected async Task DisconnectedEventAsync(bool graceful = false) =>
         await Utilities.ConcurrentAccessAsync((c) =>
         {
             if (ConnectionState == ConnectState.CLOSED) return Task.CompletedTask;
@@ -367,7 +327,15 @@ public abstract class GeneralClient : BaseClient
             Task.Run(() => OnDisconnect?.Invoke(graceful));
             return Task.CompletedTask;
         }, _semaphore);
-    }
+
+    protected void DisconnectedEvent(bool graceful = false) =>
+        Utilities.ConcurrentAccess(() =>
+        {
+            if (ConnectionState == ConnectState.CLOSED) return;
+
+            Disconnected();
+            Task.Run(() => OnDisconnect?.Invoke(graceful));
+        }, _semaphore);
 }
 
 /// <summary>

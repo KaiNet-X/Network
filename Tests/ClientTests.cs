@@ -68,6 +68,7 @@ public class ClientTests
 
         var c = new Client(IPAddress.Loopback, port++);
         await c.ConnectAsync();
+        await c.SendObjectAsync(str);
     }
 
     [Test]
@@ -85,5 +86,52 @@ public class ClientTests
 
         var c = new Client(IPAddress.Loopback, port++);
         await c.ConnectAsync();
+        await c.SendObjectAsync(settings);
+    }
+
+    [Test]
+    public async Task SendMultiDimensional()
+    {
+        var server = new Server(new IPEndPoint(IPAddress.Loopback, port), 1);
+        var arr = new int[,]
+        {
+            {9, 8, 7},
+            {6, 5, 4},
+            {3, 2, 1}
+        };
+
+        server.OnClientObjectReceived += async (obj, client) =>
+        {
+            await server.ShutDownAsync();
+            Assert.AreEqual(arr, obj);
+        };
+        server.Start();
+
+        var c = new Client(IPAddress.Loopback, port++);
+        await c.ConnectAsync();
+        await c.SendObjectAsync(arr);
+    }
+
+    [Test]
+    public async Task SendJagged()
+    {
+        var server = new Server(new IPEndPoint(IPAddress.Loopback, port), 1);
+        var arr = new int[][]
+        {
+            new int[] {9, 8, 7},
+            new int[] {6, 5, 4, 69, 6, 555},
+            new int[] {3, 2, 1}
+        };
+
+        server.OnClientObjectReceived += async (obj, client) =>
+        {
+            await server.ShutDownAsync();
+            Assert.AreEqual(arr, obj);
+        };
+        server.Start();
+
+        var c = new Client(IPAddress.Loopback, port++);
+        await c.ConnectAsync();
+        await c.SendObjectAsync(arr);
     }
 }
