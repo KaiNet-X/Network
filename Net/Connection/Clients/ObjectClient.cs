@@ -9,9 +9,19 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
+/// <summary>
+/// Base client for Client and ServerClient that adds functionality for sending/receiving objects.
+/// </summary>
 public class ObjectClient : GeneralClient
 {
+    /// <summary>
+    /// Invoked when the client receives an object
+    /// </summary>
     public event Action<object> OnReceiveObject;
+
+    /// <summary>
+    /// Invoked when a channel is opened
+    /// </summary>
     public event Action<UdpChannel> OnChannelOpened;
     private List<UdpChannel> _connectionWait = new ();
 
@@ -34,9 +44,19 @@ public class ObjectClient : GeneralClient
             await base.SendMessageAsync(message, token);
     }
 
+    /// <summary>
+    /// Sends an object to the remote client
+    /// </summary>
+    /// <typeparam name="T">Type of the object to be sent</typeparam>
+    /// <param name="obj">Object</param>
     public virtual void SendObject<T>(T obj) =>
         SendMessage(new ObjectMessage(obj));
 
+    /// <summary>
+    /// Sends an object to the remote client
+    /// </summary>
+    /// <typeparam name="T">Type of the object to be sent</typeparam>
+    /// <param name="obj">Object</param>
     public virtual async Task SendObjectAsync<T>(T obj, CancellationToken token = default) =>
         await SendMessageAsync(new ObjectMessage(obj), token);
 

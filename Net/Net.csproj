@@ -8,6 +8,7 @@
     <RepositoryUrl>https://github.com/KaiNet-X/Network</RepositoryUrl>
     <Company>KaiNet</Company>
     <Version>1.0.3</Version>
+	<GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>

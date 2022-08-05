@@ -6,3 +6,5 @@ Interface for channel types
 - `Task SendBytesAsync(byte[] data, CancellationToken token = default)` - Send bytes
 - `byte[] RecieveBytes()` - Receive bytes
 - `Task<byte[]> RecieveBytesAsync(CancellationToken token = default)` - Receive bytes
+- `void Close` - Receive bytes
+- `Task CloseAsync` - Receive bytes

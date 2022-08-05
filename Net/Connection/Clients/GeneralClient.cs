@@ -11,6 +11,9 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 
+/// <summary>
+/// Base class for ObjectClient that impliments the underlying protocol
+/// </summary>
 public abstract class GeneralClient : BaseClient
 {
     private SemaphoreSlim _sendSemaphore = new SemaphoreSlim(1, 1);
@@ -27,6 +30,9 @@ public abstract class GeneralClient : BaseClient
 
     protected volatile Socket Soc;
 
+    /// <summary>
+    /// Local endpoint
+    /// </summary>
     public IPEndPoint LocalEndpoint
     {
         get
@@ -36,6 +42,9 @@ public abstract class GeneralClient : BaseClient
         }
     }
 
+    /// <summary>
+    /// Remote endpoint
+    /// </summary>
     public IPEndPoint RemoteEndpoint
     {
         get
@@ -48,13 +57,26 @@ public abstract class GeneralClient : BaseClient
     protected bool AwaitingPoll;
     protected Stopwatch Timer;
 
+    /// <summary>
+    /// The state of the current connection.
+    /// </summary>
     public ConnectState ConnectionState { get; protected set; } = ConnectState.NONE;
 
     private EncryptionMessage.Stage _encryptionStage = EncryptionMessage.Stage.NONE;
 
+    /// <summary>
+    /// Invoked when an unregistered message is received
+    /// </summary>
     public event Action<MessageBase> OnUnregisteredMessage;
+
+    /// <summary>
+    /// Invoked when disconnected from. Argument is graceful or ungraceful. 
+    /// </summary>
     public event Action<bool> OnDisconnect;
 
+    /// <summary>
+    /// Register message handlers for custom message types with message type name
+    /// </summary>
     public readonly Dictionary<string, Action<MessageBase>> CustomMessageHandlers = new();
 
     public override void SendMessage(MessageBase message)
@@ -92,7 +114,7 @@ public abstract class GeneralClient : BaseClient
         EncryptionMessage.Stage.SYN => CryptoServices.EncryptRSA(bytes, RsaKey.Value),
         EncryptionMessage.Stage.ACK => CryptoServices.EncryptAES(bytes, Key, Key),
         EncryptionMessage.Stage.SYNACK => CryptoServices.EncryptAES(bytes, Key, Key),
-        EncryptionMessage.Stage.NONE => bytes
+        EncryptionMessage.Stage.NONE or _ => bytes
     };
 
     private async Task<byte[]> GetEncryptedAsync(byte[] bytes) => _encryptionStage switch
@@ -100,7 +122,7 @@ public abstract class GeneralClient : BaseClient
         EncryptionMessage.Stage.SYN => CryptoServices.EncryptRSA(bytes, RsaKey.Value),
         EncryptionMessage.Stage.ACK => await CryptoServices.EncryptAESAsync(bytes, Key, Key),
         EncryptionMessage.Stage.SYNACK => await CryptoServices.EncryptAESAsync(bytes, Key, Key),
-        EncryptionMessage.Stage.NONE => bytes
+        EncryptionMessage.Stage.NONE or _ => bytes
     };
 
     protected internal void StartConnectionPoll()
@@ -323,7 +345,7 @@ public abstract class GeneralClient : BaseClient
     }
 
     public override void Close() =>
-        Task.Run(async () => await CloseAsync()).GetAwaiter().GetResult();
+        CloseAsync().GetAwaiter().GetResult();
 
     public override async Task CloseAsync() =>
         await Utilities.ConcurrentAccessAsync(async (ct) =>
@@ -348,6 +370,9 @@ public abstract class GeneralClient : BaseClient
     }
 }
 
+/// <summary>
+/// State of the connection
+/// </summary>
 public enum ConnectState
 {
     NONE,

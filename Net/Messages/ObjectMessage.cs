@@ -13,11 +13,11 @@ public sealed class ObjectMessage : MessageBase
     {
         Type t = obj.GetType();
         TypeName = t.Name;
-        Data = Serializer.Serialize(obj, t);
+        Data = MessageParser.Serializer.Serialize(obj, t);
     }
 
     public ObjectMessage() { }
 
     internal object GetValue() =>
-        Serializer.Deserialize(Data, Utilities.GetTypeFromName(TypeName));
+        MessageParser.Serializer.Deserialize(Data, Utilities.GetTypeFromName(TypeName));
 }

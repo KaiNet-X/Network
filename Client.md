@@ -1,4 +1,4 @@
-# Client  : [ObjectClient](https://github.com/KaiNet-X/Network/blob/master/ObjectClient.md)
+# Client : [ObjectClient](https://github.com/KaiNet-X/Network/blob/master/ObjectClient.md)
 The out-of-the-box Client implementation allows sending objects to the server, managing UDP channels, and follows an event based approach to receiving data.
 
 #### Constructors

@@ -10,36 +10,100 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
+/// <summary>
+/// Default server implementation
+/// </summary>
 public class Server : BaseServer<ServerClient>
 {
     private List<Socket> _bindingSockets;
     private volatile SemaphoreSlim _semaphore;
 
+    /// <summary>
+    /// If the server is active or not
+    /// </summary>
     public bool Active { get; private set; } = false;
+    
+    /// <summary>
+    /// If the server is listening for connections
+    /// </summary>
     public bool Listening { get; private set; } = false;
 
+    /// <summary>
+    /// Settings for this server that are set in the constructor
+    /// </summary>
     public readonly NetSettings Settings;
-    public volatile ushort MaxClients;
 
-    public event Action<IChannel, ServerClient> OnClientChannelOpened;
-    public event Action<object, ServerClient> OnClientObjectReceived;
-    public event Action<MessageBase, ServerClient> OnUnregisteredMessege;
-    public event Action<ServerClient> OnClientConnected;
-    public event Action<ServerClient, bool> OnClientDisconnected;
+    /// <summary>
+    /// Max connections at one time
+    /// </summary>
+    public ushort? MaxClients;
 
+    /// <summary>
+    /// Handlers for custom message types
+    /// </summary>
     public Dictionary<string, Action<MessageBase, ServerClient>> CustomMessageHandlers = new();
 
-    public ushort LoopDelay = 10;
-
+    /// <summary>
+    /// All endpoints the server is accepting connections on
+    /// </summary>
     public readonly IPEndPoint[] Endpoints;
 
-    public Server(IPAddress address, int port, ushort maxClients, NetSettings settings = null) : 
+    /// <summary>
+    /// Delay between client updates; highly reduces CPU usage
+    /// </summary>
+    public ushort LoopDelay = 1;
+
+    /// <summary>
+    /// Invoked when a channel is opened on a client
+    /// </summary>
+    public event Action<IChannel, ServerClient> OnClientChannelOpened;
+
+    /// <summary>
+    /// Invoked when a client receives an object
+    /// </summary>
+    public event Action<object, ServerClient> OnClientObjectReceived;
+
+    /// <summary>
+    /// Invoked when a client receives an unregistered custom message
+    /// </summary>
+    public event Action<MessageBase, ServerClient> OnUnregisteredMessege;
+
+    /// <summary>
+    /// Invoked when a client is connected
+    /// </summary>
+    public event Action<ServerClient> OnClientConnected;
+
+    /// <summary>
+    /// Invoked when a client disconnects
+    /// </summary>
+    public event Action<ServerClient, bool> OnClientDisconnected;
+
+    /// <summary>
+    /// New server object
+    /// </summary>
+    /// <param name="address">IP address for the server to bind to</param>
+    /// <param name="port">Port for the server to bind to</param>
+    /// <param name="maxClients">Max amount of clients</param>
+    /// <param name="settings">Settings for connection</param>
+    public Server(IPAddress address, int port, ushort? maxClients = null, NetSettings settings = null) : 
         this(new IPEndPoint(address, port), maxClients, settings) { }
 
-    public Server(IPEndPoint endpoint, ushort maxClients, NetSettings settings = null) : 
+    /// <summary>
+    /// New server object
+    /// </summary>
+    /// <param name="endpoint">Endpoint for the server to bind to</param>
+    /// <param name="maxClients">Max amount of clients</param>
+    /// <param name="settings">Settings for connection</param>
+    public Server(IPEndPoint endpoint, ushort? maxClients = null, NetSettings settings = null) : 
         this(new List<IPEndPoint> { endpoint}, maxClients, settings) { }
 
-    public Server(List<IPEndPoint> endpoints, ushort maxClients, NetSettings settings = null)
+    /// <summary>
+    /// New server object
+    /// </summary>
+    /// <param name="endpoints">List of endpoints for the server to bind to</param>
+    /// <param name="maxClients">Max amount of clients</param>
+    /// <param name="settings">Settings for connection</param>
+    public Server(List<IPEndPoint> endpoints, ushort? maxClients = null, NetSettings settings = null)
     {
         MaxClients = maxClients;
         Settings = settings ?? new NetSettings();
@@ -52,11 +116,22 @@ public class Server : BaseServer<ServerClient>
         InitializeSockets(Endpoints);
     }
 
+    /// <summary>
+    /// Sends an object to all clients
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="obj"></param>
     public void SendObjectToAll<T>(T obj) =>
         SendMessageToAll(new ObjectMessage(obj));
 
+    /// <summary>
+    /// Sends an object to all clients
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="obj"></param>
     public async Task SendObjectToAllAsync<T>(T obj, CancellationToken token = default) =>
         await SendMessageToAllAsync(new ObjectMessage(obj), token);
+
 
     public override void Start()
     {
@@ -79,7 +154,6 @@ public class Server : BaseServer<ServerClient>
                             await c.GetNextMessageAsync();
                         }
                     }, _semaphore);
-                    await Task.Delay(LoopDelay);
                 }
             });
 
@@ -88,7 +162,7 @@ public class Server : BaseServer<ServerClient>
             StartListening();
             while (Listening)
             {
-                if (Clients.Count >= MaxClients)
+                if ( MaxClients != null && Clients.Count >= MaxClients)
                 {
                     await Task.Delay(LoopDelay);
                     continue;
@@ -128,7 +202,6 @@ public class Server : BaseServer<ServerClient>
                         while (c.ConnectionState != ConnectState.CLOSED && Active)
                         {
                             await c.GetNextMessageAsync();
-                            await Task.Delay(LoopDelay);
                         }
                     });
                 while (c.ConnectionState == ConnectState.PENDING) ;
@@ -153,10 +226,8 @@ public class Server : BaseServer<ServerClient>
         await StopAsync();
         await Utilities.ConcurrentAccessAsync((ct) =>
         {
-                       foreach (var c in Clients)
-            {
+            foreach (var c in Clients)
                 c.Close();
-            }
             return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
         }, _semaphore);
     }
@@ -189,6 +260,10 @@ public class Server : BaseServer<ServerClient>
         }, _semaphore);
     }
 
+    /// <summary>
+    /// Registers an object type. This is used as an optimization before the server sends or receives objects.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     public void RegisterType<T>() =>
         Utilities.RegisterType(typeof(T));
 
@@ -196,9 +271,7 @@ public class Server : BaseServer<ServerClient>
     {
         foreach (IPEndPoint endpoint in endpoints)
         {
-            Socket s = endpoint.AddressFamily == AddressFamily.InterNetwork ?
-            new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp) :
-            new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
+            Socket s = new Socket(endpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
             s.Bind(endpoint);
             _bindingSockets.Add(s);

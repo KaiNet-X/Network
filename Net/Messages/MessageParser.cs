@@ -1,5 +1,6 @@
 ﻿namespace Net.Messages;
 
+using Net.Serialization;
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
@@ -9,6 +10,7 @@ using System.Threading.Tasks;
 
 public class MessageParser
 {
+    public static ISerializer Serializer = new MpSerializer();
     static readonly byte[] Start = new byte[] { 0x3c, 0x53, 0x54, 0x41, 0x3e };
     static readonly byte[] End = new byte[] { 0x3c, 0x45, 0x4e, 0x44, 0x3e };
 
@@ -100,13 +102,12 @@ public class MessageParser
 
         Type t = MessageBase.Registered[type];
 
-        return MessageBase.Deserialize(obj[(e + 1)..^0], t);
+        return Serializer.Deserialize(obj[(e + 1)..^0], t) as MessageBase;
     }
 
     public static byte[] Serialize(MessageBase message)
     {
-        var serializer = MessageBase.Serializer;
-        byte[] serialized = serializer.Serialize(message, message.GetType());
+        byte[] serialized = Serializer.Serialize(message, message.GetType());
         byte[] bytes = new byte[serialized.Length + message.MessageType.Length + 1];
 
         Array.Copy(Encoding.UTF8.GetBytes($"{message.MessageType}}}"), bytes, message.MessageType.Length + 1);
@@ -116,10 +117,8 @@ public class MessageParser
     }
 
     public static async Task<byte[]> SerializeAsync(MessageBase message, CancellationToken token)
-    {
-        var serializer = MessageBase.Serializer;
-        
-        byte[] serialized = await serializer.SerializeAsync(message, message.GetType(), token);
+    {        
+        byte[] serialized = await Serializer.SerializeAsync(message, message.GetType(), token);
         byte[] bytes = new byte[serialized.Length + message.MessageType.Length + 1];
         
         Array.Copy(Encoding.UTF8.GetBytes($"{message.MessageType}}}"), bytes, message.MessageType.Length + 1);

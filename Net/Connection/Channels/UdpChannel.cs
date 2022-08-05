@@ -7,6 +7,9 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
+/// <summary>
+/// This channel is designed to send UDP data between clients. Call SetRemote to connect to a remote endpoing
+/// </summary>
 public class UdpChannel : IChannel
 {
     private SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
@@ -18,21 +21,45 @@ public class UdpChannel : IChannel
     private CancellationTokenSource _cts = new CancellationTokenSource();
     private TaskCompletionSource tcs = new TaskCompletionSource();
 
+    /// <summary>
+    /// If the channel is connected
+    /// </summary>
     public bool Connected { get; private set; }
+
+    /// <summary>
+    /// Remote endpoint
+    /// </summary>
     public IPEndPoint Remote { get; private set; }
+
+    /// <summary>
+    /// Local endpoint
+    /// </summary>
     public IPEndPoint Local { get; private set; }
 
+    /// <summary>
+    /// Udp channel bound to an endpoint
+    /// </summary>
+    /// <param name="local"></param>
     public UdpChannel(IPEndPoint local)
     {
         _udp = new UdpClient(local);
         Local = (IPEndPoint)_udp.Client.LocalEndPoint;
     }
 
+    /// <summary>
+    /// Udp channel bound to an endpoint using an AES encryption key
+    /// </summary>
+    /// <param name="local"></param>
+    /// <param name="aesKey"></param>
     public UdpChannel(IPEndPoint local, byte[] aesKey) : this(local)
     {
         _aes = aesKey;
     }
 
+    /// <summary>
+    /// Receive bytes from internal queue
+    /// </summary>
+    /// <returns></returns>
     public byte[] RecieveBytes()
     {
         byte[] buffer = new byte[0];
@@ -49,6 +76,10 @@ public class UdpChannel : IChannel
         return buffer;
     }
 
+    /// <summary>
+    /// Receive bytes from internal queue
+    /// </summary>
+    /// <returns></returns>
     public async Task<byte[]> RecieveBytesAsync(CancellationToken token = default)
     {
         byte[] buffer = new byte[0];
@@ -82,6 +113,10 @@ public class UdpChannel : IChannel
         await Utilities.ConcurrentAccessAsync(async (ct) => await _udp.SendAsync(data, token), _semaphore);
     }
 
+    /// <summary>
+    /// Sets the remote endpoint and connects to it 
+    /// </summary>
+    /// <param name="endpoint"></param>
     public void SetRemote(IPEndPoint endpoint)
     {
         _udp.Connect(Remote = endpoint);
@@ -122,5 +157,11 @@ public class UdpChannel : IChannel
         _cts.Cancel();
         _byteQueue.Clear();
         _semaphore.Dispose();
+    }
+
+    public Task CloseAsync()
+    {
+        Close();
+        return Task.CompletedTask;
     }
 }

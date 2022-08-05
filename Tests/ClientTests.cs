@@ -4,6 +4,8 @@ using Net;
 
 public class ClientTests
 {
+    private static int port = 10000;
+
     [SetUp]
     public void Setup()
     {
@@ -13,29 +15,48 @@ public class ClientTests
     [Test]
     public void Connect()
     {
-        var server = new Server(new IPEndPoint(IPAddress.Loopback, 10000), 1);
+        var server = new Server(new IPEndPoint(IPAddress.Loopback, port), 1);
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, 10000);
-        Assert.IsTrue(c.Connect());
+        var c = new Client(IPAddress.Loopback, port++);
+        var connected = c.Connect();
         server.ShutDown();
+        Assert.IsTrue(connected);
     }
 
     [Test]
     public async Task ConnectAsync()
     {
-        var server = new Server(new IPEndPoint(IPAddress.Loopback, 10000), 1);
+        var server = new Server(new IPEndPoint(IPAddress.Loopback, port), 1);
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, 10000);
-        Assert.IsTrue(await c.ConnectAsync());
+        var c = new Client(IPAddress.Loopback, port++);
+        var connected = await c.ConnectAsync();
         await server.ShutDownAsync();
+        Assert.IsTrue(connected);
+    }
+
+    [Test]
+    public async Task DisconnectsGracefully()
+    {
+        var server = new Server(new IPEndPoint(IPAddress.Loopback, port), 1);
+
+        server.OnClientDisconnected += async (client, graceful) =>
+        {
+            await server.ShutDownAsync();
+            Assert.IsTrue(graceful);
+        };
+        server.Start();
+
+        var c = new Client(IPAddress.Loopback, port++);
+        await c.ConnectAsync();
+        await c.CloseAsync();
     }
 
     [Test]
     public async Task SendPrimitive()
     {
-        var server = new Server(new IPEndPoint(IPAddress.Loopback, 10000), 1);
+        var server = new Server(new IPEndPoint(IPAddress.Loopback, port), 1);
         var str = "hello world";
 
         server.OnClientObjectReceived += async (obj, client) =>
@@ -45,14 +66,14 @@ public class ClientTests
         };
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, 10000);
+        var c = new Client(IPAddress.Loopback, port++);
         await c.ConnectAsync();
     }
 
     [Test]
     public async Task SendComplex()
     {
-        var server = new Server(new IPEndPoint(IPAddress.Loopback, 10000), 1);
+        var server = new Server(new IPEndPoint(IPAddress.Loopback, port), 1);
         var settings = new NetSettings() { ConnectionPollTimeout = int.MaxValue, UseEncryption = false};
 
         server.OnClientObjectReceived += async (obj, client) =>
@@ -62,25 +83,7 @@ public class ClientTests
         };
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, 10000);
+        var c = new Client(IPAddress.Loopback, port++);
         await c.ConnectAsync();
-    }
-
-    [Test]
-    public async Task DisconnectsGracefully()
-    {
-        var server = new Server(new IPEndPoint(IPAddress.Loopback, 10000), 1);
-        var settings = new NetSettings() { ConnectionPollTimeout = int.MaxValue, UseEncryption = false };
-
-        server.OnClientDisconnected += async (client, graceful) =>
-        {
-            await server.ShutDownAsync();
-            Assert.IsTrue(graceful);
-        };
-        server.Start();
-
-        var c = new Client(IPAddress.Loopback, 10000);
-        await c.ConnectAsync();
-        await c.CloseAsync();
     }
 }

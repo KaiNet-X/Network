@@ -4,17 +4,37 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
+/// <summary>
+/// The out-of-the-box Client implementation allows sending objects to the server, managing UDP channels, and follows an event based approach to receiving data.
+/// </summary>
 public class Client : ObjectClient
 {
-    public ushort LoopDelay = 10;
+    /// <summary>
+    /// Delay between client updates; highly reduces CPU usage
+    /// </summary>
+    public ushort LoopDelay = 1;
     private readonly IPEndPoint _targetEndpoint;
 
     public Task _listener { get; private set; }
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="address">IP address of server</param>
+    /// <param name="port">Server port the client will connect to</param>
     public Client(IPAddress address, int port) : this (new IPEndPoint(address, port)) { }
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="address">IP address of server</param>
+    /// <param name="port">Server port the client will connect to</param>
     public Client(string address, int port) : this(IPAddress.Parse(address), port) { }
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="ep">IPEndpoint of the server</param>
     public Client(IPEndPoint ep)
     {
         ConnectionState = ConnectState.PENDING;
@@ -22,6 +42,12 @@ public class Client : ObjectClient
         Initialize();
     }
 
+    /// <summary>
+    /// Connect to the server this client is bound to
+    /// </summary>
+    /// <param name="maxAttempts">Max amount of connection attempts</param>
+    /// <param name="throwWhenExausted">Throw exception if connection didn't work</param>
+    /// <returns>true if connected, otherwise false</returns>
     public bool Connect(int maxAttempts = 0, bool throwWhenExausted = false)
     {
         if (Soc == null) Initialize();
@@ -47,6 +73,12 @@ public class Client : ObjectClient
         return true;
     }
 
+    /// <summary>
+    /// Connect to the server this client is bound to
+    /// </summary>
+    /// <param name="maxAttempts">Max amount of connection attempts</param>
+    /// <param name="throwWhenExausted">Throw exception if connection didn't work</param>
+    /// <returns>true if connected, otherwise false</returns>
     public async Task<bool> ConnectAsync(int maxAttempts = 0, bool throwWhenExausted = false)
     {
         if (Soc == null) Initialize();

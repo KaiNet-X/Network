@@ -8,6 +8,8 @@ using System.Threading.Tasks;
 
 internal static class Utilities
 {
+    private static Type[] allTypes = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes()).ToArray();
+
     public static Dictionary<string, Type> NameTypeAssociations = new Dictionary<string, Type>();
 
     public static int IndexInByteArray(byte[] Bytes, byte[] SearchBytes, int offset = 0)
@@ -48,7 +50,7 @@ internal static class Utilities
             Type t = ResolveType(name);
             try
             {
-                NameTypeAssociations.Add(name, t);
+                NameTypeAssociations[name] = t;
             }
             catch
             {
@@ -60,22 +62,15 @@ internal static class Utilities
 
     public static Type ResolveType(string name)
     {
-        Type type = AppDomain.CurrentDomain.GetAssemblies()
-             .SelectMany(x => x.GetTypes())
-             .First(x => x.Name == GetBaseTypeName(name));
+        Type type = allTypes.First(x => x.Name == GetBaseTypeName(name));
 
         if (!IsArray(name))
-        {
             return type;
-        }
         else if (name.Contains(","))
-        {
             type = MultiDimensionalArrayType(type, (byte)name.Where(c => c == ',').Count());
-        }
         else
-        {
             type = JaggedArrayType(type, (byte)name.Where(c => c == '[').Count());
-        }
+
         return type;
     }
 

@@ -1,4 +1,4 @@
-# Channel : [IChannel]()
+# Channel : [IChannel](https://github.com/KaiNet-X/Network/blob/master/IChannel.md)
 
 This class is normally managed by a client object, but can be used on it's own. The default implementation of channel uses UDP to send raw byte data between endpoints. When used with a client, it uses encryption based on the client's settings. This may change in the future.
 
