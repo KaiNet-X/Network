@@ -190,15 +190,6 @@ public abstract class GeneralClient : BaseClient
 
         while (ConnectionState != ConnectState.CLOSED)
         {
-            int available = Soc.Available;
-            if (available == 0)
-            {
-                yield return null;
-                continue;
-            }
-
-            buffer = new byte[available];
-
             try
             {
                 Soc.Receive(buffer);
@@ -240,13 +231,6 @@ public abstract class GeneralClient : BaseClient
         ArraySegment<byte> buffer = new byte[buffer_length];
         while (ConnectionState != ConnectState.CLOSED)
         {
-            int available = Soc.Available;
-            if (available == 0)
-            {
-                yield return null;
-                continue;
-            }
-
             try
             {
                 int received;

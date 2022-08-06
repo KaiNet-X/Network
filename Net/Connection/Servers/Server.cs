@@ -218,22 +218,37 @@ public class Server : BaseServer<ServerClient>
         await Task.Run(Start);
     }
 
-    public override void ShutDown() =>
-        ShutDownAsync().GetAwaiter().GetResult();
+    public override void ShutDown()
+    {
+        Stop();
+        Utilities.ConcurrentAccess(() =>
+        {
+            foreach (var c in Clients)
+                c.Close();
+        }, _semaphore);
+    }
 
     public override async Task ShutDownAsync()
     {
         await StopAsync();
-        await Utilities.ConcurrentAccessAsync((ct) =>
+        await Utilities.ConcurrentAccessAsync(async (ct) =>
         {
             foreach (var c in Clients)
-                c.Close();
-            return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
+                await c.CloseAsync();
         }, _semaphore);
     }
 
-    public override void Stop() =>
-        StopAsync().GetAwaiter().GetResult();
+    public override void Stop()
+    {
+        Utilities.ConcurrentAccess(() =>
+        {
+            while (_bindingSockets.Count > 0)
+            {
+                _bindingSockets[0].Close();
+                _bindingSockets.RemoveAt(0);
+            }
+        }, _semaphore);
+    }
 
     public override async Task StopAsync()
     {
@@ -248,8 +263,14 @@ public class Server : BaseServer<ServerClient>
         }, _semaphore);
     }
 
-    public override void SendMessageToAll(MessageBase msg) =>
-        Task.Run(async () => await SendMessageToAllAsync(msg)).GetAwaiter().GetResult();
+    public override void SendMessageToAll(MessageBase msg)
+    {
+        Utilities.ConcurrentAccess(() =>
+        {
+            foreach (var c in Clients)
+                c.SendMessage(msg);
+        }, _semaphore);
+    }
 
     public override async Task SendMessageToAllAsync(MessageBase msg, CancellationToken token = default)
     {

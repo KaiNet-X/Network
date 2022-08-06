@@ -101,7 +101,7 @@ public class Client : ObjectClient
             }
         }
         while (ConnectionState == ConnectState.PENDING)
-            await Task.Delay(50);
+            await Task.Delay(10);
 
         return true;
     }
@@ -122,8 +122,6 @@ public class Client : ObjectClient
             {
                 if (msg != null)
                     HandleMessage(msg);
-
-                await Task.Delay(LoopDelay);
             }
         });
     }

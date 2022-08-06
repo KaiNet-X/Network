@@ -163,6 +163,6 @@ public class ObjectClient : GeneralClient
 
     private void HandleDisconnect(MessageBase mb)
     {
-        DisconnectedEventAsync(true).GetAwaiter().GetResult();
+        DisconnectedEvent(true);
     }
 }
