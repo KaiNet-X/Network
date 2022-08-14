@@ -20,6 +20,7 @@ public abstract class GeneralClient : BaseClient
     private SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
     private IPEndPoint _localEndpoint;
     private IPEndPoint _remoteEndpoint;
+    protected Invoker _invokationList = new();
 
     protected CancellationTokenSource TokenSource = new CancellationTokenSource();
 
@@ -172,12 +173,9 @@ public abstract class GeneralClient : BaseClient
                 }
                 break;
             default:
-                Task.Run(() =>
-                {
-                    var msgHandler = CustomMessageHandlers[message.MessageType];
-                    if (msgHandler != null) msgHandler(message);
-                    else OnUnregisteredMessage?.Invoke(message);
-                });
+                var msgHandler = CustomMessageHandlers[message.MessageType];
+                if (msgHandler != null) _invokationList.AddAction(() => msgHandler(message));
+                else _invokationList.AddAction(() => OnUnregisteredMessage?.Invoke(message));
                 break;
         }
     }
@@ -320,6 +318,57 @@ public abstract class GeneralClient : BaseClient
             Disconnected();
             Task.Run(() => OnDisconnect?.Invoke(graceful));
         }, _semaphore);
+
+    protected class Invoker
+    {
+        private List<Action> InvokationList = new();
+        private SemaphoreSlim _semaphore = new(1, 1);
+        private Task runner;
+
+        public void AddAction(Action t)
+        {
+            Utilities.ConcurrentAccess(() =>
+            {
+                InvokationList.Add(t);
+            }, _semaphore);
+
+            if (runner == null || runner.IsCompleted)
+                runner = Task.Run(async () => await InvokeTasks());
+        }
+
+        private async Task InvokeTasks()
+        {
+            List<Action> actions = new List<Action>();
+            while (true)
+            {
+                if (InvokationList.Count == 0)
+                    await Task.Delay(1);
+
+                await Utilities.ConcurrentAccessAsync((ct) =>
+                {
+                    if (InvokationList.Count == 0)
+                    {
+                        return Task.CompletedTask;
+                    }
+                    actions = new List<Action>(InvokationList);
+                    InvokationList.Clear();
+                    return Task.CompletedTask;
+                }, _semaphore);
+
+                foreach (var a in actions)
+                    try
+                    {
+                        a();
+                    }
+                    catch
+                    {
+
+                    }
+
+                actions.Clear();
+            }
+        }
+    }
 }
 
 /// <summary>

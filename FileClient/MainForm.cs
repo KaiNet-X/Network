@@ -55,7 +55,7 @@ public partial class MainForm : Form
         });
         _client.OnChannelOpened += async (obj) =>
         {
-            var bytes = await obj.RecieveBytesAsync();
+            var bytes = await obj.ReceiveBytesAsync();
 
             var dir = @$"{Directory.GetCurrentDirectory()}\Files";
             Directory.CreateDirectory(dir);

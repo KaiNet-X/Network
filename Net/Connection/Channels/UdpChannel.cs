@@ -14,11 +14,10 @@ public class UdpChannel : IChannel
 {
     private SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
     private UdpClient _udp;
-    private List<byte> _byteList = new();
+    private ConcurrentQueue<byte> _byteQueue = new();
     private Task receiver;
     private byte[] _aes;
     private CancellationTokenSource _cts = new CancellationTokenSource();
-    private TaskCompletionSource tcs = new TaskCompletionSource();
 
     /// <summary>
     /// If the channel is connected
@@ -59,45 +58,41 @@ public class UdpChannel : IChannel
     /// Receive bytes from internal queue
     /// </summary>
     /// <returns></returns>
-    public byte[] RecieveBytes()
+    public byte[] ReceiveBytes()
     {
-        byte[] buffer = new byte[0];
+        //if (!Connected || !_byteQueue.TryDequeueRange(out var res))
+        //    return null;
 
-        tcs.Task.Wait();
+        //return res;
 
-        Utilities.ConcurrentAccess(() =>
-        {
-            tcs = new TaskCompletionSource();
-            buffer = _byteList.ToArray();
-            _byteList.Clear();
-        }, _semaphore);
-
-        return buffer;
+        return ReceiveBytesAsync().GetAwaiter().GetResult();
     }
 
     /// <summary>
     /// Receive bytes from internal queue
     /// </summary>
     /// <returns></returns>
-    public async Task<byte[]> RecieveBytesAsync(CancellationToken token = default)
+    public async Task<byte[]> ReceiveBytesAsync(CancellationToken token = default)
     {
-        byte[] buffer = new byte[0];
+        //if (!Connected || !_byteQueue.TryDequeueRange(out var res))
+        //    return Task.FromResult<byte[]>(null);
 
-        await tcs.Task;
-
-        await Utilities.ConcurrentAccessAsync((ct) =>
+        //return Task.FromResult(res);
+        var result = await _udp.ReceiveAsync(token);
+        if (_aes == null)
+            return result.Buffer;
+        else
         {
-            tcs = new TaskCompletionSource();
-            buffer = _byteList.ToArray();
-            _byteList.Clear();
-            return Task.CompletedTask;
-        }, _semaphore);
-
-        return buffer;
+            var decrypted = await CryptoServices.DecryptAESAsync(result.Buffer, _aes, _aes);
+            return decrypted;
+        }
     }
 
     public void SendBytes(byte[] data)
     {
+        if (!Connected)
+            return;
+
         if (_aes != null)
             data = CryptoServices.EncryptAES(data, _aes, _aes);
         
@@ -106,6 +101,9 @@ public class UdpChannel : IChannel
 
     public async Task SendBytesAsync(byte[] data, CancellationToken token = default)
     {
+        if (!Connected)
+            return;
+
         if (_aes != null)
             data = await CryptoServices.EncryptAESAsync(data, _aes, _aes);
 
@@ -125,36 +123,32 @@ public class UdpChannel : IChannel
 
     private async Task ReceiveLoop(CancellationToken ct)
     {
-        var receiveTask = _udp.ReceiveAsync(ct);
-        while (Connected)
-        {
-            if (ct.IsCancellationRequested)
-                return;
+        //var receiveTask = _udp.ReceiveAsync(ct);
+        //while (Connected)
+        //{
+        //    if (ct.IsCancellationRequested)
+        //        return;
 
-            var result = await receiveTask;
-            receiveTask = _udp.ReceiveAsync(ct);
-            if (_aes == null)
-                Utilities.ConcurrentAccess(() =>
-                {
-                    _byteList.AddRange(result.Buffer);
-                    tcs.SetResult();
-                }, _semaphore);
-            else
-            {
-                var decrypted = await CryptoServices.DecryptAESAsync(result.Buffer, _aes, _aes);
-                Utilities.ConcurrentAccess(() =>
-                {
-                    _byteList.AddRange(decrypted);
-                    tcs.SetResult();
-                }, _semaphore);
-            }
-        }
+        //    var result = await receiveTask;
+        //    receiveTask = _udp.ReceiveAsync(ct);
+        //    if (_aes == null)
+        //        _byteQueue.EnqueueRange(result.Buffer);
+        //    else
+        //    {
+        //        var decrypted = await CryptoServices.DecryptAESAsync(result.Buffer, _aes, _aes);
+        //        _byteQueue.EnqueueRange(decrypted);
+        //    }
+        //}
     }
 
     public void Close()
     {
+        Connected = false;
+        _byteQueue.Clear();
+        _byteQueue = null;
         _cts.Cancel();
         _semaphore.Dispose();
+        _udp.Close();
     }
 
     public Task CloseAsync()

@@ -162,7 +162,7 @@ public class Server : BaseServer<ServerClient>
             StartListening();
             while (Listening)
             {
-                if ( MaxClients != null && Clients.Count >= MaxClients)
+                if (MaxClients != null && Clients.Count >= MaxClients)
                 {
                     await Task.Delay(LoopDelay);
                     continue;
@@ -178,7 +178,7 @@ public class Server : BaseServer<ServerClient>
                     {
                         Clients.Remove(c);
                         return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
-                    } , _semaphore);
+                    }, _semaphore);
 
                     OnClientDisconnected?.Invoke(c, g);
                 };

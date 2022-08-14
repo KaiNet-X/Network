@@ -9,6 +9,11 @@ using System.Threading.Tasks;
 public interface IChannel
 {
     /// <summary>
+    /// Check if channel is connected
+    /// </summary>
+    public bool Connected { get; }
+
+    /// <summary>
     /// Send bytes to remote
     /// </summary>
     /// <param name="data"></param>
@@ -24,13 +29,13 @@ public interface IChannel
     /// Receive bytes on from remote
     /// </summary>
     /// <returns>bytes</returns>
-    public byte[] RecieveBytes();
+    public byte[] ReceiveBytes();
 
     /// <summary>
     /// Receive bytes on from remote
     /// </summary>
     /// <returns>bytes</returns>
-    public Task<byte[]> RecieveBytesAsync(CancellationToken token = default);
+    public Task<byte[]> ReceiveBytesAsync(CancellationToken token = default);
 
     /// <summary>
     /// Closes the channel

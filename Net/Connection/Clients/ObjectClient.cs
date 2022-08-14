@@ -25,13 +25,6 @@ public class ObjectClient : GeneralClient
     public event Action<UdpChannel> OnChannelOpened;
     private List<UdpChannel> _connectionWait = new ();
 
-    public ObjectClient()
-    {
-        CustomMessageHandlers.Add(nameof(DisconnectMessage), HandleDisconnect);
-        CustomMessageHandlers.Add(nameof(ChannelManagementMessage), HandleChannelManagement);
-        CustomMessageHandlers.Add(nameof(ObjectMessage), HandleObject);
-    }
-
     public new void SendMessage(MessageBase message)
     {
         if (ConnectionState == ConnectState.CONNECTED)
@@ -126,6 +119,25 @@ public class ObjectClient : GeneralClient
         return c;
     }
 
+    protected override void HandleMessage(MessageBase message)
+    {
+        switch (message)
+        {
+            case ChannelManagementMessage m:
+                HandleChannelManagement(m);
+                break;
+            case ObjectMessage m:
+                HandleObject(m);
+                break;
+            case DisconnectMessage m:
+                HandleDisconnect(m);
+                break;
+            default:
+                base.HandleMessage(message);
+                break;
+        }
+    }
+
     private void HandleChannelManagement(MessageBase mb)
     {
         var m = mb as ChannelManagementMessage;
@@ -137,9 +149,10 @@ public class ObjectClient : GeneralClient
                 new (new IPEndPoint(LocalEndpoint.Address, 0));
 
             c.SetRemote(remoteEndpoint);
-            Channels.Add(c);
             SendMessage(new ChannelManagementMessage(c.Local.Port, ChannelManagementMessage.Mode.Confirm, m.Port));
-            Task.Run(() => OnChannelOpened?.Invoke(c));
+            Channels.Add(c);
+            if (OnChannelOpened != null)
+                Task.Run(() => OnChannelOpened(c));
         }
         else if (m.ManageMode == ChannelManagementMessage.Mode.Confirm)
         {
@@ -149,7 +162,8 @@ public class ObjectClient : GeneralClient
         }
         else if (m.ManageMode == ChannelManagementMessage.Mode.Close)
         {
-            var c = Channels.First(ch => (ch as UdpChannel).Local.Port == m.Port);
+            var c = Channels.First(ch => (ch as UdpChannel).Local.Port == m.Port) as UdpChannel;
+            c.Close();
             Channels.Remove(c);
         }
     }
@@ -158,10 +172,11 @@ public class ObjectClient : GeneralClient
     {
         var m = mb as ObjectMessage;
 
-        Task.Run(() => OnReceiveObject?.Invoke(m.GetValue()));
+        if (OnReceiveObject is not null)
+            _invokationList.AddAction(() => OnReceiveObject(m.GetValue()));
     }
 
-    private void HandleDisconnect(MessageBase mb)
+    private void HandleDisconnect(MessageBase _)
     {
         DisconnectedEvent(true);
     }

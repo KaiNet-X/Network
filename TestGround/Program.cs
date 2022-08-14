@@ -27,7 +27,7 @@ async void Server_OnClientChannelOpened(IChannel ch, ServerClient arg2)
     {
         await (await client.OpenChannelAsync()).SendBytesAsync(Encoding.UTF8.GetBytes("Hello from the other side 0"));
     });
-    var b = await ch.RecieveBytesAsync();
+    var b = await ch.ReceiveBytesAsync();
     if (b != null && b.Length > 0)
     {
         bytes += (ulong)b.Length;

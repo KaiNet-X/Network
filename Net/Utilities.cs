@@ -110,7 +110,7 @@ internal static class Utilities
         }
         finally
         {
-            s.Release();
+            s?.Release();
         }
     }
 
@@ -129,7 +129,7 @@ internal static class Utilities
         }
         finally
         {
-            s.Release();
+            s?.Release();
         }
     }
 
@@ -140,5 +140,27 @@ internal static class Utilities
             if (original.Equals(match)) return true;
         }
         return false;
+    }
+
+    public static bool TryDequeueRange<T>(this System.Collections.Concurrent.ConcurrentQueue<T> queue, out T[] result)
+    {
+        result = new T[queue.Count];
+
+        for (int i = 0; i < result.Length; i++)
+        {
+            if (queue.TryDequeue(out T item))
+                result[i] = item;
+            else if (i == 0)
+                return false;
+            else
+                result = result[..(i - 1)];
+        }
+        return true;
+    }
+
+    public static void EnqueueRange<T>(this System.Collections.Concurrent.ConcurrentQueue<T> queue, IEnumerable<T> range)
+    {
+        foreach (T r in range)
+            queue.Enqueue(r);
     }
 }
