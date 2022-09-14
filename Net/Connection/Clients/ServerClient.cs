@@ -21,7 +21,7 @@ public class ServerClient : ObjectClient
 
         _reciever = ReceiveMessagesAsync().GetAsyncEnumerator();
 
-        (this as GeneralClient).SendMessage(new SettingsMessage(Settings));
+        (this as GeneralSocketClient).SendMessage(new SettingsMessage(Settings));
     }
 
     internal async Task GetNextMessageAsync()

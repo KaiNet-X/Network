@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 /// <summary>
 /// Base client for Client and ServerClient that adds functionality for sending/receiving objects.
 /// </summary>
-public class ObjectClient : GeneralClient
+public class ObjectClient : GeneralSocketClient
 {
     /// <summary>
     /// Invoked when the client receives an object

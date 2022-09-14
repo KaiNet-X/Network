@@ -1,20 +1,25 @@
 ﻿namespace Net.Connection.Clients;
 
-using Channels;
 using Messages;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Net;
+using System.Net.Sockets;
 using System.Security.Cryptography;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-
-public abstract class GeneralClient<Connection> : BaseClient where Connection : class, IChannel
+/// <summary>
+/// Base class for ObjectClient that impliments the underlying protocol
+/// </summary>
+public abstract class GeneralSocketClient : BaseClient
 {
     private SemaphoreSlim _sendSemaphore = new SemaphoreSlim(1, 1);
     private SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
+    private IPEndPoint _localEndpoint;
+    private IPEndPoint _remoteEndpoint;
     protected Invoker _invokationList = new();
 
     protected CancellationTokenSource TokenSource = new CancellationTokenSource();
@@ -24,7 +29,32 @@ public abstract class GeneralClient<Connection> : BaseClient where Connection : 
 
     protected volatile NetSettings Settings;
 
-    protected abstract Connection connection { get; set; }
+    protected volatile Socket Soc;
+
+    /// <summary>
+    /// Local endpoint
+    /// </summary>
+    public IPEndPoint LocalEndpoint
+    {
+        get
+        {
+            var ep = Soc?.LocalEndPoint as IPEndPoint;
+            return ep != null ? (_localEndpoint = ep) : _localEndpoint;
+        }
+    }
+
+    /// <summary>
+    /// Remote endpoint
+    /// </summary>
+    public IPEndPoint RemoteEndpoint
+    {
+        get
+        {
+            var ep = Soc?.RemoteEndPoint as IPEndPoint;
+            return ep != null ? (_remoteEndpoint = ep) : _remoteEndpoint;
+        }
+    }
+
     /// <summary>
     /// The state of the current connection.
     /// </summary>
@@ -52,7 +82,7 @@ public abstract class GeneralClient<Connection> : BaseClient where Connection : 
         try
         {
             var bytes = MessageParser.Encapsulate(GetEncrypted(MessageParser.Serialize(message)));
-            Utilities.ConcurrentAccess(() => connection.SendBytes(bytes), _sendSemaphore);
+            Utilities.ConcurrentAccess(() => Soc.Send(bytes), _sendSemaphore);
         }
         catch (Exception ex)
         {
@@ -68,8 +98,8 @@ public abstract class GeneralClient<Connection> : BaseClient where Connection : 
         try
         {
             var bytes = MessageParser.Encapsulate(await GetEncryptedAsync(await MessageParser.SerializeAsync(message, cts.Token)));
-            await Utilities.ConcurrentAccessAsync(async (ct) =>
-                await connection.SendBytesAsync(bytes, cts.Token),
+            await Utilities.ConcurrentAccessAsync(async (ct) => 
+                await Soc.SendAsync(bytes, SocketFlags.None, cts.Token), 
                 _sendSemaphore);
         }
         catch
@@ -152,13 +182,22 @@ public abstract class GeneralClient<Connection> : BaseClient where Connection : 
 
     protected override IEnumerable<MessageBase> ReceiveMessages()
     {
+        const int buffer_length = 1024;
         List<byte> allBytes = new List<byte>();
+        ArraySegment<byte> buffer = new byte[buffer_length];
 
         while (ConnectionState != ConnectState.CLOSED)
         {
             try
             {
-                allBytes.AddRange(connection.ReceiveBytes());
+                Soc.Receive(buffer);
+                int received;
+                do
+                {
+                    received = Soc.Receive(buffer);
+                    allBytes.AddRange(buffer.Take(received));
+                }
+                while (received == buffer_length);
             }
             catch
             {
@@ -185,13 +224,20 @@ public abstract class GeneralClient<Connection> : BaseClient where Connection : 
 
     protected override async IAsyncEnumerable<MessageBase> ReceiveMessagesAsync()
     {
+        const int buffer_length = 1024;
         List<byte> allBytes = new List<byte>();
-
+        ArraySegment<byte> buffer = new byte[buffer_length];
         while (ConnectionState != ConnectState.CLOSED)
         {
             try
             {
-                allBytes.AddRange(await connection.ReceiveBytesAsync());
+                int received;
+                do
+                {
+                    received = await Soc.ReceiveAsync(buffer, SocketFlags.None);
+                    allBytes.AddRange(buffer.Take(received));
+                }
+                while (received == buffer_length);
             }
             catch
             {
@@ -221,8 +267,8 @@ public abstract class GeneralClient<Connection> : BaseClient where Connection : 
         TokenSource.Cancel();
 
         ConnectionState = ConnectState.CLOSED;
-        connection.Close();
-        connection = null;
+        Soc.Close();
+        Soc = null;
 
         foreach (var c in Channels)
             c.Close();
@@ -248,7 +294,7 @@ public abstract class GeneralClient<Connection> : BaseClient where Connection : 
         await Utilities.ConcurrentAccessAsync(async (ct) =>
         {
             if (ConnectionState == ConnectState.CLOSED) return;
-
+                 
             await SendMessageAsync(new DisconnectMessage());
             Soc.LingerState = new LingerOption(true, 1);
             Disconnected();
