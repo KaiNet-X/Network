@@ -1,6 +1,7 @@
-﻿namespace Net.Connection.Clients;
+﻿namespace Net.Connection.Clients.Tcp;
 
-using Net.Messages;
+using Channels;
+using Messages;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -12,12 +13,12 @@ public class ServerClient : ObjectClient
 {
     private IAsyncEnumerator<MessageBase> _reciever;
 
-    internal ServerClient(Socket soc, NetSettings settings = null) 
+    internal ServerClient(Socket soc, NetSettings settings = null)
     {
         ConnectionState = ConnectState.PENDING;
 
         Settings = settings ?? new NetSettings();
-        Soc = soc;
+        Connection = new TcpChannel() { Socket = soc };
 
         _reciever = ReceiveMessagesAsync().GetAsyncEnumerator();
 
@@ -28,9 +29,9 @@ public class ServerClient : ObjectClient
     {
         var msg = _reciever.Current;
 
-        if (msg != null) 
+        if (msg != null)
             HandleMessage(msg);
-        
+
         await _reciever.MoveNextAsync();
     }
 }

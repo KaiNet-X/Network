@@ -1,4 +1,4 @@
-﻿namespace Net.Connection.Clients;
+﻿namespace Net.Connection.Clients.Tcp;
 
 using Net.Connection.Channels;
 using Net.Messages;
@@ -23,7 +23,7 @@ public class ObjectClient : GeneralSocketClient
     /// Invoked when a channel is opened
     /// </summary>
     public event Action<UdpChannel> OnChannelOpened;
-    private List<UdpChannel> _connectionWait = new ();
+    private List<UdpChannel> _connectionWait = new();
 
     public new void SendMessage(MessageBase message)
     {
@@ -53,7 +53,7 @@ public class ObjectClient : GeneralSocketClient
     public virtual async Task SendObjectAsync<T>(T obj, CancellationToken token = default) =>
         await SendMessageAsync(new ObjectMessage(obj), token);
 
-    public override void CloseChannel(IChannel c)
+    public void CloseChannel(IChannel c)
     {
         var udp = c as UdpChannel;
 
@@ -62,7 +62,7 @@ public class ObjectClient : GeneralSocketClient
         c.Close();
     }
 
-    public override async Task CloseChannelAsync(IChannel c, CancellationToken token = default)
+    public async Task CloseChannelAsync(IChannel c, CancellationToken token = default)
     {
         var udp = c as UdpChannel;
 
@@ -145,8 +145,8 @@ public class ObjectClient : GeneralSocketClient
         {
             var remoteEndpoint = new IPEndPoint(RemoteEndpoint.Address, m.Port);
             UdpChannel c = Settings.UseEncryption ?
-                new (new IPEndPoint(LocalEndpoint.Address, 0), m.Aes) :
-                new (new IPEndPoint(LocalEndpoint.Address, 0));
+                new(new IPEndPoint(LocalEndpoint.Address, 0), m.Aes) :
+                new(new IPEndPoint(LocalEndpoint.Address, 0));
 
             c.SetRemote(remoteEndpoint);
             SendMessage(new ChannelManagementMessage(c.Local.Port, ChannelManagementMessage.Mode.Confirm, m.Port));

@@ -3,7 +3,7 @@ using System.Net;
 using System.Text;
 using CmdLineMsgClient;
 using Net.Connection.Channels;
-using Net.Connection.Clients;
+using Net.Connection.Clients.Tcp;
 
 Client client;
 IPAddress Addr;

@@ -1,17 +1,15 @@
-﻿namespace Net.Connection.Clients;
+﻿namespace Net.Connection.Clients.Generic;
 
 using Channels;
 using Messages;
+using Net;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-
-public abstract class GeneralClient<Connection> : BaseClient where Connection : class, IChannel
+public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel : class, IChannel
 {
     private SemaphoreSlim _sendSemaphore = new SemaphoreSlim(1, 1);
     private SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
@@ -24,7 +22,7 @@ public abstract class GeneralClient<Connection> : BaseClient where Connection : 
 
     protected volatile NetSettings Settings;
 
-    protected abstract Connection connection { get; set; }
+    protected MainChannel Connection { get; set; }
     /// <summary>
     /// The state of the current connection.
     /// </summary>
@@ -47,12 +45,13 @@ public abstract class GeneralClient<Connection> : BaseClient where Connection : 
     /// </summary>
     public readonly Dictionary<string, Action<MessageBase>> CustomMessageHandlers = new();
 
+    public List<IChannel> Channels;
     public override void SendMessage(MessageBase message)
     {
         try
         {
             var bytes = MessageParser.Encapsulate(GetEncrypted(MessageParser.Serialize(message)));
-            Utilities.ConcurrentAccess(() => connection.SendBytes(bytes), _sendSemaphore);
+            Utilities.ConcurrentAccess(() => Connection.SendBytes(bytes), _sendSemaphore);
         }
         catch (Exception ex)
         {
@@ -69,7 +68,7 @@ public abstract class GeneralClient<Connection> : BaseClient where Connection : 
         {
             var bytes = MessageParser.Encapsulate(await GetEncryptedAsync(await MessageParser.SerializeAsync(message, cts.Token)));
             await Utilities.ConcurrentAccessAsync(async (ct) =>
-                await connection.SendBytesAsync(bytes, cts.Token),
+                await Connection.SendBytesAsync(bytes, cts.Token),
                 _sendSemaphore);
         }
         catch
@@ -158,7 +157,7 @@ public abstract class GeneralClient<Connection> : BaseClient where Connection : 
         {
             try
             {
-                allBytes.AddRange(connection.ReceiveBytes());
+                allBytes.AddRange(Connection.ReceiveBytes());
             }
             catch
             {
@@ -191,7 +190,7 @@ public abstract class GeneralClient<Connection> : BaseClient where Connection : 
         {
             try
             {
-                allBytes.AddRange(await connection.ReceiveBytesAsync());
+                allBytes.AddRange(await Connection.ReceiveBytesAsync());
             }
             catch
             {
@@ -221,8 +220,8 @@ public abstract class GeneralClient<Connection> : BaseClient where Connection : 
         TokenSource.Cancel();
 
         ConnectionState = ConnectState.CLOSED;
-        connection.Close();
-        connection = null;
+        Connection.Close();
+        Connection = null;
 
         foreach (var c in Channels)
             c.Close();
@@ -240,7 +239,6 @@ public abstract class GeneralClient<Connection> : BaseClient where Connection : 
             if (ConnectionState == ConnectState.CLOSED) return;
 
             SendMessage(new DisconnectMessage());
-            Soc.LingerState = new LingerOption(true, 1);
             Disconnected();
         }, _semaphore);
 
@@ -250,7 +248,6 @@ public abstract class GeneralClient<Connection> : BaseClient where Connection : 
             if (ConnectionState == ConnectState.CLOSED) return;
 
             await SendMessageAsync(new DisconnectMessage());
-            Soc.LingerState = new LingerOption(true, 1);
             Disconnected();
         }, _semaphore);
 
@@ -272,4 +269,9 @@ public abstract class GeneralClient<Connection> : BaseClient where Connection : 
             Disconnected();
             Task.Run(() => OnDisconnect?.Invoke(graceful));
         }, _semaphore);
+}
+
+public abstract class GeneralClient : GeneralClient<IChannel>
+{
+
 }

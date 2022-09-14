@@ -1,4 +1,4 @@
-﻿namespace Net.Connection.Clients;
+﻿namespace Net.Connection.Clients.Generic;
 
 using Messages;
 using Net.Connection.Channels;
@@ -9,12 +9,12 @@ using System.Threading.Tasks;
 /// <summary>
 /// Base class for all clients. Has channels, methods to send and receive messages, work with channels, and close the connection.
 /// </summary>
-public abstract class BaseClient 
+public abstract class BaseClient
 {
     /// <summary>
     /// Channels for communication. These are seperate to the main connection and can be used to send raw data.
     /// </summary>
-    public List<IChannel> Channels = new();
+    //public List<IChannel> Channels = new();
 
     /// <summary>
     /// Sends a message to the remote client.
@@ -44,20 +44,20 @@ public abstract class BaseClient
     /// Opens a channel on the client
     /// </summary>
     /// <returns></returns>
-    public abstract IChannel OpenChannel();
+    //public abstract IChannel OpenChannel();
 
     /// <summary>
     /// Opens a channel on the client
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
-    public abstract Task<IChannel> OpenChannelAsync(CancellationToken token = default);
+    //public abstract Task<IChannel> OpenChannelAsync(CancellationToken token = default);
 
     /// <summary>
     /// Closes a channel. This should handle all disposing of the channel and dependency within the client
     /// </summary>
     /// <param name="c"></param>
-    public abstract void CloseChannel(IChannel c);
+    //public abstract void CloseChannel(IChannel c);
 
     /// <summary>
     /// Closes a channel. This should handle all disposing of the channel and dependency within the client
@@ -65,7 +65,7 @@ public abstract class BaseClient
     /// <param name="c"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public abstract Task CloseChannelAsync(IChannel c, CancellationToken token = default);
+    //public abstract Task CloseChannelAsync(IChannel c, CancellationToken token = default);
 
     /// <summary>
     /// Closes the connection

@@ -1,4 +1,4 @@
-﻿using Net.Connection.Clients;
+﻿using Net.Connection.Clients.Tcp;
 using Net.Connection.Servers;
 using System;
 using System.Collections.Generic;
