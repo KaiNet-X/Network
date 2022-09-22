@@ -32,19 +32,19 @@ foreach (var addr in Dns.GetHostAddresses(Dns.GetHostName()))
 }
 Console.WriteLine();
 
-while (true)
-{
-    var l = Console.ReadLine();
-    if (l.ToLowerInvariant().StartsWith("send channel"))
-        await (await s.Clients[0].OpenChannelAsync()).SendBytesAsync(Encoding.UTF8.GetBytes(l.Substring(13)));
-    else if (l == "EXIT")
-    {
-        s.ShutDown();
-        break;
-    }
-    else
-        s.SendObjectToAll(l);
-}
+//while (true)
+//{
+//    var l = Console.ReadLine();
+//    if (l.ToLowerInvariant().StartsWith("send channel"))
+//        await (await s.Clients[0].OpenChannelAsync()).SendBytesAsync(Encoding.UTF8.GetBytes(l.Substring(13)));
+//    else if (l == "EXIT")
+//    {
+//        s.ShutDown();
+//        break;
+//    }
+//    else
+//        s.SendObjectToAll(l);
+//}
 
 await Task.Delay(1000);
 

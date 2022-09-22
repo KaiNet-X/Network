@@ -1,14 +1,13 @@
 ﻿namespace Net.Connection.Channels;
 
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
-/// This channel is designed to send UDP data between clients. Call SetRemote to connect to a remote endpoing
+/// This channel is designed to send UDP data between clients. Call SetRemote to connect to a remote endpoint
 /// </summary>
 public class UdpChannel : IChannel
 {
@@ -74,11 +73,9 @@ public class UdpChannel : IChannel
     /// <returns></returns>
     public async Task<byte[]> ReceiveBytesAsync(CancellationToken token = default)
     {
-        //if (!Connected || !_byteQueue.TryDequeueRange(out var res))
-        //    return Task.FromResult<byte[]>(null);
+        using var t = CancellationTokenSource.CreateLinkedTokenSource(token, _cts.Token);
 
-        //return Task.FromResult(res);
-        var result = await _udp.ReceiveAsync(token);
+        var result = await _udp.ReceiveAsync(t.Token);
         if (_aes == null)
             return result.Buffer;
         else
@@ -96,18 +93,20 @@ public class UdpChannel : IChannel
         if (_aes != null)
             data = CryptoServices.EncryptAES(data, _aes, _aes);
         
-        Utilities.ConcurrentAccess(() => _udp.Send(data, data.Length), _semaphore);
+        Utilities.ConcurrentAccess(() => _udp.SendAsync(data, data.Length), _semaphore);
     }
 
     public async Task SendBytesAsync(byte[] data, CancellationToken token = default)
     {
+        using var t = CancellationTokenSource.CreateLinkedTokenSource(token, _cts.Token);
+
         if (!Connected)
             return;
 
         if (_aes != null)
             data = await CryptoServices.EncryptAESAsync(data, _aes, _aes);
 
-        await Utilities.ConcurrentAccessAsync(async (ct) => await _udp.SendAsync(data, token), _semaphore);
+        await Utilities.ConcurrentAccessAsync(async (ct) => await _udp.SendAsync(data, t.Token), _semaphore);
     }
 
     /// <summary>

@@ -1,183 +1,125 @@
 ﻿namespace Net.Connection.Clients.Tcp;
 
-using Net.Connection.Channels;
-using Net.Messages;
+using Channels;
+using Messages;
+using Net.Connection.Clients.Generic;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Threading;
+using System.Text;
 using System.Threading.Tasks;
 
 /// <summary>
 /// Base client for Client and ServerClient that adds functionality for sending/receiving objects.
 /// </summary>
-public class ObjectClient : GeneralSocketClient
+public class ObjectClient : ObjectClient<TcpChannel>
 {
-    /// <summary>
-    /// Invoked when the client receives an object
-    /// </summary>
-    public event Action<object> OnReceiveObject;
+    public IPEndPoint LocalEndpoint => Connection.Socket.LocalEndPoint as IPEndPoint;
+    public IPEndPoint RemoteEndpoint => Connection.Socket.RemoteEndPoint as IPEndPoint;
 
-    /// <summary>
-    /// Invoked when a channel is opened
-    /// </summary>
-    public event Action<UdpChannel> OnChannelOpened;
-    private List<UdpChannel> _connectionWait = new();
+    protected List<IChannel> _connectionWait = new();
 
-    public new void SendMessage(MessageBase message)
+    protected ObjectClient()
     {
-        if (ConnectionState == ConnectState.CONNECTED)
-            base.SendMessage(message);
-    }
-
-    public new async Task SendMessageAsync(MessageBase message, CancellationToken token = default)
-    {
-        if (ConnectionState == ConnectState.CONNECTED)
-            await base.SendMessageAsync(message, token);
-    }
-
-    /// <summary>
-    /// Sends an object to the remote client
-    /// </summary>
-    /// <typeparam name="T">Type of the object to be sent</typeparam>
-    /// <param name="obj">Object</param>
-    public virtual void SendObject<T>(T obj) =>
-        SendMessage(new ObjectMessage(obj));
-
-    /// <summary>
-    /// Sends an object to the remote client
-    /// </summary>
-    /// <typeparam name="T">Type of the object to be sent</typeparam>
-    /// <param name="obj">Object</param>
-    public virtual async Task SendObjectAsync<T>(T obj, CancellationToken token = default) =>
-        await SendMessageAsync(new ObjectMessage(obj), token);
-
-    public void CloseChannel(IChannel c)
-    {
-        var udp = c as UdpChannel;
-
-        SendMessage(new ChannelManagementMessage(udp.Remote.Port, ChannelManagementMessage.Mode.Close));
-        Channels.Remove(c);
-        c.Close();
-    }
-
-    public async Task CloseChannelAsync(IChannel c, CancellationToken token = default)
-    {
-        var udp = c as UdpChannel;
-
-        await SendMessageAsync(new ChannelManagementMessage(udp.Remote.Port, ChannelManagementMessage.Mode.Close), token);
-        Channels.Remove(c);
-        c.Close();
-    }
-
-    public override UdpChannel OpenChannel()
-    {
-        var key = Settings.EncryptChannels ? CryptoServices.KeyFromHash(CryptoServices.CreateHash(Guid.NewGuid().ToByteArray())) : null;
-
-        UdpChannel c = Settings.EncryptChannels ?
-            new(new IPEndPoint(LocalEndpoint.Address, 0), key) :
-            new(new IPEndPoint(LocalEndpoint.Address, 0));
-
-        ChannelManagementMessage m = Settings.EncryptChannels ?
-            new ChannelManagementMessage(c.Local.Port, ChannelManagementMessage.Mode.Create, key) :
-            new ChannelManagementMessage(c.Local.Port, ChannelManagementMessage.Mode.Create);
-
-        _connectionWait.Add(c);
-
-        SendMessage(m);
-
-        while (_connectionWait.Contains(c))
-            Thread.Sleep(10);
-
-        Channels.Add(c);
-
-        return c;
-    }
-
-    public override async Task<IChannel> OpenChannelAsync(CancellationToken token = default)
-    {
-        var key = Settings.EncryptChannels ? CryptoServices.KeyFromHash(CryptoServices.CreateHash(Guid.NewGuid().ToByteArray())) : null;
-
-        UdpChannel c = Settings.EncryptChannels ?
-            new(new IPEndPoint(LocalEndpoint.Address, 0), key) :
-            new(new IPEndPoint(LocalEndpoint.Address, 0));
-
-        ChannelManagementMessage m = Settings.EncryptChannels ?
-            new ChannelManagementMessage(c.Local.Port, ChannelManagementMessage.Mode.Create, key) :
-            new ChannelManagementMessage(c.Local.Port, ChannelManagementMessage.Mode.Create);
-
-        _connectionWait.Add(c);
-
-        await SendMessageAsync(m, token);
-
-        while (_connectionWait.Contains(c))
-            await Task.Delay(10);
-
-        Channels.Add(c);
-
-        return c;
-    }
-
-    protected override void HandleMessage(MessageBase message)
-    {
-        switch (message)
+        CustomMessageHandlers.Add(typeof(ChannelManagementMessage).Name, (mb) =>
         {
-            case ChannelManagementMessage m:
-                HandleChannelManagement(m);
-                break;
-            case ObjectMessage m:
-                HandleObject(m);
-                break;
-            case DisconnectMessage m:
-                HandleDisconnect(m);
-                break;
-            default:
-                base.HandleMessage(message);
-                break;
-        }
-    }
+            var m = mb as ChannelManagementMessage;
+            if (m.Info is not null && m.Info.ContainsKey("Type"))
+            {
+                foreach (var name in ChannelMessages.Keys)
+                {
+                    if (name.Name == m.Info["Type"])
+                    {
+                        ChannelMessages[name](m);
+                        break;
+                    }
+                }
+            }
+        });
 
-    private void HandleChannelManagement(MessageBase mb)
-    {
-        var m = mb as ChannelManagementMessage;
-        if (m.ManageMode == ChannelManagementMessage.Mode.Create)
+        OpenChannelMethods.Add(typeof(UdpChannel), async () =>
         {
-            var remoteEndpoint = new IPEndPoint(RemoteEndpoint.Address, m.Port);
-            UdpChannel c = Settings.UseEncryption ?
-                new(new IPEndPoint(LocalEndpoint.Address, 0), m.Aes) :
-                new(new IPEndPoint(LocalEndpoint.Address, 0));
+            var remoteAddr = ((IPEndPoint)Connection.Socket.RemoteEndPoint).Address;
+            var localAddr = ((IPEndPoint)Connection.Socket.LocalEndPoint).Address;
+            var key = Settings.EncryptChannels ? CryptoServices.KeyFromHash(CryptoServices.CreateHash(Guid.NewGuid().ToByteArray())) : null;
 
-            c.SetRemote(remoteEndpoint);
-            SendMessage(new ChannelManagementMessage(c.Local.Port, ChannelManagementMessage.Mode.Confirm, m.Port));
+            UdpChannel c = Settings.EncryptChannels ?
+                new(new IPEndPoint(remoteAddr, 0), key) :
+                new(new IPEndPoint(localAddr, 0));
+
+            var info = new Dictionary<string, string>
+            {
+                { "Port", c.Local.Port.ToString() },
+                { "Mode", "Create" }
+            };
+
+            var m = new ChannelManagementMessage
+            {
+                Info = info,
+                Type = typeof(UdpChannel).Name
+            };
+
+            if (Settings.EncryptChannels)
+                m.Crypto = key;
+
+            _connectionWait.Add(c);
+
+            SendMessage(m);
+
+            while (_connectionWait.Contains(c))
+                await Task.Delay(10);
+
             Channels.Add(c);
-            if (OnChannelOpened != null)
-                Task.Run(() => OnChannelOpened(c));
-        }
-        else if (m.ManageMode == ChannelManagementMessage.Mode.Confirm)
+
+            return c;
+        });
+
+        ChannelMessages.Add(typeof(UdpChannel), (m) =>
         {
-            var c = _connectionWait.First(c => c.Local.Port == m.IdPort);
-            c.SetRemote(new IPEndPoint(LocalEndpoint.Address, m.Port));
-            _connectionWait.Remove(c);
-        }
-        else if (m.ManageMode == ChannelManagementMessage.Mode.Close)
+            var remoteAddr = ((IPEndPoint)Connection.Socket.RemoteEndPoint).Address;
+            var localAddr = ((IPEndPoint)Connection.Socket.LocalEndPoint).Address;
+            if (m.Info["Mode"] == "Create")
+            {
+                var remoteEndpoint = new IPEndPoint(remoteAddr, int.Parse(m.Info["Port"]));
+                UdpChannel c = Settings.EncryptChannels ?
+                    new(new IPEndPoint(localAddr, 0), m.Crypto) :
+                    new(new IPEndPoint(localAddr, 0));
+
+                c.SetRemote(remoteEndpoint);
+
+                var msg = new ChannelManagementMessage
+                {
+                    Info = new Dictionary<string, string>
+                    {
+                        { "Port", c.Local.Port.ToString() },
+                        { "Mode", "Confirm" },
+                        { "IdPort", m.Info["Port"] },
+                    },
+                    Type = typeof(UdpChannel).Name
+                };
+
+                SendMessage(msg);
+                Channels.Add(c);
+
+                Task.Run(() => ChannelOpened(c));
+            }
+            else if (m.Info["Mode"] == "Confirm")
+            {
+                var c = _connectionWait.First(c => c is UdpChannel ch && ch.Local.Port.ToString() == m.Info["IdPort"]) as UdpChannel;
+                c.SetRemote(new IPEndPoint(localAddr, int.Parse(m.Info["Port"])));
+                _connectionWait.Remove(c);
+            }
+            else if (m.Info["Mode"] == "Close")
+            {
+                var c = Channels.First(ch => ch is UdpChannel c && c.Local.Port.ToString() == m.Info["IdPort"]) as UdpChannel;
+                c.Close();
+                Channels.Remove(c);
+            }
+        });
+        CloseChannelMethods.Add(typeof(UdpChannel), async (c) =>
         {
-            var c = Channels.First(ch => (ch as UdpChannel).Local.Port == m.Port) as UdpChannel;
-            c.Close();
-            Channels.Remove(c);
-        }
-    }
-
-    private void HandleObject(MessageBase mb)
-    {
-        var m = mb as ObjectMessage;
-
-        if (OnReceiveObject is not null)
-            _invokationList.AddAction(() => OnReceiveObject(m.GetValue()));
-    }
-
-    private void HandleDisconnect(MessageBase _)
-    {
-        DisconnectedEvent(true);
+            await c.CloseAsync();
+        });
     }
 }

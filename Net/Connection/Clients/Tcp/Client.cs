@@ -3,6 +3,7 @@
 using Channels;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
@@ -36,10 +37,11 @@ public class Client : ObjectClient
     /// 
     /// </summary>
     /// <param name="ep">IPEndpoint of the server</param>
-    public Client(IPEndPoint ep)
+    public Client(IPEndPoint ep) : base()
     {
         ConnectionState = ConnectState.PENDING;
         _targetEndpoint = ep;
+
         Initialize();
     }
 
@@ -109,10 +111,10 @@ public class Client : ObjectClient
 
     private void Initialize()
     {
-        Connection = new TcpChannel { Socket = new Socket(_targetEndpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp) };
+        Connection = new TcpChannel(new Socket(_targetEndpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp));
 
         ConnectionState = ConnectState.PENDING;
-        TokenSource = new System.Threading.CancellationTokenSource();
+        TokenSource = new CancellationTokenSource();
     }
 
     private void StartLoop()

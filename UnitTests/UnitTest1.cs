@@ -1,18 +1,16 @@
-namespace Tests;
-
 using Net;
+using Net.Connection.Channels;
+using Net.Connection.Clients.Tcp;
+using Net.Connection.Servers;
+using System.Net;
 
-public class ClientTests
+namespace UnitTests;
+
+public class TcpClients
 {
     private static int port = 10000;
 
-    [SetUp]
-    public void Setup()
-    {
-
-    }
-
-    [Test]
+    [Fact]
     public void Connect()
     {
         var server = new Server(new IPEndPoint(IPAddress.Loopback, port), 1);
@@ -21,10 +19,10 @@ public class ClientTests
         var c = new Client(IPAddress.Loopback, port++);
         var connected = c.Connect();
         server.ShutDown();
-        Assert.IsTrue(connected);
+        Assert.True(connected);
     }
 
-    [Test]
+    [Fact]
     public async Task ConnectAsync()
     {
         var server = new Server(new IPEndPoint(IPAddress.Loopback, port), 1);
@@ -33,10 +31,10 @@ public class ClientTests
         var c = new Client(IPAddress.Loopback, port++);
         var connected = await c.ConnectAsync();
         await server.ShutDownAsync();
-        Assert.IsTrue(connected);
+        Assert.True(connected);
     }
 
-    [Test]
+    [Fact]
     public async Task DisconnectsGracefully()
     {
         var server = new Server(new IPEndPoint(IPAddress.Loopback, port), 1);
@@ -44,7 +42,7 @@ public class ClientTests
         server.OnClientDisconnected += async (client, graceful) =>
         {
             await server.ShutDownAsync();
-            Assert.IsTrue(graceful);
+            Assert.True(graceful);
         };
         server.Start();
 
@@ -53,7 +51,7 @@ public class ClientTests
         await c.CloseAsync();
     }
 
-    [Test]
+    [Fact]
     public async Task SendPrimitive()
     {
         var server = new Server(new IPEndPoint(IPAddress.Loopback, port), 1);
@@ -62,7 +60,7 @@ public class ClientTests
         server.OnClientObjectReceived += async (obj, client) =>
         {
             await server.ShutDownAsync();
-            Assert.AreEqual(str, obj);
+            Assert.Equal(str, obj);
         };
         server.Start();
 
@@ -71,16 +69,16 @@ public class ClientTests
         await c.SendObjectAsync(str);
     }
 
-    [Test]
+    [Fact]
     public async Task SendComplex()
     {
         var server = new Server(new IPEndPoint(IPAddress.Loopback, port), 1);
-        var settings = new NetSettings() { ConnectionPollTimeout = int.MaxValue, UseEncryption = false};
+        var settings = new NetSettings() { ConnectionPollTimeout = int.MaxValue, UseEncryption = false };
 
         server.OnClientObjectReceived += async (obj, client) =>
         {
             await server.ShutDownAsync();
-            Assert.AreEqual(settings, obj);
+            Assert.Equal(settings, obj);
         };
         server.Start();
 
@@ -89,7 +87,7 @@ public class ClientTests
         await c.SendObjectAsync(settings);
     }
 
-    [Test]
+    [Fact]
     public async Task SendMultiDimensional()
     {
         var server = new Server(new IPEndPoint(IPAddress.Loopback, port), 1);
@@ -103,7 +101,7 @@ public class ClientTests
         server.OnClientObjectReceived += async (obj, client) =>
         {
             await server.ShutDownAsync();
-            Assert.AreEqual(arr, obj);
+            Assert.Equal(arr, obj);
         };
         server.Start();
 
@@ -112,7 +110,7 @@ public class ClientTests
         await c.SendObjectAsync(arr);
     }
 
-    [Test]
+    [Fact]
     public async Task SendJagged()
     {
         var server = new Server(new IPEndPoint(IPAddress.Loopback, port), 1);
@@ -126,12 +124,74 @@ public class ClientTests
         server.OnClientObjectReceived += async (obj, client) =>
         {
             await server.ShutDownAsync();
-            Assert.AreEqual(arr, obj);
+            Assert.Equal(arr, obj);
         };
         server.Start();
 
         var c = new Client(IPAddress.Loopback, port++);
         await c.ConnectAsync();
         await c.SendObjectAsync(arr);
+    }
+
+    [Fact]
+    public async Task ServerSendComplex()
+    {
+        var server = new Server(new IPEndPoint(IPAddress.Loopback, port), 1);
+        var settings = new NetSettings() { ConnectionPollTimeout = int.MaxValue, UseEncryption = false };
+        server.Start();
+
+        var c = new Client(IPAddress.Loopback, port++);
+        c.OnReceiveObject += async (obj) =>
+        {
+
+        };
+
+        await c.ConnectAsync();
+        await c.SendObjectAsync(settings);
+    }
+
+    [Fact]
+    public async Task ClientOpenChannelAsync()
+    {
+        var server = new Server(new IPEndPoint(IPAddress.Loopback, port), 1);
+        server.Start();
+        bool s = false;
+
+        server.OnClientChannelOpened += (ch, sc) =>
+        {
+            s = true;
+        };
+
+        var c = new Client(IPAddress.Loopback, port++);
+
+        await c.ConnectAsync();
+        var ch = await c.OpenChannelAsync<UdpChannel>();
+
+        Assert.True(s && ch is not null);
+        await server.ShutDownAsync();
+    }
+
+    [Fact]
+    public async Task ChannelSendsData()
+    {
+        var server = new Server(new IPEndPoint(IPAddress.Loopback, port), 1);
+        server.Start();
+        bool s = false;
+
+        TaskCompletionSource tcs = new TaskCompletionSource();
+
+        server.OnClientChannelOpened += async (ch, sc) =>
+        {
+            if (System.Text.Encoding.UTF8.GetString(await ch.ReceiveBytesAsync()) == "Hello World")
+                s = true;
+        };
+
+        var c = new Client(IPAddress.Loopback, port++);
+
+        await c.ConnectAsync();
+        var ch = await c.OpenChannelAsync<UdpChannel>();
+        await ch.SendBytesAsync(System.Text.Encoding.UTF8.GetBytes("Hello World"));
+        await Task.Delay(1000);
+        Assert.True(s && ch is not null);
     }
 }

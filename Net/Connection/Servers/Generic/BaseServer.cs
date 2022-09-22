@@ -1,4 +1,4 @@
-﻿namespace Net.Connection.Servers;
+﻿namespace Net.Connection.Servers.Generic;
 
 using Clients;
 using Messages;

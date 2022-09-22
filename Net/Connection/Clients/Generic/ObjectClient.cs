@@ -12,8 +12,9 @@ using System.Threading.Tasks;
 /// </summary>
 public class ObjectClient<MainChannel> : GeneralClient<MainChannel> where MainChannel : class, IChannel
 {
-    private Dictionary<Type, Func<IChannel>> OpenChannelMethods;
-    private Dictionary<Type, Action<IChannel>> CloseChannelMethods;
+    public Dictionary<Type, Func<Task<IChannel>>> OpenChannelMethods = new();
+    public Dictionary<Type, Action<ChannelManagementMessage>> ChannelMessages = new();
+    public Dictionary<Type, Action<IChannel>> CloseChannelMethods = new();
 
     /// <summary>
     /// Invoked when the client receives an object
@@ -23,20 +24,12 @@ public class ObjectClient<MainChannel> : GeneralClient<MainChannel> where MainCh
     /// <summary>
     /// Invoked when a channel is opened
     /// </summary>
-    public event Action<UdpChannel> OnChannelOpened;
-    private List<UdpChannel> _connectionWait = new();
+    public event Action<IChannel> OnChannelOpened;
 
-    public new void SendMessage(MessageBase message)
-    {
-        if (ConnectionState == ConnectState.CONNECTED)
-            base.SendMessage(message);
-    }
+    protected List<IChannel> _connectionWait = new();
 
-    public new async Task SendMessageAsync(MessageBase message, CancellationToken token = default)
-    {
-        if (ConnectionState == ConnectState.CONNECTED)
-            await base.SendMessageAsync(message, token);
-    }
+    protected void ChannelOpened(IChannel c) =>
+        OnChannelOpened?.Invoke(c);
 
     /// <summary>
     /// Sends an object to the remote client
@@ -57,12 +50,11 @@ public class ObjectClient<MainChannel> : GeneralClient<MainChannel> where MainCh
     public void CloseChannel(IChannel c) =>
         CloseChannelMethods[c.GetType()](c);
 
-    public T OpenChannel<T>() where T : class, IChannel =>
-        OpenChannelMethods[typeof(T)]() as T;
+    public async Task<T> OpenChannelAsync<T>() where T : class, IChannel =>
+        (await OpenChannelMethods[typeof(T)]()) as T;
 
-    public void RegisterChannelType<T>(Func<T> open) where T : class, IChannel =>
-        OpenChannelMethods[typeof(T)] = open;
-
+    public void RegisterChannelType<T>(Func<Task<T>> open) where T : class, IChannel =>
+         OpenChannelMethods[typeof(T)] = open as Func<Task<IChannel>>;
 
     protected override void HandleMessage(MessageBase message)
     {
@@ -73,6 +65,9 @@ public class ObjectClient<MainChannel> : GeneralClient<MainChannel> where MainCh
                 break;
             case DisconnectMessage m:
                 HandleDisconnect(m);
+                break;
+            case ChannelManagementMessage m:
+                ChannelMessages[Utilities.ResolveType(m.Type)](m);
                 break;
             default:
                 base.HandleMessage(message);

@@ -14,6 +14,11 @@ public class TcpChannel : IChannel
 
     public bool Connected => throw new NotImplementedException();
 
+    public TcpChannel(Socket socket)
+    {
+        Socket = socket;
+    }
+
     public void Close()
     {
         Socket.Close();

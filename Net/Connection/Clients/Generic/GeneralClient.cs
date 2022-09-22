@@ -45,8 +45,9 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     /// </summary>
     public readonly Dictionary<string, Action<MessageBase>> CustomMessageHandlers = new();
 
-    public List<IChannel> Channels;
-    public override void SendMessage(MessageBase message)
+    public List<IChannel> Channels = new();
+
+    private void _SendMessage(MessageBase message)
     {
         try
         {
@@ -60,7 +61,12 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         }
     }
 
-    public override async Task SendMessageAsync(MessageBase message, CancellationToken token = default)
+    public override void SendMessage(MessageBase message)
+    {
+        _SendMessage(message);
+    }
+
+    private async Task _SendMessageAsync(MessageBase message, CancellationToken token = default)
     {
         using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(token, TokenSource.Token);
 
@@ -76,6 +82,11 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
             if (ConnectionState != ConnectState.CLOSED)
                 await DisconnectedEventAsync();
         }
+    }
+
+    public override async Task SendMessageAsync(MessageBase message, CancellationToken token = default)
+    {
+        await _SendMessageAsync(message, token);
     }
 
     private byte[] GetEncrypted(byte[] bytes) => _encryptionStage switch
@@ -102,10 +113,10 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 Settings = m.Settings;
                 if (!Settings.UseEncryption)
                 {
-                    SendMessage(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));
+                    _SendMessage(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));
                     ConnectionState = ConnectState.CONNECTED;
                 }
-                else SendMessage(new ConfirmationMessage(ConfirmationMessage.Confirmation.ENCRYPTION));
+                else _SendMessage(new ConfirmationMessage(ConfirmationMessage.Confirmation.ENCRYPTION));
                 break;
             case EncryptionMessage m:
                 _encryptionStage = m.stage;
@@ -113,17 +124,17 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 {
                     RsaKey = m.RSA;
                     Key = CryptoServices.KeyFromHash(CryptoServices.CreateHash(Guid.NewGuid().ToByteArray()));
-                    SendMessage(new EncryptionMessage(Key));
+                    _SendMessage(new EncryptionMessage(Key));
                 }
                 else if (_encryptionStage == EncryptionMessage.Stage.ACK)
                 {
                     Key = m.AES;
-                    SendMessage(new EncryptionMessage(EncryptionMessage.Stage.SYNACK));
+                    _SendMessage(new EncryptionMessage(EncryptionMessage.Stage.SYNACK));
                     _encryptionStage = EncryptionMessage.Stage.SYNACK;
                 }
                 else if (_encryptionStage == EncryptionMessage.Stage.SYNACK)
                 {
-                    SendMessage(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));
+                    _SendMessage(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));
                     ConnectionState = ConnectState.CONNECTED;
                 }
                 break;
@@ -136,8 +147,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                     case ConfirmationMessage.Confirmation.ENCRYPTION:
                         CryptoServices.GenerateKeyPair(out RSAParameters Public, out RSAParameters p);
                         RsaKey = p;
-
-                        SendMessage(new EncryptionMessage(Public));
+                        _SendMessage(new EncryptionMessage(Public));
                         break;
                 }
                 break;
@@ -238,7 +248,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         {
             if (ConnectionState == ConnectState.CLOSED) return;
 
-            SendMessage(new DisconnectMessage());
+            _SendMessage(new DisconnectMessage());
             Disconnected();
         }, _semaphore);
 
@@ -247,7 +257,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         {
             if (ConnectionState == ConnectState.CLOSED) return;
 
-            await SendMessageAsync(new DisconnectMessage());
+            await _SendMessageAsync(new DisconnectMessage());
             Disconnected();
         }, _semaphore);
 

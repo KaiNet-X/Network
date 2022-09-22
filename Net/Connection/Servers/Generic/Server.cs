@@ -1,6 +1,5 @@
-﻿namespace Net.Connection.Servers;
+﻿namespace Net.Connection.Servers.Generic;
 
-using Clients;
 using Messages;
 using Channels;
 using System;
@@ -9,15 +8,13 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using Net.Connection.Clients.Tcp;
-using Net.Connection.Servers.Generic;
+using Clients.Generic;
 
 /// <summary>
 /// Default server implementation
 /// </summary>
-public class Server : BaseServer<ServerClient>
+public abstract class Server<ConnectionType> : BaseServer<ServerClient<ConnectionType>> where ConnectionType : class, IChannel
 {
-    private List<Socket> _bindingSockets;
     private volatile SemaphoreSlim _semaphore;
 
     /// <summary>
@@ -43,12 +40,7 @@ public class Server : BaseServer<ServerClient>
     /// <summary>
     /// Handlers for custom message types
     /// </summary>
-    public Dictionary<string, Action<MessageBase, ServerClient>> CustomMessageHandlers = new();
-
-    /// <summary>
-    /// All endpoints the server is accepting connections on
-    /// </summary>
-    public readonly IPEndPoint[] Endpoints;
+    public Dictionary<string, Action<MessageBase, ServerClient<ConnectionType>>> CustomMessageHandlers = new();
 
     /// <summary>
     /// Delay between client updates; highly reduces CPU usage
@@ -58,65 +50,27 @@ public class Server : BaseServer<ServerClient>
     /// <summary>
     /// Invoked when a channel is opened on a client
     /// </summary>
-    public event Action<IChannel, ServerClient> OnClientChannelOpened;
+    public event Action<IChannel, ServerClient<ConnectionType>> OnClientChannelOpened;
 
     /// <summary>
     /// Invoked when a client receives an object
     /// </summary>
-    public event Action<object, ServerClient> OnClientObjectReceived;
+    public event Action<object, ServerClient<ConnectionType>> OnClientObjectReceived;
 
     /// <summary>
     /// Invoked when a client receives an unregistered custom message
     /// </summary>
-    public event Action<MessageBase, ServerClient> OnUnregisteredMessege;
+    public event Action<MessageBase, ServerClient<ConnectionType>> OnUnregisteredMessege;
 
     /// <summary>
     /// Invoked when a client is connected
     /// </summary>
-    public event Action<ServerClient> OnClientConnected;
+    public event Action<ServerClient<ConnectionType>> OnClientConnected;
 
     /// <summary>
     /// Invoked when a client disconnects
     /// </summary>
-    public event Action<ServerClient, bool> OnClientDisconnected;
-
-    /// <summary>
-    /// New server object
-    /// </summary>
-    /// <param name="address">IP address for the server to bind to</param>
-    /// <param name="port">Port for the server to bind to</param>
-    /// <param name="maxClients">Max amount of clients</param>
-    /// <param name="settings">Settings for connection</param>
-    public Server(IPAddress address, int port, ushort? maxClients = null, NetSettings settings = null) : 
-        this(new IPEndPoint(address, port), maxClients, settings) { }
-
-    /// <summary>
-    /// New server object
-    /// </summary>
-    /// <param name="endpoint">Endpoint for the server to bind to</param>
-    /// <param name="maxClients">Max amount of clients</param>
-    /// <param name="settings">Settings for connection</param>
-    public Server(IPEndPoint endpoint, ushort? maxClients = null, NetSettings settings = null) : 
-        this(new List<IPEndPoint> { endpoint}, maxClients, settings) { }
-
-    /// <summary>
-    /// New server object
-    /// </summary>
-    /// <param name="endpoints">List of endpoints for the server to bind to</param>
-    /// <param name="maxClients">Max amount of clients</param>
-    /// <param name="settings">Settings for connection</param>
-    public Server(List<IPEndPoint> endpoints, ushort? maxClients = null, NetSettings settings = null)
-    {
-        MaxClients = maxClients;
-        Settings = settings ?? new NetSettings();
-        Endpoints = endpoints.ToArray();
-        _bindingSockets = new List<Socket>();
-        _semaphore = new SemaphoreSlim(1, 1);
-
-        base.Clients = new List<ServerClient>();
-
-        InitializeSockets(Endpoints);
-    }
+    public event Action<ServerClient<ConnectionType>, bool> OnClientDisconnected;
 
     /// <summary>
     /// Sends an object to all clients
@@ -139,9 +93,6 @@ public class Server : BaseServer<ServerClient>
     {
         Active = Listening = true;
 
-        if (_bindingSockets.Count == 0)
-            InitializeSockets(Endpoints);
-
         if (Settings.SingleThreadedServer)
             Task.Run(async () =>
             {
@@ -149,7 +100,7 @@ public class Server : BaseServer<ServerClient>
                 {
                     await Utilities.ConcurrentAccessAsync(async (ct) =>
                     {
-                        foreach (ServerClient c in Clients)
+                        foreach (var c in Clients)
                         {
                             if (ct.IsCancellationRequested || c.ConnectionState == ConnectState.CLOSED)
                                 return;
@@ -161,7 +112,6 @@ public class Server : BaseServer<ServerClient>
 
         Task.Run(async () =>
         {
-            StartListening();
             while (Listening)
             {
                 if (MaxClients != null && Clients.Count >= MaxClients)
@@ -170,7 +120,7 @@ public class Server : BaseServer<ServerClient>
                     continue;
                 }
 
-                var c = new ServerClient(await GetNextConnection(), Settings);
+                var c = await InitializeClient<ConnectionType>();
 
                 c.OnChannelOpened += (ch) => OnClientChannelOpened?.Invoke(ch, c);
                 c.OnReceiveObject += (obj) => OnClientObjectReceived?.Invoke(obj, c);
@@ -211,7 +161,6 @@ public class Server : BaseServer<ServerClient>
                 c.SendMessage(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));
                 OnClientConnected?.Invoke(c);
             }
-            _bindingSockets.ForEach(socket => socket.Close());
         });
     }
 
@@ -240,31 +189,6 @@ public class Server : BaseServer<ServerClient>
         }, _semaphore);
     }
 
-    public override void Stop()
-    {
-        Utilities.ConcurrentAccess(() =>
-        {
-            while (_bindingSockets.Count > 0)
-            {
-                _bindingSockets[0].Close();
-                _bindingSockets.RemoveAt(0);
-            }
-        }, _semaphore);
-    }
-
-    public override async Task StopAsync()
-    {
-        await Utilities.ConcurrentAccessAsync((ct) =>
-        {
-            while (_bindingSockets.Count > 0)
-            {
-                _bindingSockets[0].Close();
-                _bindingSockets.RemoveAt(0);
-            }
-            return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
-        }, _semaphore);
-    }
-
     public override void SendMessageToAll(MessageBase msg)
     {
         Utilities.ConcurrentAccess(() =>
@@ -290,35 +214,5 @@ public class Server : BaseServer<ServerClient>
     public void RegisterType<T>() =>
         Utilities.RegisterType(typeof(T));
 
-    private void InitializeSockets(IPEndPoint[] endpoints)
-    {
-        foreach (IPEndPoint endpoint in endpoints)
-        {
-            Socket s = new Socket(endpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-
-            s.Bind(endpoint);
-            _bindingSockets.Add(s);
-        }
-    }
-
-    private void StartListening()
-    {
-        foreach (Socket s in _bindingSockets)
-            s.Listen();
-    }
-
-    private async Task<Socket> GetNextConnection()
-    {
-        CancellationTokenSource cts = new CancellationTokenSource();
-        List<Task<Socket>> tasks = new List<Task<Socket>>();
-
-        foreach(Socket s in _bindingSockets)
-        {
-            tasks.Add(s.AcceptAsync(cts.Token).AsTask());
-        }
-        var connection = await await Task.WhenAny(tasks);
-        cts.Cancel();
-
-        return connection;
-    }
+    protected abstract Task<ServerClient<Connection>> InitializeClient<Connection>() where Connection: class, IChannel;
 }

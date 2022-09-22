@@ -4,6 +4,7 @@ using System.Net;
 using Microsoft.VisualBasic;
 using System.Diagnostics;
 using Net.Connection.Clients.Tcp;
+using Net;
 
 public partial class MainForm : Form
 {

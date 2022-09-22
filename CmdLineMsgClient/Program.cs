@@ -33,14 +33,15 @@ while ((l = Console.ReadLine()) != "EXIT")
 
 await client.CloseAsync();
 
-async void C1_OnChannelOpened(UdpChannel c)
+async void C1_OnChannelOpened(IChannel ch)
 {
+    var c = ch as UdpChannel;
     byte[] bytes = null;
     while (bytes == null || bytes.Length == 0)
         bytes = c.ReceiveBytes();
 
     Console.WriteLine($"{c.Local.Port}: {Encoding.UTF8.GetString(bytes)}");
-    await client.CloseChannelAsync(c);
+    client.CloseChannel(c);
 }
 
 void C1_OnDisconnect(bool graceful)
