@@ -1,10 +1,10 @@
+namespace UnitTests;
+
 using Net;
 using Net.Connection.Channels;
 using Net.Connection.Clients.Tcp;
 using Net.Connection.Servers;
 using System.Net;
-
-namespace UnitTests;
 
 public class TcpClients
 {
@@ -60,13 +60,15 @@ public class TcpClients
         server.OnClientObjectReceived += async (obj, client) =>
         {
             await server.ShutDownAsync();
-            Assert.Equal(str, obj);
+            Assert.Equal(str, obj as string);
         };
         server.Start();
 
         var c = new Client(IPAddress.Loopback, port++);
         await c.ConnectAsync();
         await c.SendObjectAsync(str);
+        await Task.Delay(3000);
+        await server.ShutDownAsync();
     }
 
     [Fact]
@@ -78,13 +80,15 @@ public class TcpClients
         server.OnClientObjectReceived += async (obj, client) =>
         {
             await server.ShutDownAsync();
-            Assert.Equal(settings, obj);
+            Assert.Equal(settings, obj as NetSettings);
         };
         server.Start();
 
         var c = new Client(IPAddress.Loopback, port++);
         await c.ConnectAsync();
         await c.SendObjectAsync(settings);
+        await Task.Delay(3000);
+        await server.ShutDownAsync();
     }
 
     [Fact]
@@ -101,13 +105,15 @@ public class TcpClients
         server.OnClientObjectReceived += async (obj, client) =>
         {
             await server.ShutDownAsync();
-            Assert.Equal(arr, obj);
+            Assert.Equal(arr, obj as int[,]);
         };
         server.Start();
 
         var c = new Client(IPAddress.Loopback, port++);
         await c.ConnectAsync();
         await c.SendObjectAsync(arr);
+        await Task.Delay(3000);
+        await server.ShutDownAsync();
     }
 
     [Fact]
@@ -124,13 +130,15 @@ public class TcpClients
         server.OnClientObjectReceived += async (obj, client) =>
         {
             await server.ShutDownAsync();
-            Assert.Equal(arr, obj);
+            Assert.Equal(arr, obj as int[][]);
         };
         server.Start();
 
         var c = new Client(IPAddress.Loopback, port++);
         await c.ConnectAsync();
         await c.SendObjectAsync(arr);
+        await Task.Delay(3000);
+        await server.ShutDownAsync();
     }
 
     [Fact]
@@ -138,16 +146,23 @@ public class TcpClients
     {
         var server = new Server(new IPEndPoint(IPAddress.Loopback, port), 1);
         var settings = new NetSettings() { ConnectionPollTimeout = int.MaxValue, UseEncryption = false };
+        var equal = false;
+        server.OnClientConnected += async (sc) =>
+        {
+            await sc.SendObjectAsync(settings);
+        };
         server.Start();
 
         var c = new Client(IPAddress.Loopback, port++);
         c.OnReceiveObject += async (obj) =>
         {
-
+            equal = Helpers.AreEqual(settings,obj);
         };
 
         await c.ConnectAsync();
-        await c.SendObjectAsync(settings);
+        await Task.Delay(3000);
+        Assert.True(equal);
+        await server.ShutDownAsync();
     }
 
     [Fact]
