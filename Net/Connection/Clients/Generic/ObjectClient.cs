@@ -12,9 +12,9 @@ using System.Threading.Tasks;
 /// </summary>
 public class ObjectClient<MainChannel> : GeneralClient<MainChannel> where MainChannel : class, IChannel
 {
-    public Dictionary<Type, Func<Task<IChannel>>> OpenChannelMethods = new();
-    public Dictionary<Type, Action<ChannelManagementMessage>> ChannelMessages = new();
-    public Dictionary<Type, Action<IChannel>> CloseChannelMethods = new();
+    protected Dictionary<Type, Func<Task<IChannel>>> OpenChannelMethods = new();
+    protected Dictionary<Type, Func<ChannelManagementMessage, Task>> ChannelMessages = new();
+    protected Dictionary<Type, Func<IChannel, Task>> CloseChannelMethods = new();
 
     /// <summary>
     /// Invoked when the client receives an object
@@ -53,8 +53,12 @@ public class ObjectClient<MainChannel> : GeneralClient<MainChannel> where MainCh
     public async Task<T> OpenChannelAsync<T>() where T : class, IChannel =>
         (await OpenChannelMethods[typeof(T)]()) as T;
 
-    public void RegisterChannelType<T>(Func<Task<T>> open) where T : class, IChannel =>
-         OpenChannelMethods[typeof(T)] = open as Func<Task<IChannel>>;
+    public void RegisterChannelType<T>(Func<Task<T>> open, Func<ChannelManagementMessage, Task> channelManagement, Func<T, Task> close) where T : class, IChannel
+    {
+        OpenChannelMethods[typeof(T)] = async () => await open();
+        ChannelMessages[typeof(T)] = channelManagement;
+        CloseChannelMethods[typeof(T)] = async (t) => await close(t as T);
+    }
 
     protected override void HandleMessage(MessageBase message)
     {

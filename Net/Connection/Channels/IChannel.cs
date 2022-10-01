@@ -37,6 +37,9 @@ public interface IChannel
     /// <returns>bytes</returns>
     public Task<byte[]> ReceiveBytesAsync(CancellationToken token = default);
 
+    public int ReceiveToBuffer(byte[] buffer);
+
+    public Task<int> ReceiveToBufferAsync(byte[] buffer);
     /// <summary>
     /// Closes the channel
     /// </summary>

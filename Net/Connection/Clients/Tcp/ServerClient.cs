@@ -4,6 +4,7 @@ using Channels;
 using Messages;
 using Net.Connection.Clients.Generic;
 using System.Collections.Generic;
+using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
@@ -12,7 +13,7 @@ using System.Threading.Tasks;
 /// </summary>
 public class ServerClient : ObjectClient
 {
-    private IAsyncEnumerator<MessageBase> _reciever;
+    private IAsyncEnumerator<MessageBase> _receiver;
 
     internal ServerClient(Socket soc, NetSettings settings = null) : base()
     {
@@ -21,18 +22,21 @@ public class ServerClient : ObjectClient
         Settings = settings ?? new NetSettings();
         Connection = new TcpChannel(soc);
 
-        _reciever = ReceiveMessagesAsync().GetAsyncEnumerator();
+        localEndPoint = Connection.Socket.LocalEndPoint as IPEndPoint;
+        remoteEndPoint = Connection.Socket.RemoteEndPoint as IPEndPoint;
+
+        _receiver = ReceiveMessagesAsync().GetAsyncEnumerator();
 
         (this as GeneralClient<TcpChannel>).SendMessage(new SettingsMessage(Settings));
     }
 
     internal async Task GetNextMessageAsync()
     {
-        var msg = _reciever.Current;
+        var msg = _receiver.Current;
 
         if (msg != null)
             HandleMessage(msg);
 
-        await _reciever.MoveNextAsync();
+        await _receiver.MoveNextAsync();
     }
 }

@@ -1,7 +1,6 @@
 ﻿namespace Net.Connection.Clients.Generic;
 
 using Messages;
-using Net.Connection.Channels;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,11 +10,6 @@ using System.Threading.Tasks;
 /// </summary>
 public abstract class BaseClient
 {
-    /// <summary>
-    /// Channels for communication. These are seperate to the main connection and can be used to send raw data.
-    /// </summary>
-    //public List<IChannel> Channels = new();
-
     /// <summary>
     /// Sends a message to the remote client.
     /// </summary>

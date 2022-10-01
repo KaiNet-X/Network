@@ -1,14 +1,12 @@
 ﻿namespace Net.Connection.Servers.Generic;
 
-using Messages;
 using Channels;
+using Clients.Generic;
+using Messages;
 using System;
 using System.Collections.Generic;
-using System.Net;
-using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using Clients.Generic;
 
 /// <summary>
 /// Default server implementation

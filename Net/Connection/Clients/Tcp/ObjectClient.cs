@@ -7,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Text;
 using System.Threading.Tasks;
 
 /// <summary>
@@ -15,8 +14,11 @@ using System.Threading.Tasks;
 /// </summary>
 public class ObjectClient : ObjectClient<TcpChannel>
 {
-    public IPEndPoint LocalEndpoint => Connection.Socket.LocalEndPoint as IPEndPoint;
-    public IPEndPoint RemoteEndpoint => Connection.Socket.RemoteEndPoint as IPEndPoint;
+    public IPEndPoint LocalEndpoint => localEndPoint;
+    public IPEndPoint RemoteEndpoint => remoteEndPoint;
+
+    protected IPEndPoint localEndPoint;
+    protected IPEndPoint remoteEndPoint;
 
     protected List<IChannel> _connectionWait = new();
 
@@ -37,8 +39,7 @@ public class ObjectClient : ObjectClient<TcpChannel>
                 }
             }
         });
-
-        OpenChannelMethods.Add(typeof(UdpChannel), async () =>
+        RegisterChannelType<UdpChannel>(async () =>
         {
             var remoteAddr = ((IPEndPoint)Connection.Socket.RemoteEndPoint).Address;
             var localAddr = ((IPEndPoint)Connection.Socket.LocalEndPoint).Address;
@@ -65,7 +66,7 @@ public class ObjectClient : ObjectClient<TcpChannel>
 
             _connectionWait.Add(c);
 
-            SendMessage(m);
+            await SendMessageAsync(m);
 
             while (_connectionWait.Contains(c))
                 await Task.Delay(10);
@@ -73,9 +74,7 @@ public class ObjectClient : ObjectClient<TcpChannel>
             Channels.Add(c);
 
             return c;
-        });
-
-        ChannelMessages.Add(typeof(UdpChannel), (m) =>
+        }, (m) =>
         {
             var remoteAddr = ((IPEndPoint)Connection.Socket.RemoteEndPoint).Address;
             var localAddr = ((IPEndPoint)Connection.Socket.LocalEndPoint).Address;
@@ -102,7 +101,7 @@ public class ObjectClient : ObjectClient<TcpChannel>
                 SendMessage(msg);
                 Channels.Add(c);
 
-                Task.Run(() => ChannelOpened(c));
+                ChannelOpened(c);
             }
             else if (m.Info["Mode"] == "Confirm")
             {
@@ -116,10 +115,19 @@ public class ObjectClient : ObjectClient<TcpChannel>
                 c.Close();
                 Channels.Remove(c);
             }
-        });
-        CloseChannelMethods.Add(typeof(UdpChannel), async (c) =>
+            return Task.CompletedTask;
+        }, async (c) =>
         {
             await c.CloseAsync();
+            await SendMessageAsync(new ChannelManagementMessage
+            {
+                Type = typeof(UdpChannel).Name,
+                Info = new Dictionary<string, string>
+                {
+                    { "IdPort", c.Remote.Port.ToString() },
+                    { "Mode", "Create" }
+                }
+            });
         });
     }
 }

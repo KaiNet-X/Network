@@ -39,7 +39,7 @@ public partial class MainForm : Form
                 Invoke(() =>
                 {
                     treeView.Nodes.Clear();
-                    Invoke(() => { treeView.Nodes.Add(ToNode(t)); });
+                    treeView.Nodes.Add(ToNode(t));
                 });
             }
         };
@@ -74,9 +74,17 @@ public partial class MainForm : Form
 
         Task.Run(async () =>
         {
-            while (_client.ConnectionState != ConnectState.CONNECTED) await Task.Delay(10);
+            while (_client.ConnectionState != ConnectState.CONNECTED) 
+                await Task.Delay(10);
 
-            _client.SendMessage(new FileRequestMessage { RequestType = FileRequestMessage.FileRequestType.Tree });
+            try
+            {
+                _client.SendMessage(new FileRequestMessage { RequestType = FileRequestMessage.FileRequestType.Tree });
+            }
+            catch
+            {
+                MessageBox.Show("ERROR");
+            }
         });
     }
 
@@ -84,7 +92,7 @@ public partial class MainForm : Form
     {
         var path = _path.Substring(5);
 
-        _client.SendMessage(new FileRequestMessage { RequestType=FileRequestMessage.FileRequestType.Download, PathRequest = path });
+        _client.SendMessageAsync(new FileRequestMessage { RequestType=FileRequestMessage.FileRequestType.Download, PathRequest = path });
     }
 
     private async void uploadButton_Click(object sender, EventArgs e)

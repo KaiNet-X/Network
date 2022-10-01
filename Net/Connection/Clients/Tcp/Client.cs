@@ -72,6 +72,10 @@ public class Client : ObjectClient
                         return false;
             }
         }
+
+        localEndPoint = Connection.Socket.LocalEndPoint as IPEndPoint;
+        remoteEndPoint = Connection.Socket.RemoteEndPoint as IPEndPoint;
+
         while (ConnectionState == ConnectState.PENDING) ;
         return true;
     }
@@ -103,6 +107,9 @@ public class Client : ObjectClient
                         return false;
             }
         }
+        localEndPoint = Connection.Socket.LocalEndPoint as IPEndPoint;
+        remoteEndPoint = Connection.Socket.RemoteEndPoint as IPEndPoint;
+
         while (ConnectionState == ConnectState.PENDING)
             await Task.Delay(10);
 

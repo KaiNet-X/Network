@@ -1,16 +1,15 @@
 ﻿namespace Net.Connection.Servers;
 
-using Clients;
-using Messages;
 using Channels;
+using Messages;
+using Clients.Tcp;
+using Servers.Generic;
 using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using Net.Connection.Clients.Tcp;
-using Net.Connection.Servers.Generic;
 
 /// <summary>
 /// Default server implementation
@@ -68,7 +67,7 @@ public class Server : BaseServer<ServerClient>
     /// <summary>
     /// Invoked when a client receives an unregistered custom message
     /// </summary>
-    public event Action<MessageBase, ServerClient> OnUnregisteredMessege;
+    public event Action<MessageBase, ServerClient> OnUnregisteredMessage;
 
     /// <summary>
     /// Invoked when a client is connected
@@ -79,6 +78,10 @@ public class Server : BaseServer<ServerClient>
     /// Invoked when a client disconnects
     /// </summary>
     public event Action<ServerClient, bool> OnClientDisconnected;
+
+    public Dictionary<Type, Func<ServerClient, Task<IChannel>>> OpenChannelMethods = new();
+    public Dictionary<Type, Action<ChannelManagementMessage, ServerClient>> ChannelMessages = new();
+    public Dictionary<Type, Action<IChannel, ServerClient>> CloseChannelMethods = new();
 
     /// <summary>
     /// New server object
@@ -134,7 +137,6 @@ public class Server : BaseServer<ServerClient>
     public async Task SendObjectToAllAsync<T>(T obj, CancellationToken token = default) =>
         await SendMessageToAllAsync(new ObjectMessage(obj), token);
 
-
     public override void Start()
     {
         Active = Listening = true;
@@ -184,9 +186,10 @@ public class Server : BaseServer<ServerClient>
 
                     OnClientDisconnected?.Invoke(c, g);
                 };
+
                 c.OnUnregisteredMessage += (m) =>
                 {
-                    OnUnregisteredMessege?.Invoke(m, c);
+                    OnUnregisteredMessage?.Invoke(m, c);
                 };
 
                 foreach (var v in CustomMessageHandlers)
@@ -199,13 +202,13 @@ public class Server : BaseServer<ServerClient>
                 }, _semaphore);
 
                 if (!Settings.SingleThreadedServer)
-                    Task.Run(async () =>
+                    _ = Task.Run(async () =>
                     {
                         while (c.ConnectionState != ConnectState.CLOSED && Active)
-                        {
                             await c.GetNextMessageAsync();
-                        }
+
                     });
+
                 while (c.ConnectionState == ConnectState.PENDING) ;
 
                 c.SendMessage(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));

@@ -117,27 +117,6 @@ public class UdpChannel : IChannel
     {
         _udp.Connect(Remote = endpoint);
         Connected = true;
-        receiver = Task.Run(async () => await ReceiveLoop(_cts.Token));
-    }
-
-    private async Task ReceiveLoop(CancellationToken ct)
-    {
-        //var receiveTask = _udp.ReceiveAsync(ct);
-        //while (Connected)
-        //{
-        //    if (ct.IsCancellationRequested)
-        //        return;
-
-        //    var result = await receiveTask;
-        //    receiveTask = _udp.ReceiveAsync(ct);
-        //    if (_aes == null)
-        //        _byteQueue.EnqueueRange(result.Buffer);
-        //    else
-        //    {
-        //        var decrypted = await CryptoServices.DecryptAESAsync(result.Buffer, _aes, _aes);
-        //        _byteQueue.EnqueueRange(decrypted);
-        //    }
-        //}
     }
 
     public void Close()
@@ -154,5 +133,17 @@ public class UdpChannel : IChannel
     {
         Close();
         return Task.CompletedTask;
+    }
+
+    public int ReceiveToBuffer(byte[] buffer)
+    {
+        var ep = Remote as EndPoint;
+        return _udp.Client.ReceiveFrom(buffer, SocketFlags.None, ref ep);
+    }
+
+    public async Task<int> ReceiveToBufferAsync(byte[] buffer)
+    {
+        var ep = Remote as EndPoint;
+        return (await _udp.Client.ReceiveFromAsync(buffer, SocketFlags.None, ep)).ReceivedBytes;
     }
 }

@@ -81,6 +81,7 @@ async void HandleFileRequest (MessageBase msg, ServerClient c)
                 //await fs.ReadAsync(buffer);
                 //var g = await c.OpenChannelAsync();
                 //await c.SendBytesOnChannelAsync(buffer, g);
+                Console.WriteLine($"{c.RemoteEndpoint} requested {fMsg.PathRequest.Split('\\')[^1]}");
             }
             break;
         case FileRequestMessage.FileRequestType.Upload:
@@ -91,6 +92,7 @@ async void HandleFileRequest (MessageBase msg, ServerClient c)
                 var tree = GetTree(workingDirectory);
                 tree.Value = "Root";
                 await c.SendObjectAsync(tree);
+                Console.WriteLine($"{c.RemoteEndpoint} uploaded {fMsg.FileName}");
             }
             break;
         case FileRequestMessage.FileRequestType.Tree:

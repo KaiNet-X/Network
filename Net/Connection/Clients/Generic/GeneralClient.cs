@@ -23,12 +23,13 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     protected volatile NetSettings Settings;
 
     protected MainChannel Connection { get; set; }
+
     /// <summary>
     /// The state of the current connection.
     /// </summary>
     public ConnectState ConnectionState { get; protected set; } = ConnectState.NONE;
 
-    private EncryptionMessage.Stage _encryptionStage = EncryptionMessage.Stage.NONE;
+    protected EncryptionMessage.Stage encryptionStage = EncryptionMessage.Stage.NONE;
 
     /// <summary>
     /// Invoked when an unregistered message is received
@@ -89,7 +90,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         await _SendMessageAsync(message, token);
     }
 
-    private byte[] GetEncrypted(byte[] bytes) => _encryptionStage switch
+    private byte[] GetEncrypted(byte[] bytes) => encryptionStage switch
     {
         EncryptionMessage.Stage.SYN => CryptoServices.EncryptRSA(bytes, RsaKey.Value),
         EncryptionMessage.Stage.ACK => CryptoServices.EncryptAES(bytes, Key, Key),
@@ -97,7 +98,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         EncryptionMessage.Stage.NONE or _ => bytes
     };
 
-    private async Task<byte[]> GetEncryptedAsync(byte[] bytes) => _encryptionStage switch
+    private async Task<byte[]> GetEncryptedAsync(byte[] bytes) => encryptionStage switch
     {
         EncryptionMessage.Stage.SYN => CryptoServices.EncryptRSA(bytes, RsaKey.Value),
         EncryptionMessage.Stage.ACK => await CryptoServices.EncryptAESAsync(bytes, Key, Key),
@@ -119,20 +120,20 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 else _SendMessage(new ConfirmationMessage(ConfirmationMessage.Confirmation.ENCRYPTION));
                 break;
             case EncryptionMessage m:
-                _encryptionStage = m.stage;
-                if (_encryptionStage == EncryptionMessage.Stage.SYN)
+                encryptionStage = m.stage;
+                if (encryptionStage == EncryptionMessage.Stage.SYN)
                 {
                     RsaKey = m.RSA;
                     Key = CryptoServices.KeyFromHash(CryptoServices.CreateHash(Guid.NewGuid().ToByteArray()));
                     _SendMessage(new EncryptionMessage(Key));
                 }
-                else if (_encryptionStage == EncryptionMessage.Stage.ACK)
+                else if (encryptionStage == EncryptionMessage.Stage.ACK)
                 {
                     Key = m.AES;
                     _SendMessage(new EncryptionMessage(EncryptionMessage.Stage.SYNACK));
-                    _encryptionStage = EncryptionMessage.Stage.SYNACK;
+                    encryptionStage = EncryptionMessage.Stage.SYNACK;
                 }
-                else if (_encryptionStage == EncryptionMessage.Stage.SYNACK)
+                else if (encryptionStage == EncryptionMessage.Stage.SYNACK)
                 {
                     _SendMessage(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));
                     ConnectionState = ConnectState.CONNECTED;
@@ -153,21 +154,29 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 break;
             default:
                 var msgHandler = CustomMessageHandlers[message.MessageType];
-                if (msgHandler != null) _invokationList.AddAction(() => msgHandler(message));
-                else _invokationList.AddAction(() => OnUnregisteredMessage?.Invoke(message));
+                if (msgHandler != null) msgHandler(message);// _invokationList.AddAction(() => msgHandler(message));
+                else OnUnregisteredMessage?.Invoke(message);// _invokationList.AddAction(() => OnUnregisteredMessage?.Invoke(message));
                 break;
         }
     }
 
     protected override IEnumerable<MessageBase> ReceiveMessages()
     {
+        const int buffer_length = 1024;
+        byte[] buffer = new byte[buffer_length];
         List<byte> allBytes = new List<byte>();
 
         while (ConnectionState != ConnectState.CLOSED)
         {
             try
             {
-                allBytes.AddRange(Connection.ReceiveBytes());
+                int received;
+                do
+                {
+                    received = Connection.ReceiveToBuffer(buffer);
+                    allBytes.AddRange(buffer[0..received]);
+                }
+                while (received == buffer_length);
             }
             catch
             {
@@ -179,7 +188,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
             IEnumerable<MessageBase> messages = null;
 
             if (Settings != null && Settings.UseEncryption)
-                messages = _encryptionStage switch
+                messages = encryptionStage switch
                 {
                     EncryptionMessage.Stage.SYN => MessageParser.GetMessagesAesEnum(allBytes, Key),
                     EncryptionMessage.Stage.ACK => MessageParser.GetMessagesRsaEnum(allBytes, RsaKey.Value),
@@ -194,13 +203,21 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
 
     protected override async IAsyncEnumerable<MessageBase> ReceiveMessagesAsync()
     {
+        const int buffer_length = 1024;
+        byte[] buffer = new byte[buffer_length];
         List<byte> allBytes = new List<byte>();
 
         while (ConnectionState != ConnectState.CLOSED)
         {
             try
             {
-                allBytes.AddRange(await Connection.ReceiveBytesAsync());
+                int received;
+                do
+                {
+                    received = await Connection.ReceiveToBufferAsync(buffer);
+                    allBytes.AddRange(buffer[0..received]);
+                }
+                while (received == buffer_length);
             }
             catch
             {
@@ -209,10 +226,10 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 yield break;
             }
 
-            IEnumerable<MessageBase> messages = null;
+            IEnumerable<MessageBase> messages;
 
             if (Settings != null && Settings.UseEncryption)
-                messages = _encryptionStage switch
+                messages = encryptionStage switch
                 {
                     EncryptionMessage.Stage.SYN => MessageParser.GetMessagesAesEnum(allBytes, Key),
                     EncryptionMessage.Stage.ACK => MessageParser.GetMessagesRsaEnum(allBytes, RsaKey.Value),
@@ -237,7 +254,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
             c.Close();
 
         Channels.Clear();
-        _encryptionStage = EncryptionMessage.Stage.NONE;
+        encryptionStage = EncryptionMessage.Stage.NONE;
         Settings = null;
         RsaKey = null;
         Key = null;
@@ -267,7 +284,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
             if (ConnectionState == ConnectState.CLOSED) return Task.CompletedTask;
 
             Disconnected();
-            Task.Run(() => OnDisconnect?.Invoke(graceful));
+            OnDisconnect?.Invoke(graceful);
             return Task.CompletedTask;
         }, _semaphore);
 
@@ -277,7 +294,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
             if (ConnectionState == ConnectState.CLOSED) return;
 
             Disconnected();
-            Task.Run(() => OnDisconnect?.Invoke(graceful));
+            OnDisconnect?.Invoke(graceful);
         }, _semaphore);
 }
 
