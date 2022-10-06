@@ -17,7 +17,7 @@ public class Client : ObjectClient
     public ushort LoopDelay = 1;
     private readonly IPEndPoint _targetEndpoint;
 
-    public Task _listener { get; private set; }
+    private Task _listener { get; set; }
 
     /// <summary>
     /// 

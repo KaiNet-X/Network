@@ -17,7 +17,7 @@ using System.Threading.Tasks;
 public class Server : BaseServer<ServerClient>
 {
     private List<Socket> _bindingSockets;
-    private volatile SemaphoreSlim _semaphore;
+    private volatile SemaphoreSlim _semaphore = new(1);
 
     /// <summary>
     /// If the server is active or not
@@ -114,9 +114,6 @@ public class Server : BaseServer<ServerClient>
         Settings = settings ?? new NetSettings();
         Endpoints = endpoints.ToArray();
         _bindingSockets = new List<Socket>();
-        _semaphore = new SemaphoreSlim(1, 1);
-
-        base.Clients = new List<ServerClient>();
 
         InitializeSockets(Endpoints);
     }

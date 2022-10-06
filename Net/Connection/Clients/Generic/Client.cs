@@ -51,6 +51,25 @@ public class Client : Client<IChannel>
     public Func<bool> ConnectMethod;
     public Func<Task<bool>> ConnectMethodAsync;
 
+    private Task _listener { get; set; }
+
+    public IChannel Connection 
+    {
+        get => base.Connection; 
+        set
+        {
+            base.Connection = value;
+            _listener = Task.Run(async () =>
+            {
+                await foreach (var msg in ReceiveMessagesAsync())
+                {
+                    if (msg != null)
+                        HandleMessage(msg);
+                }
+            });
+        }
+    }
+
     public override bool Connect() =>
         ConnectMethod();
 

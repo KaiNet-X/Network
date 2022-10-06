@@ -5,6 +5,7 @@ using Clients.Generic;
 using Messages;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,7 +14,7 @@ using System.Threading.Tasks;
 /// </summary>
 public abstract class Server<ConnectionType> : BaseServer<ServerClient<ConnectionType>> where ConnectionType : class, IChannel
 {
-    private volatile SemaphoreSlim _semaphore;
+    private volatile SemaphoreSlim _semaphore = new(1);
 
     /// <summary>
     /// If the server is active or not
@@ -24,11 +25,6 @@ public abstract class Server<ConnectionType> : BaseServer<ServerClient<Connectio
     /// If the server is listening for connections
     /// </summary>
     public bool Listening { get; private set; } = false;
-
-    /// <summary>
-    /// Settings for this server that are set in the constructor
-    /// </summary>
-    public readonly NetSettings Settings;
 
     /// <summary>
     /// Max connections at one time
@@ -91,23 +87,6 @@ public abstract class Server<ConnectionType> : BaseServer<ServerClient<Connectio
     {
         Active = Listening = true;
 
-        if (Settings.SingleThreadedServer)
-            Task.Run(async () =>
-            {
-                while (Active)
-                {
-                    await Utilities.ConcurrentAccessAsync(async (ct) =>
-                    {
-                        foreach (var c in Clients)
-                        {
-                            if (ct.IsCancellationRequested || c.ConnectionState == ConnectState.CLOSED)
-                                return;
-                            await c.GetNextMessageAsync();
-                        }
-                    }, _semaphore);
-                }
-            });
-
         Task.Run(async () =>
         {
             while (Listening)
@@ -146,14 +125,13 @@ public abstract class Server<ConnectionType> : BaseServer<ServerClient<Connectio
                     return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
                 }, _semaphore);
 
-                if (!Settings.SingleThreadedServer)
-                    Task.Run(async () =>
+                _ = Task.Run(async () =>
+                {
+                    while (c.ConnectionState != ConnectState.CLOSED && Active)
                     {
-                        while (c.ConnectionState != ConnectState.CLOSED && Active)
-                        {
-                            await c.GetNextMessageAsync();
-                        }
-                    });
+                        await c.GetNextMessageAsync();
+                    }
+                });
                 while (c.ConnectionState == ConnectState.PENDING) ;
 
                 c.SendMessage(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));
@@ -217,17 +195,30 @@ public abstract class Server<ConnectionType> : BaseServer<ServerClient<Connectio
 
 public class Server : Server<IChannel>
 {
-    private Dictionary<Type, Func<Task<ServerClient<IChannel>>>> ListenMethods;
-    private List<Task<ServerClient<IChannel>>> WaitList;
+    private Func<ServerClient<IChannel>, IChannel> chan;
+
+    private Dictionary<Type, Func<Task<ServerClient<IChannel>>>> ListenMethods = new();
+
+    private List<Task<ServerClient<IChannel>>> WaitList = new();
+
+    public Server()
+    {
+        chan = typeof(ServerClient<IChannel>)
+            .GetProperty("Connection", BindingFlags.NonPublic | BindingFlags.Instance)
+            .GetMethod.CreateDelegate<Func<ServerClient<IChannel>, IChannel>>();
+    }
 
     public override void Start()
     {
+        foreach (var v in ListenMethods)
+            WaitList.Add(v.Value());
         base.Start();
     }
 
     public override void Stop()
     {
-        throw new NotImplementedException();
+        foreach (var client in Clients)
+            client.Close();
     }
 
     public override Task StopAsync()
@@ -235,12 +226,18 @@ public class Server : Server<IChannel>
         throw new NotImplementedException();
     }
 
+    public void RegisterConnectionMethod<TChannel>(Func<Task<ServerClient<IChannel>>> method) where TChannel : IChannel
+    {
+        ListenMethods[typeof(TChannel)] = method;
+    }
+
     protected override async Task<ServerClient<IChannel>> InitializeClient()
     {
         var task = await Task.WhenAny(WaitList);
         WaitList.Remove(task);
         var result = task.GetAwaiter().GetResult();
-        WaitList.Add(ListenMethods[result.GetType()]());
+
+        WaitList.Add(ListenMethods[chan(result).GetType()]());
         return result;
     }
 }
