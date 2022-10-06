@@ -14,7 +14,6 @@ public class UdpChannel : IChannel
     private SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
     private UdpClient _udp;
     private ConcurrentQueue<byte> _byteQueue = new();
-    private Task receiver;
     private byte[] _aes;
     private CancellationTokenSource _cts = new CancellationTokenSource();
 

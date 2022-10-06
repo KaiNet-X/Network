@@ -1,8 +1,9 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Sockets;
+using System.Runtime.Intrinsics.Arm;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,9 +15,16 @@ public class TcpChannel : IChannel
 
     public bool Connected => throw new NotImplementedException();
 
-    public TcpChannel(Socket socket)
+    public IPEndPoint Remote => Socket.RemoteEndPoint as IPEndPoint;
+
+    public IPEndPoint Local => Socket.LocalEndPoint as IPEndPoint;
+
+    private byte[] _aes;
+
+    public TcpChannel(Socket socket, byte[] aes = null)
     {
         Socket = socket;
+        _aes = aes;
     }
 
     public void Close()

@@ -1,6 +1,7 @@
 ﻿namespace Net.Messages;
 
 using Attributes;
+using Net.Messages.Parser;
 using System;
 
 [RegisterMessage]

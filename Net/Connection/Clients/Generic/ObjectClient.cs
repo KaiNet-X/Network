@@ -48,7 +48,10 @@ public class ObjectClient<MainChannel> : GeneralClient<MainChannel> where MainCh
         await SendMessageAsync(new ObjectMessage(obj), token);
 
     public void CloseChannel(IChannel c) =>
-        CloseChannelMethods[c.GetType()](c);
+        CloseChannelMethods[c.GetType()](c).GetAwaiter().GetResult();
+
+    public async Task CloseChannelAsync(IChannel c) =>
+        await CloseChannelMethods[c.GetType()](c);
 
     public async Task<T> OpenChannelAsync<T>() where T : class, IChannel =>
         (await OpenChannelMethods[typeof(T)]()) as T;

@@ -1,4 +1,4 @@
-﻿namespace Net.Messages;
+﻿namespace Net.Messages.Parser;
 
 using Net.Serialization;
 using System;
@@ -16,10 +16,9 @@ public class MessageParser
 
     public static byte[] Encapsulate(byte[] bytes)
     {
-        int l1 = Start.Length + bytes.Length;
-        int l2 = l1 + End.Length;
+        int len = Start.Length + bytes.Length + End.Length;
 
-        byte[] b = new byte[l2];
+        byte[] b = new byte[len];
 
         Array.Copy(Start, 0, b, 0, Start.Length);
         Array.Copy(bytes, 0, b, Start.Length, bytes.Length);
@@ -112,15 +111,15 @@ public class MessageParser
 
         Array.Copy(Encoding.UTF8.GetBytes($"{message.MessageType}}}"), bytes, message.MessageType.Length + 1);
         Array.Copy(serialized, 0, bytes, message.MessageType.Length + 1, serialized.Length);
-        
+
         return bytes;
     }
 
     public static async Task<byte[]> SerializeAsync(MessageBase message, CancellationToken token)
-    {        
+    {
         byte[] serialized = await Serializer.SerializeAsync(message, message.GetType(), token);
         byte[] bytes = new byte[serialized.Length + message.MessageType.Length + 1];
-        
+
         Array.Copy(Encoding.UTF8.GetBytes($"{message.MessageType}}}"), bytes, message.MessageType.Length + 1);
         Array.Copy(serialized, 0, bytes, message.MessageType.Length + 1, serialized.Length);
 

@@ -118,7 +118,7 @@ public abstract class Server<ConnectionType> : BaseServer<ServerClient<Connectio
                     continue;
                 }
 
-                var c = await InitializeClient<ConnectionType>();
+                var c = await InitializeClient();
 
                 c.OnChannelOpened += (ch) => OnClientChannelOpened?.Invoke(ch, c);
                 c.OnReceiveObject += (obj) => OnClientObjectReceived?.Invoke(obj, c);
@@ -212,5 +212,35 @@ public abstract class Server<ConnectionType> : BaseServer<ServerClient<Connectio
     public void RegisterType<T>() =>
         Utilities.RegisterType(typeof(T));
 
-    protected abstract Task<ServerClient<Connection>> InitializeClient<Connection>() where Connection: class, IChannel;
+    protected abstract Task<ServerClient<ConnectionType>> InitializeClient();
+}
+
+public class Server : Server<IChannel>
+{
+    private Dictionary<Type, Func<Task<ServerClient<IChannel>>>> ListenMethods;
+    private List<Task<ServerClient<IChannel>>> WaitList;
+
+    public override void Start()
+    {
+        base.Start();
+    }
+
+    public override void Stop()
+    {
+        throw new NotImplementedException();
+    }
+
+    public override Task StopAsync()
+    {
+        throw new NotImplementedException();
+    }
+
+    protected override async Task<ServerClient<IChannel>> InitializeClient()
+    {
+        var task = await Task.WhenAny(WaitList);
+        WaitList.Remove(task);
+        var result = task.GetAwaiter().GetResult();
+        WaitList.Add(ListenMethods[result.GetType()]());
+        return result;
+    }
 }

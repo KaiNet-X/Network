@@ -6,6 +6,7 @@ using Net.Connection.Clients.Tcp;
 using Net.Connection.Servers;
 using Net.Messages;
 using System.Net;
+using System.Text;
 
 public class TcpClients
 {
@@ -207,8 +208,40 @@ public class TcpClients
         await server.ShutDownAsync();
     }
 
-    [Fact]
-    public async Task ClientOpenChannelAsync()
+    [Theory]
+    [InlineData(typeof(UdpChannel))]
+    [InlineData(typeof(TcpChannel))]
+    public async Task ClientOpenChannelAsync(Type channelType)
+    {
+        var server = new Server(new IPEndPoint(IPAddress.Loopback, port), 1);
+        server.Start();
+        bool s = false;
+
+        server.OnClientChannelOpened += (ch, sc) =>
+        {
+            s = true;
+            ch.SendBytes(Encoding.UTF8.GetBytes("Hello World"));
+        };
+
+        var c = new Client(IPAddress.Loopback, port++);
+
+        await c.ConnectAsync();
+
+        IChannel ch = null;
+        if (channelType == typeof(UdpChannel))
+            ch = await c.OpenChannelAsync<UdpChannel>();
+        else if (channelType == typeof(TcpChannel))
+            ch = await c.OpenChannelAsync<TcpChannel>();
+
+        var text = Encoding.UTF8.GetString(await ch.ReceiveBytesAsync());
+        Assert.True(s && ch is not null && c.Channels.Count == 1 && server.Clients[0].Channels.Count == 1 && text == "Hello World");
+        await server.ShutDownAsync();
+    }
+
+    [Theory]
+    [InlineData(typeof(UdpChannel))]
+    [InlineData(typeof(TcpChannel))]
+    public async Task ClientCloseChannelAsync(Type channelType)
     {
         var server = new Server(new IPEndPoint(IPAddress.Loopback, port), 1);
         server.Start();
@@ -222,9 +255,17 @@ public class TcpClients
         var c = new Client(IPAddress.Loopback, port++);
 
         await c.ConnectAsync();
-        var ch = await c.OpenChannelAsync<UdpChannel>();
 
-        Assert.True(s && ch is not null);
+        IChannel ch = null;
+        if (channelType == typeof(UdpChannel))
+            ch = await c.OpenChannelAsync<UdpChannel>();
+        else if (channelType == typeof(TcpChannel))
+            ch = await c.OpenChannelAsync<TcpChannel>();
+
+        c.CloseChannel(ch);
+
+        await Task.Delay(10);
+        Assert.True(c.Channels.Count == 0 && server.Clients[0].Channels.Count == 0);
         await server.ShutDownAsync();
     }
 
@@ -345,6 +386,7 @@ public class TcpClients
 
         var c = new Client(IPAddress.Loopback, port++);
         c.RegisterChannelType<DummyChannel>(open, management, close);
+
         cl = c;
         await c.ConnectAsync();
         var d = await cl.OpenChannelAsync<DummyChannel>();

@@ -51,15 +51,9 @@ public class Client : Client<IChannel>
     public Func<bool> ConnectMethod;
     public Func<Task<bool>> ConnectMethodAsync;
 
-    public IChannel MainConnection => Connection;
+    public override bool Connect() =>
+        ConnectMethod();
 
-    public override bool Connect()
-    {
-        return ConnectMethod();
-    }
-
-    public async override Task<bool> ConnectAsync()
-    {
-        return await ConnectMethodAsync();
-    }
+    public async override Task<bool> ConnectAsync() =>
+        await ConnectMethodAsync();
 }
