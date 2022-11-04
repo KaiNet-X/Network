@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Runtime.Intrinsics.Arm;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,7 +11,7 @@ public class TcpChannel : IChannel
 {
     public Socket Socket;
 
-    public bool Connected => throw new NotImplementedException();
+    public bool Connected { get; private set; }
 
     public IPEndPoint Remote => Socket.RemoteEndPoint as IPEndPoint;
 
@@ -24,12 +22,14 @@ public class TcpChannel : IChannel
     public TcpChannel(Socket socket, byte[] aes = null)
     {
         Socket = socket;
+        Connected = true;
         _aes = aes;
     }
 
     public void Close()
     {
         Socket.Close();
+        Connected = false;
     }
 
     public Task CloseAsync()
@@ -47,7 +47,7 @@ public class TcpChannel : IChannel
         int received;
         do
         {
-            received = Socket.Receive(buffer, System.Net.Sockets.SocketFlags.None);
+            received = Socket.Receive(buffer, SocketFlags.None);
             allBytes.AddRange(buffer.Take(received));
         }
         while (received == buffer_length);
@@ -64,10 +64,10 @@ public class TcpChannel : IChannel
         int received;
         do
         {
-            received = await Socket.ReceiveAsync(buffer, System.Net.Sockets.SocketFlags.None);
-            allBytes.AddRange(buffer.Take(received));
+            received = await Socket.ReceiveAsync(buffer, SocketFlags.None, token);
+            allBytes.AddRange(buffer[..received]);
         }
-        while (received == buffer_length);
+        while (received == buffer_length && !token.IsCancellationRequested);
 
         return allBytes.ToArray();
     }
@@ -81,6 +81,6 @@ public class TcpChannel : IChannel
     public int ReceiveToBuffer(byte[] buffer) =>
         Socket.Receive(buffer, SocketFlags.None);
 
-    public async Task<int> ReceiveToBufferAsync(byte[] buffer) =>
-        await Socket.ReceiveAsync(buffer, SocketFlags.None);
+    public async Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default) =>
+        await Socket.ReceiveAsync(buffer, SocketFlags.None, token);
 }
