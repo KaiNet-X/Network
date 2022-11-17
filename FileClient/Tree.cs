@@ -1,5 +1,6 @@
 ﻿namespace FileClient;
 
+// This structure represents the folder structure
 public class Tree
 {
     public string Value { get; set; } = string.Empty;

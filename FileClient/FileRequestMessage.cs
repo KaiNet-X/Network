@@ -1,8 +1,9 @@
-﻿using Net.Attributes;
+﻿namespace FileClient;
+
+using Net.Attributes;
 using Net.Messages;
 
-namespace FileClient;
-
+//Attribute required on all custom message types
 [RegisterMessage]
 internal class FileRequestMessage : MessageBase
 {
