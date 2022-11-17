@@ -134,15 +134,9 @@ public class UdpChannel : IChannel
         return Task.CompletedTask;
     }
 
-    public int ReceiveToBuffer(byte[] buffer)
-    {
-        var ep = Remote as EndPoint;
-        return _udp.Client.ReceiveFrom(buffer, SocketFlags.None, ref ep);
-    }
+    public int ReceiveToBuffer(byte[] buffer) =>
+        _udp.Client.Receive(buffer, SocketFlags.None);
 
-    public async Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default)
-    {
-        var ep = Remote as EndPoint;
-        return (await _udp.Client.ReceiveFromAsync(buffer, SocketFlags.None, ep, token)).ReceivedBytes;
-    }
+    public async Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default) =>
+        await _udp.Client.ReceiveAsync(buffer, SocketFlags.None, token);
 }
