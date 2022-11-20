@@ -11,7 +11,7 @@ public class NetSettings
     public bool UseEncryption { get; set; } = true;
 
     /// <summary>
-    /// Encrypt channels
+    /// Encrypt channels. NOTE: this doesn't work if channels do not implement encryption.
     /// </summary>
     public bool EncryptChannels { get; set; } = true;
 

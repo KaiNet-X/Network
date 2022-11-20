@@ -7,6 +7,9 @@ using System.Threading.Tasks;
 
 namespace Net.Connection.Channels;
 
+/// <summary>
+/// A channel that communicates using TCP. Encryption is not yet supported.
+/// </summary>
 public class TcpChannel : IChannel
 {
     public Socket Socket;

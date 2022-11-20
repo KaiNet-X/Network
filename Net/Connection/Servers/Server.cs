@@ -31,7 +31,7 @@ public class Server : BaseServer<ServerClient>
     public bool Listening { get; private set; } = false;
 
     /// <summary>
-    /// 
+    /// Remove clients from the list after disconnection is invoked
     /// </summary>
     public bool RemoveAfterDisconnect { get; set; } = true;
 
@@ -145,6 +145,9 @@ public class Server : BaseServer<ServerClient>
     public async Task SendObjectToAllAsync<T>(T obj, CancellationToken token = default) =>
         await SendMessageToAllAsync(new ObjectMessage(obj), token);
 
+    /// <summary>
+    /// Causes the server to listen for incoming connections. Will accept connections until max clients is reached, but will continue after connections are removed.
+    /// </summary>
     public override void Start()
     {
         Active = Listening = true;
@@ -233,33 +236,50 @@ public class Server : BaseServer<ServerClient>
         });
     }
 
+    /// <summary>
+    /// Causes the server to listen for incoming connections. Will accept connections until max clients is reached, but will continue after connections are removed.
+    /// </summary>
     public override async Task StartAsync()
     {
         await Task.Run(Start);
     }
 
+    /// <summary>
+    /// Calls "Stop" and closes all connections.
+    /// </summary>
     public override void ShutDown()
     {
+        Active = false;
         Stop();
         Utilities.ConcurrentAccess(() =>
         {
             foreach (var c in Clients)
                 c.Close();
+            Clients.Clear();
         }, _semaphore);
     }
 
+    /// <summary>
+    /// Calls "StopAsync" and closes all connections.
+    /// </summary>
     public override async Task ShutDownAsync()
     {
+        Active = false;
         await StopAsync();
         await Utilities.ConcurrentAccessAsync(async (ct) =>
         {
             foreach (var c in Clients)
                 await c.CloseAsync();
+            Clients.Clear();
         }, _semaphore);
     }
 
+    /// <summary>
+    /// Stops listening for new connections, but still maintains active ones.
+    /// </summary>
     public override void Stop()
     {
+        Listening = false;
         Utilities.ConcurrentAccess(() =>
         {
             while (_bindingSockets.Count > 0)
@@ -270,8 +290,13 @@ public class Server : BaseServer<ServerClient>
         }, _semaphore);
     }
 
+    /// <summary>
+    /// Stops listening for new connections, but still maintains active ones.
+    /// </summary>
     public override async Task StopAsync()
     {
+        Listening = false;
+
         await Utilities.ConcurrentAccessAsync((ct) =>
         {
             while (_bindingSockets.Count > 0)
@@ -283,6 +308,10 @@ public class Server : BaseServer<ServerClient>
         }, _semaphore);
     }
 
+    /// <summary>
+    /// Send a message to all clients
+    /// </summary>
+    /// <param name="msg">Message to be sent</param>
     public override void SendMessageToAll(MessageBase msg)
     {
         Utilities.ConcurrentAccess(() =>
@@ -292,6 +321,10 @@ public class Server : BaseServer<ServerClient>
         }, _semaphore);
     }
 
+    /// <summary>
+    /// Send a message to all clients
+    /// </summary>
+    /// <param name="msg">Message to be sent</param>
     public override async Task SendMessageToAllAsync(MessageBase msg, CancellationToken token = default)
     {
         await Utilities.ConcurrentAccessAsync(async (ct) =>
