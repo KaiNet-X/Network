@@ -14,8 +14,6 @@ using System.Threading.Tasks;
 
 public class GenericClientTests
 {
-    private static int port = 10000;
-
     [Fact]
     public async void Connect()
     {
@@ -24,7 +22,7 @@ public class GenericClientTests
         server.RegisterConnectionMethod<TcpChannel>(async () =>
         {
             Socket servSoc = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            servSoc.Bind(new IPEndPoint(IPAddress.Loopback, port));
+            servSoc.Bind(new IPEndPoint(IPAddress.Loopback, Helpers.WaitForPort()));
             servSoc.Listen();
 
             var soc = await servSoc.AcceptAsync();
@@ -42,7 +40,7 @@ public class GenericClientTests
         c.ConnectMethod = () =>
         {
             var soc = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            soc.Connect(new IPEndPoint(IPAddress.Loopback, port++));
+            soc.Connect(new IPEndPoint(IPAddress.Loopback, Helpers.Port++));
             c.Connection = new TcpChannel(soc);
             return true;
         };
@@ -60,7 +58,7 @@ public class GenericClientTests
         server.RegisterConnectionMethod<TcpChannel>(async () =>
         {
             Socket servSoc = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            servSoc.Bind(new IPEndPoint(IPAddress.Loopback, port));
+            servSoc.Bind(new IPEndPoint(IPAddress.Loopback, Helpers.WaitForPort()));
             servSoc.Listen();
 
             var soc = await servSoc.AcceptAsync();
@@ -78,7 +76,7 @@ public class GenericClientTests
         c.ConnectMethodAsync = async () =>
         {
             var soc = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            await soc.ConnectAsync(new IPEndPoint(IPAddress.Loopback, port++));
+            await soc.ConnectAsync(new IPEndPoint(IPAddress.Loopback, Helpers.Port++));
             c.Connection = new TcpChannel(soc);
             return true;
         };
