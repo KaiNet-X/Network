@@ -3,12 +3,8 @@
 using Net.Connection.Channels;
 using Net.Connection.Clients.Generic;
 using Net.Connection.Servers.Generic;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading.Tasks;
 
 
@@ -87,6 +83,5 @@ public class GenericClientTests
         var conn = await c.ConnectAsync();
         await Task.Delay(500);
         Assert.True(connected && conn);
-        server.ShutDown();
     }
 }

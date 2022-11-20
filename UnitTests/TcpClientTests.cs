@@ -274,8 +274,14 @@ public class TcpClients
         else if (channelType == typeof(TcpChannel))
             ch = await c.OpenChannelAsync<TcpChannel>();
 
+        await Task.Delay(250);
+
         var text = Encoding.UTF8.GetString(await ch.ReceiveBytesAsync());
-        Assert.True(s && ch is not null && c.Channels.Count == 1 && decrypted.Clients[0].Channels.Count == 1 && text == "Hello World");
+        Assert.True(s);
+        Assert.NotNull(ch);
+        Assert.Single(c.Channels);
+        Assert.Single(decrypted.Clients[^1].Channels);
+        Assert.Equal("Hello World", text);
         await c.CloseAsync();
 
         decrypted.OnClientChannelOpened -= opened;
