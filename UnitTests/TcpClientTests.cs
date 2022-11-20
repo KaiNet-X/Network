@@ -10,13 +10,42 @@ using System.Text;
 
 public class TcpClients
 {
-    private Server server => Helpers.Server;
-    private Server encryptes = Helpers.EncryptedServer;
+    private static Server decrypted
+    {
+        get
+        {
+            _decrypted ??= new Server(new IPEndPoint(IPAddress.Loopback, 0), 10, new NetSettings
+            {
+                EncryptChannels = false,
+                UseEncryption = false,
+            });
+            if (!_decrypted.Active)
+                _decrypted.Start();
+            return _decrypted;
+        }
+    }
+    private static Server _decrypted;
 
+    private static Server encrypted
+    {
+        get
+        {
+            _encrypted ??= new Server(new IPEndPoint(IPAddress.Loopback, 0), 10, new NetSettings
+            {
+                EncryptChannels = true,
+                UseEncryption = true,
+            });
+            if (!_encrypted.Active)
+                _encrypted.Start();
+            return _encrypted;
+        }
+    }
+    private static Server _encrypted;
+    
     [Fact]
     public void Connect()
     {
-        var c = new Client(IPAddress.Loopback, Helpers.Port++);
+        var c = new Client(IPAddress.Loopback, decrypted.ActiveEndpoints[0].Port);
         var connected = c.Connect();
         c.Close();
         Assert.True(connected);
@@ -25,7 +54,7 @@ public class TcpClients
     [Fact]
     public async Task ConnectAsync()
     {
-        var c = new Client(IPAddress.Loopback, Helpers.Port++);
+        var c = new Client(IPAddress.Loopback, decrypted.ActiveEndpoints[0].Port);
         var connected = await c.ConnectAsync();
         await c.CloseAsync();
         Assert.True(connected);
@@ -36,16 +65,15 @@ public class TcpClients
     {
         Action<ServerClient, bool> del = async (ServerClient client, bool graceful) =>
         {
-            await server.ShutDownAsync();
             Assert.True(graceful);
         };
 
-        server.OnClientDisconnected += del;
+        decrypted.OnClientDisconnected += del;
 
-        var c = new Client(IPAddress.Loopback, Helpers.Port++);
+        var c = new Client(IPAddress.Loopback, decrypted.ActiveEndpoints[0].Port);
         await c.ConnectAsync();
         await c.CloseAsync();
-        server.OnClientDisconnected -= del;
+        decrypted.OnClientDisconnected -= del;
     }
 
     [Theory]
@@ -53,20 +81,19 @@ public class TcpClients
     [InlineData(false)]
     public async Task SendPrimitive(bool encrypt)
     {
+        var server = encrypt ? encrypted : decrypted;
         var str = "hello world";
 
         server.OnClientObjectReceived += async (obj, client) =>
         {
-            await server.ShutDownAsync();
             Assert.Equal(str, obj as string);
         };
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, Helpers.Port++);
+        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         await c.ConnectAsync();
         await c.SendObjectAsync(str);
         await Task.Delay(500);
-        await server.ShutDownAsync();
     }
 
     [Theory]
@@ -74,21 +101,19 @@ public class TcpClients
     [InlineData(false)]
     public async Task SendComplex(bool encrypt)
     {
-        var server = new Server(new IPEndPoint(IPAddress.Loopback, Helpers.WaitForPort()), 1, new NetSettings { UseEncryption = encrypt });
+        var server = encrypt ? encrypted : decrypted;
         var settings = new NetSettings() { ConnectionPollTimeout = int.MaxValue, UseEncryption = false };
 
         server.OnClientObjectReceived += async (obj, client) =>
         {
-            await server.ShutDownAsync();
             Assert.True(Helpers.AreEqual(settings, obj));
         };
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, Helpers.Port++);
+        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         await c.ConnectAsync();
         await c.SendObjectAsync(settings);
         await Task.Delay(500);
-        await server.ShutDownAsync();
     }
 
     [Theory]
@@ -96,7 +121,7 @@ public class TcpClients
     [InlineData(false)]
     public async Task SendMultiDimensional(bool encrypt)
     {
-        var server = new Server(new IPEndPoint(IPAddress.Loopback, Helpers.WaitForPort()), 1, new NetSettings { UseEncryption = encrypt });
+        var server = encrypt ? encrypted : decrypted;
         var arr = new int[,]
         {
             {9, 8, 7},
@@ -106,16 +131,14 @@ public class TcpClients
 
         server.OnClientObjectReceived += async (obj, client) =>
         {
-            await server.ShutDownAsync();
             Assert.True(Helpers.AreEqual(arr, obj as int[,]));
         };
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, Helpers.Port++);
+        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         await c.ConnectAsync();
         await c.SendObjectAsync(arr);
         await Task.Delay(500);
-        await server.ShutDownAsync();
     }
 
     [Theory]
@@ -123,7 +146,7 @@ public class TcpClients
     [InlineData(false)]
     public async Task SendJagged(bool encrypt)
     {
-        var server = new Server(new IPEndPoint(IPAddress.Loopback, Helpers.WaitForPort()), 1, new NetSettings { UseEncryption = encrypt });
+        var server = encrypt ? encrypted : decrypted;
         var arr = new int[][]
         {
             new int[] {9, 8, 7},
@@ -133,16 +156,14 @@ public class TcpClients
 
         server.OnClientObjectReceived += async (obj, client) =>
         {
-            await server.ShutDownAsync();
             Assert.True(Helpers.AreEqual(arr, obj as int[][]));
         };
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, Helpers.Port++);
+        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         await c.ConnectAsync();
         await c.SendObjectAsync(arr);
         await Task.Delay(500);
-        await server.ShutDownAsync();
     }
 
     [Theory]
@@ -150,7 +171,7 @@ public class TcpClients
     [InlineData(false)]
     public async Task ServerSendComplex(bool encrypt)
     {
-        var server = new Server(new IPEndPoint(IPAddress.Loopback, Helpers.WaitForPort()), 1, new NetSettings { UseEncryption = encrypt });
+        var server = encrypt ? encrypted : decrypted;
         var settings = new NetSettings() { ConnectionPollTimeout = int.MaxValue, UseEncryption = false };
 
         server.OnClientConnected += async (sc) =>
@@ -159,7 +180,7 @@ public class TcpClients
         };
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, Helpers.Port++);
+        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         c.OnReceiveObject += async (obj) =>
         {
             Assert.True(Helpers.AreEqual(settings,obj));
@@ -167,8 +188,6 @@ public class TcpClients
 
         await c.ConnectAsync();
         await Task.Delay(500);
-
-        await server.ShutDownAsync();
     }
 
     [Theory]
@@ -176,7 +195,7 @@ public class TcpClients
     [InlineData(false)]
     public async Task ServerSendJagged(bool encrypt)
     {
-        var server = new Server(new IPEndPoint(IPAddress.Loopback, Helpers.WaitForPort()), 1, new NetSettings { UseEncryption = encrypt });
+        var server = encrypt ? encrypted : decrypted;
         var arr = new int[][]
         {
             new int[] {9, 8, 7},
@@ -191,7 +210,7 @@ public class TcpClients
 
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, Helpers.Port++);
+        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         await c.ConnectAsync();
         c.OnReceiveObject += async (obj) =>
         {
@@ -199,7 +218,6 @@ public class TcpClients
         };
 
         await Task.Delay(500);
-        await server.ShutDownAsync();
     }
 
     [Theory]
@@ -207,17 +225,15 @@ public class TcpClients
     [InlineData(typeof(TcpChannel))]
     public async Task ClientOpenChannelAsync(Type channelType)
     {
-        var server = new Server(new IPEndPoint(IPAddress.Loopback, Helpers.WaitForPort()), 1);
-        server.Start();
         bool s = false;
 
-        server.OnClientChannelOpened += (ch, sc) =>
+        decrypted.OnClientChannelOpened += (ch, sc) =>
         {
             s = true;
             ch.SendBytes(Encoding.UTF8.GetBytes("Hello World"));
         };
 
-        var c = new Client(IPAddress.Loopback, Helpers.Port++);
+        var c = new Client(IPAddress.Loopback, decrypted.ActiveEndpoints[0].Port);
 
         await c.ConnectAsync();
 
@@ -228,8 +244,7 @@ public class TcpClients
             ch = await c.OpenChannelAsync<TcpChannel>();
 
         var text = Encoding.UTF8.GetString(await ch.ReceiveBytesAsync());
-        Assert.True(s && ch is not null && c.Channels.Count == 1 && server.Clients[0].Channels.Count == 1 && text == "Hello World");
-        await server.ShutDownAsync();
+        Assert.True(s && ch is not null && c.Channels.Count == 1 && decrypted.Clients[0].Channels.Count == 1 && text == "Hello World");
     }
 
     [Theory]
@@ -237,16 +252,14 @@ public class TcpClients
     [InlineData(typeof(TcpChannel))]
     public async Task ClientCloseChannelAsync(Type channelType)
     {
-        var server = new Server(new IPEndPoint(IPAddress.Loopback, Helpers.WaitForPort()), 1);
-        server.Start();
         bool s = false;
 
-        server.OnClientChannelOpened += (ch, sc) =>
+        decrypted.OnClientChannelOpened += (ch, sc) =>
         {
             s = true;
         };
 
-        var c = new Client(IPAddress.Loopback, Helpers.Port++);
+        var c = new Client(IPAddress.Loopback, decrypted.ActiveEndpoints[0].Port);
 
         await c.ConnectAsync();
 
@@ -259,30 +272,27 @@ public class TcpClients
         c.CloseChannel(ch);
 
         await Task.Delay(10);
-        Assert.True(c.Channels.Count == 0 && server.Clients[0].Channels.Count == 0);
-        await server.ShutDownAsync();
+        Assert.True(c.Channels.Count == 0 && decrypted.Clients[0].Channels.Count == 0);
     }
 
     [Fact]
     public async Task ChannelSendsData()
     {
-        var server = new Server(new IPEndPoint(IPAddress.Loopback, Helpers.WaitForPort()), 1);
-        server.Start();
         bool s = false;
 
         TaskCompletionSource tcs = new TaskCompletionSource();
 
-        server.OnClientChannelOpened += async (ch, sc) =>
+        decrypted.OnClientChannelOpened += async (ch, sc) =>
         {
             if (System.Text.Encoding.UTF8.GetString(await ch.ReceiveBytesAsync()) == "Hello World")
                 s = true;
         };
 
-        var c = new Client(IPAddress.Loopback, Helpers.Port++);
+        var c = new Client(IPAddress.Loopback, decrypted.ActiveEndpoints[0].Port);
 
         await c.ConnectAsync();
         var ch = await c.OpenChannelAsync<UdpChannel>();
-        await ch.SendBytesAsync(System.Text.Encoding.UTF8.GetBytes("Hello World"));
+        await ch.SendBytesAsync(Encoding.UTF8.GetBytes("Hello World"));
         await Task.Delay(500);
         Assert.True(s && ch is not null);
     }
@@ -292,7 +302,7 @@ public class TcpClients
     [InlineData(false)]
     public async Task ClientSendsCustomMessage(bool encrypt)
     {
-        var server = new Server(new IPEndPoint(IPAddress.Loopback, Helpers.WaitForPort()), 1, new NetSettings { UseEncryption = encrypt });
+        var server = encrypt ? encrypted : decrypted;
         var msg = new TestMessage
         {
             Guid = Guid.NewGuid(),
@@ -306,12 +316,10 @@ public class TcpClients
 
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, Helpers.Port++);
+        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
         await c.ConnectAsync();
         await Task.Delay(500);
-
-        await server.ShutDownAsync();
     }
 
     [Theory]
@@ -319,7 +327,7 @@ public class TcpClients
     [InlineData(false)]
     public async Task ServerSendsCustomMessage(bool encrypt)
     {
-        var server = new Server(new IPEndPoint(IPAddress.Loopback, Helpers.WaitForPort()), 1, new NetSettings { UseEncryption = encrypt });
+        var server = encrypt ? encrypted : decrypted;
         var msg = new TestMessage
         {
             Guid = Guid.NewGuid(),
@@ -328,7 +336,7 @@ public class TcpClients
 
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, Helpers.Port++);
+        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
         c.OnUnregisteredMessage += async (m) =>
         {
@@ -337,9 +345,7 @@ public class TcpClients
 
         await c.ConnectAsync();
         await Task.Delay(500);
-        
-        await server.ShutDownAsync();
-    }
+            }
 
     [Theory]
     [InlineData(true)]
@@ -369,16 +375,14 @@ public class TcpClients
             return Task.CompletedTask;
         };
 
-        var server = new Server(new IPEndPoint(IPAddress.Loopback, Helpers.WaitForPort()), 1, new NetSettings { UseEncryption = encrypt });
+        var server = encrypt ? encrypted : decrypted;
         server.OnClientConnected += (c) =>
         {
             c.RegisterChannelType<DummyChannel>(open, management, close);
             sc = c;
         };
 
-        server.Start();
-
-        var c = new Client(IPAddress.Loopback, Helpers.Port++);
+        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         c.RegisterChannelType<DummyChannel>(open, management, close);
 
         cl = c;
@@ -391,6 +395,5 @@ public class TcpClients
         await Task.Delay(500);
 
         Assert.True(opened == 2 && closed == 2 && managed == 2);
-        await server.ShutDownAsync();
     }
 }

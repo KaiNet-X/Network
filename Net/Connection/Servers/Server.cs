@@ -10,6 +10,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Linq;
 
 /// <summary>
 /// Default server implementation
@@ -30,6 +31,11 @@ public class Server : BaseServer<ServerClient>
     public bool Listening { get; private set; } = false;
 
     /// <summary>
+    /// 
+    /// </summary>
+    public bool RemoveAfterDisconnect { get; set; } = true;
+
+    /// <summary>
     /// Settings for this server that are set in the constructor
     /// </summary>
     public readonly NetSettings Settings;
@@ -45,10 +51,15 @@ public class Server : BaseServer<ServerClient>
     public Dictionary<string, Action<MessageBase, ServerClient>> CustomMessageHandlers = new();
 
     /// <summary>
-    /// All endpoints the server is accepting connections on
+    /// Endpoints passed to the server as arguments
     /// </summary>
-    public readonly IPEndPoint[] Endpoints;
+    public readonly List<IPEndPoint> Endpoints;
 
+    /// <summary>
+    /// Endpoints of all active binding sockets
+    /// </summary>
+    public List<IPEndPoint> ActiveEndpoints => _bindingSockets.Select(s => (IPEndPoint)s.LocalEndPoint).ToList();
+   
     /// <summary>
     /// Delay between client updates; highly reduces CPU usage
     /// </summary>
@@ -112,7 +123,7 @@ public class Server : BaseServer<ServerClient>
     {
         MaxClients = maxClients;
         Settings = settings ?? new NetSettings();
-        Endpoints = endpoints.ToArray();
+        Endpoints = endpoints;
         _bindingSockets = new List<Socket>();
 
         InitializeSockets(Endpoints);
@@ -182,6 +193,13 @@ public class Server : BaseServer<ServerClient>
                     }, _semaphore);
 
                     OnClientDisconnected?.Invoke(c, g);
+
+                    if (RemoveAfterDisconnect)
+                        await Utilities.ConcurrentAccessAsync((ct) =>
+                        {
+                            Clients.Remove(c);
+                            return Task.CompletedTask;
+                        }, _semaphore);
                 };
 
                 c.OnUnregisteredMessage += (m) =>
@@ -290,7 +308,7 @@ public class Server : BaseServer<ServerClient>
     public void RegisterType<T>() =>
         Utilities.RegisterType(typeof(T));
 
-    private void InitializeSockets(IPEndPoint[] endpoints)
+    private void InitializeSockets(List<IPEndPoint> endpoints)
     {
         foreach (IPEndPoint endpoint in endpoints)
         {

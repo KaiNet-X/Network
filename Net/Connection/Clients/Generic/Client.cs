@@ -50,6 +50,8 @@ public class Client : Client<IChannel>
 {
     public Func<bool> ConnectMethod;
     public Func<Task<bool>> ConnectMethodAsync;
+    public Action CloseMethod;
+    public Func<Task> CloseMethodAsync;
 
     private Task _listener { get; set; }
 
@@ -75,4 +77,8 @@ public class Client : Client<IChannel>
 
     public async override Task<bool> ConnectAsync() =>
         await ConnectMethodAsync();
+
+    public override void Close() => CloseMethod();
+
+    public override async Task CloseAsync() => await CloseMethodAsync();
 }

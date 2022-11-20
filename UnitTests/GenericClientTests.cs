@@ -17,13 +17,15 @@ public class GenericClientTests
     [Fact]
     public async void Connect()
     {
+        int port = 0;
         var server = new Server();
         bool connected = false;
         server.RegisterConnectionMethod<TcpChannel>(async () =>
         {
             Socket servSoc = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            servSoc.Bind(new IPEndPoint(IPAddress.Loopback, Helpers.WaitForPort()));
+            servSoc.Bind(new IPEndPoint(IPAddress.Loopback, 0));
             servSoc.Listen();
+            port = ((IPEndPoint)servSoc.LocalEndPoint).Port;
 
             var soc = await servSoc.AcceptAsync();
             var chan = new TcpChannel(soc);
@@ -40,7 +42,7 @@ public class GenericClientTests
         c.ConnectMethod = () =>
         {
             var soc = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            soc.Connect(new IPEndPoint(IPAddress.Loopback, Helpers.Port++));
+            soc.Connect(new IPEndPoint(IPAddress.Loopback, port));
             c.Connection = new TcpChannel(soc);
             return true;
         };
@@ -53,13 +55,15 @@ public class GenericClientTests
     [Fact]
     public async Task ConnectAsync()
     {
+        int port = 0;
         var server = new Server();
         bool connected = false;
         server.RegisterConnectionMethod<TcpChannel>(async () =>
         {
             Socket servSoc = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            servSoc.Bind(new IPEndPoint(IPAddress.Loopback, Helpers.WaitForPort()));
+            servSoc.Bind(new IPEndPoint(IPAddress.Loopback, 0));
             servSoc.Listen();
+            port = ((IPEndPoint)servSoc.LocalEndPoint).Port;
 
             var soc = await servSoc.AcceptAsync();
             var chan = new TcpChannel(soc);
@@ -76,7 +80,7 @@ public class GenericClientTests
         c.ConnectMethodAsync = async () =>
         {
             var soc = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            await soc.ConnectAsync(new IPEndPoint(IPAddress.Loopback, Helpers.Port++));
+            await soc.ConnectAsync(new IPEndPoint(IPAddress.Loopback, port));
             c.Connection = new TcpChannel(soc);
             return true;
         };
