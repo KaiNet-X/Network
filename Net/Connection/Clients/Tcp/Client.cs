@@ -51,12 +51,14 @@ public class Client : ObjectClient
     /// <param name="maxAttempts">Max amount of connection attempts</param>
     /// <param name="throwWhenExausted">Throw exception if connection didn't work</param>
     /// <returns>true if connected, otherwise false</returns>
-    public bool Connect(int maxAttempts = 0, bool throwWhenExausted = false)
+    public bool Connect(ulong maxAttempts = 0, bool throwWhenExausted = false)
     {
         if (Connection == null) Initialize();
 
-        for (int i = 0; i <= maxAttempts; i++)
+        for (ulong i = 0; i <= maxAttempts; i++)
         {
+            if (maxAttempts == 0) 
+                i--;
             try
             {
                 Connection.Socket.Connect(_targetEndpoint);
@@ -86,12 +88,14 @@ public class Client : ObjectClient
     /// <param name="maxAttempts">Max amount of connection attempts</param>
     /// <param name="throwWhenExausted">Throw exception if connection didn't work</param>
     /// <returns>true if connected, otherwise false</returns>
-    public async Task<bool> ConnectAsync(int maxAttempts = 0, bool throwWhenExausted = false)
+    public async Task<bool> ConnectAsync(ulong maxAttempts = 0, bool throwWhenExausted = false)
     {
         if (Connection == null) Initialize();
 
-        for (int i = 0; i <= maxAttempts; i++)
+        for (ulong i = 0; i <= maxAttempts; i++)
         {
+            if (maxAttempts == 0)
+                i--;
             try
             {
                 await Connection.Socket.ConnectAsync(_targetEndpoint);
