@@ -13,7 +13,7 @@ bool running = true;
 
 var server = new Server(new IPEndPoint(addr, 9090), 1, new NetSettings { EncryptChannels = false});
 var client = new Client(new IPEndPoint(addr, 9090));
-
+client.c
 server.OnClientChannelOpened += Server_OnClientChannelOpened;
 await server.StartAsync();
 

@@ -56,11 +56,11 @@ public class ObjectClient<MainChannel> : GeneralClient<MainChannel> where MainCh
     public async Task<T> OpenChannelAsync<T>() where T : class, IChannel =>
         (await OpenChannelMethods[typeof(T)]()) as T;
 
-    public void RegisterChannelType<T>(Func<Task<T>> open, Func<ChannelManagementMessage, Task> channelManagement, Func<T, Task> close) where T : class, IChannel
+    public void RegisterChannelType<T>(Func<Task<T>> open, Func<ChannelManagementMessage, Task> channelManagement, Func<T, Task> close) where T : IChannel
     {
         OpenChannelMethods[typeof(T)] = async () => await open();
         ChannelMessages[typeof(T)] = channelManagement;
-        CloseChannelMethods[typeof(T)] = async (t) => await close(t as T);
+        CloseChannelMethods[typeof(T)] = async (t) => await close((T)t);
     }
 
     protected override void HandleMessage(MessageBase message)

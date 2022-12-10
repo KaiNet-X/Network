@@ -1,4 +1,4 @@
-# Client : [ObjectClient](https://github.com/KaiNet-X/Network/blob/master/ObjectClient.md)
+# Client : ObjectClient
 The out-of-the-box Client implementation allows sending objects to the server, managing UDP channels, and follows an event based approach to receiving data.
 
 #### Constructors
@@ -8,34 +8,28 @@ The out-of-the-box Client implementation allows sending objects to the server, m
 - `Client(string address, int port)` - Client targeting endpoint
 
 #### Fields/Properties
-- `readonly Dictionary<string, Action<`[MessageBase](https://github.com/KaiNet-X/Network/blob/master/MessageBase.md)`>> CustomMessageHandlers` - Handlers for custom messages
-- `Dictionary<Guid, `[Channel](https://github.com/KaiNet-X/Network/blob/master/Channel.md)`> Channels` - Dictionary of channels by their ID
+- `readonly Dictionary<string, Action<MessageBase>> CustomMessageHandlers` - Handlers for custom messages (use the name of the message type for the key)
+- `List<IChannel> Channels` - List of channels
 - `IPEndPoint LocalEndpoint` - Local endpoint
 - `IPEndPoint RemoteEndpoint`- Remote endpoint
-- [ConnectState](https://github.com/KaiNet-X/Network/blob/master/ConnectState.md)` ConnectionState { get; protected set; }` - State of the connection
+- `ConnectState ConnectionState { get; protected set; }` - State of the connection
 - `ushort LoopDelay` - Delay between client updates; highly reduces CPU usage
 
 #### Events/Delegates
 
-- `event Action<`[MessageBase](https://github.com/KaiNet-X/Network/blob/master/MessageBase.md)`> OnReceivedUnregisteredCustomMessage` - Invoked when an unregistered message is recieved
+- `event Action<MessageBase> OnUnregisteredMessage` - Invoked when an unregistered message is recieved
 - `event Action<bool> OnDisconnect` - Invoked when disconnected from
 - `event Action<object> OnReceiveObject` - Invoked when an object is received
-- `event Action<`[Channel](https://github.com/KaiNet-X/Network/blob/master/Channel.md)`> OnChannelOpened` - Invoked when a channel is opened
+- `event Action<IChannel> OnChannelOpened` - Invoked when a channel is opened
 
 #### Methods
 - `void SendObject<T>(T obj)` - Sends an object to the server
 - `async Task SendObjectAsync<T>(T obj, CancellationToken token = default)` - Sends an object to the server
-- `void SendMessage(`[MessageBase](https://github.com/KaiNet-X/Network/blob/master/MessageBase.md)` msg)` - Sends a message to the server
-- `async Task SendMessageAsync(`[MessageBase](https://github.com/KaiNet-X/Network/blob/master/MessageBase.md)` msg)` - Sends a message to the server
+- `void SendMessage(MessageBase msg)` - Sends a message to the server
+- `async Task SendMessageAsync(MessageBase msg, CancellationToken token = default)` - Sends a message to the server
 - `void Close()` - Closes the connection
 - `void CloseAsync()` - Closes the connection
-- `void OpenChannel()` - Opens a channel
-- `async Task OpenChannelAsync(CancellationToken token = default)` - Opens a channel
-- `void CloseChannel(`[Channel](https://github.com/KaiNet-X/Network/blob/master/Channel.md)` c)` - Closes and removes a channel
-- `async Task CloseChannelAsync(`[Channel](https://github.com/KaiNet-X/Network/blob/master/Channel.md)` c, CancellationToken token = default)` - Closes and removes a channel
-- `void CloseChannel(Guid id)` - Closes and removes a channel
-- `async Task CloseChannelAsync(Guid id, CancellationToken token = default)` - Closes and removes a channel
-- `void SendBytesOnChannel(byte[] bytes, Guid id)` - Sends raw bytes on a channel
-- `async Task SendBytesOnChannelAsync(byte[] bytes, Guid id, CancellationToken token = default)` - Sends raw bytes on a channel
-- `void ReceiveBytesOnChannel(Guid id)` - Receives raw bytes on a channel
-- `async Task ReceiveBytesOnChannelAsync(Guid id, CancellationToken token = default)` - Receives raw bytes on a channel
+- `async Task<IChannel> OpenChannelAsync<C>() where C: IChannel` - Opens a channel (NOTE: the channel has to be pre-registered either manually or built in like TcpChannel and UdpChannel)
+- `void CloseChannel(IChannel c)` - Closes and removes a channel
+- `async Task CloseChannelAsync(IChannel c, CancellationToken token = default)` - Closes and removes a channel
+- `void RegisterChannelType<T>(Func<Task<T>> open, Func<ChannelManagementMessage, Task> channelManagement, Func<T, Task> close) where T : IChannel` - Registeres a custom channel so the client can open it, facilitate it on the other end, and close it automatically. (Must also be done server-side to work)

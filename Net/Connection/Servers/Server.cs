@@ -90,9 +90,9 @@ public class Server : BaseServer<ServerClient>
     /// </summary>
     public event Action<ServerClient, bool> OnClientDisconnected;
 
-    public Dictionary<Type, Func<ServerClient, Task<IChannel>>> OpenChannelMethods = new();
-    public Dictionary<Type, Action<ChannelManagementMessage, ServerClient>> ChannelMessages = new();
-    public Dictionary<Type, Action<IChannel, ServerClient>> CloseChannelMethods = new();
+    protected Dictionary<Type, Func<ServerClient, Task<IChannel>>> OpenChannelMethods = new();
+    protected Dictionary<Type, Func<ChannelManagementMessage, ServerClient, Task>> ChannelMessages = new();
+    protected Dictionary<Type, Func<IChannel, ServerClient, Task>> CloseChannelMethods = new();
 
     /// <summary>
     /// New server object
@@ -332,6 +332,13 @@ public class Server : BaseServer<ServerClient>
             foreach (var c in Clients)
                 await c.SendMessageAsync(msg, token);
         }, _semaphore);
+    }
+
+    public void RegisterChannelType<T>(Func<ServerClient, Task<T>> open, Func<ChannelManagementMessage, ServerClient, Task> channelManagement, Func<T, ServerClient, Task> close) where T : IChannel
+    {
+        OpenChannelMethods[typeof(T)] = async (sc) => await open(sc);
+        ChannelMessages[typeof(T)] = channelManagement;
+        CloseChannelMethods[typeof(T)] = async (c, sc) => await close((T)c, sc);
     }
 
     /// <summary>
