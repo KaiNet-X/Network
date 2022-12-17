@@ -25,6 +25,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{A5608940-A
 		IChannel.md = IChannel.md
 		MessageBase.md = MessageBase.md
 		ObjectClient.md = ObjectClient.md
+		ObjectClient_MainChannel_.md = ObjectClient_MainChannel_.md
 		RegisterMessageAttribute.md = RegisterMessageAttribute.md
 		Server.md = Server.md
 		ServerClient.md = ServerClient.md
@@ -32,7 +33,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{A5608940-A
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestGround", "TestGround\TestGround.csproj", "{B786EFF1-804A-4082-A0E0-F960E3FF1A98}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTests", "UnitTests\UnitTests.csproj", "{6B47A04F-775C-4C73-85B9-0CF1CCEEABA1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnitTests", "UnitTests\UnitTests.csproj", "{6B47A04F-775C-4C73-85B9-0CF1CCEEABA1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
