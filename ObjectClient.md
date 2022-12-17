@@ -1,24 +1,30 @@
-# ObjectClient : [GeneralClient](https://github.com/KaiNet-X/Network/blob/master/GeneralClient.md)<[Channel](https://github.com/KaiNet-X/Network/blob/master/Channel.md)>
+# ObjectClient : ObjectClient\<TcpChannel\>
 
-The object client is the base class for [Client](https://github.com/KaiNet-X/Network/blob/master/Client.md) and [ServerClient](https://github.com/KaiNet-X/Network/blob/master/ServerClient.md) and provides a concrete implementation of [GeneralClient](https://github.com/KaiNet-X/Network/blob/master/GeneralClient.md) using [Channel](https://github.com/KaiNet-X/Network/blob/master/Channel.md), as well as provides ways of sending objects.
+The object client is the base class for Client and ServerClient and provides a concrete implementation of ObjectClient<MainChannel>, as well as provides methods to send objects. This client uses a TcpChannel for communication.
 
-#### Constructors:
-- `ObjectClient()`
+`using Net.Connection.Clients.Tcp;`
 
 #### Fields/Properties:
-- Derived from base class
+- `ConnectState ConnectionState` - State of the connection
+- `IPEndPoint LocalEndpoint` - Local endpoint
+- `IPEndPoint RemoteEndpoint` - Remote endpoint
+- `List<IChannel> Channels` - List of channels
 
 #### Events/Deleages:
-- `event Action<object> OnReceiveObject`
-- `event Action<`[Channel](https://github.com/KaiNet-X/Network/blob/master/Channel.md)`> OnChannelOpened`
-- Rest derived from base class
+- `event Action<object> OnReceiveObject` - Called when an object is received
+- `event Action<IChannel> OnChannelOpened` - Called when a channel is opened
+- `event Action<bool> OnDisconnect` - Called when disconnected from
+- `Action<MessageBase> OnUnregisteredMessage` - Called when there is an unregistered message
 
 #### Methods:
-- `virtual void SendObject<T>(T obj)`
-- `virtual async Task SendObjectAsync<T>(T obj, CancellationToken token = default)`
-- `void CloseChannel(Guid id)`
-- `void SendBytesOnChannel(byte[] bytes, Guid id)`
-- `async Task SendBytesOnChannelAsync(byte[] bytes, Guid id, CancellationToken token = default)`
-- `byte[] ReceiveBytesFromChannel(Guid id)`
-- `async Task<byte[]> ReceiveBytesFromChannelAsync(Guid id, CancellationToken token = default)`
--  Rest derived from base class
+- `void SendObject<T>(T obj)` - Sends an object to the server
+- `async Task SendObjectAsync<T>(T obj, CancellationToken token = default)` - Sends an object to the server
+- `void SendMessage(MessageBase msg)` - Sends a message to the server
+- `async Task SendMessageAsync(MessageBase msg)` - Sends a message to the server
+- `void Close()` - Closes the connection
+- `void CloseAsync()` - Closes the connection
+- `public async Task<T> OpenChannelAsync<T>() where T : class, IChannel` - Opens a channel
+- `void CloseChannel(IChannel c)` - Closes and removes a channel
+- `async Task CloseChannelAsync(IChannel c, CancellationToken token = default)` - Closes and removes a channel
+- `void RegisterMessageHandler<T>(Action<T> handler) where T : MessageBase` - Registers handler for a custom message type
+- `void RegisterMessageHandler(Action<MessageBase> handler, Type messageType)` - Registers handler for a custom message type

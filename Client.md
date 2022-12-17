@@ -8,7 +8,6 @@ The out-of-the-box Client implementation allows sending objects to the server, m
 - `Client(string address, int port)` - Client targeting endpoint
 
 #### Fields/Properties
-- `readonly Dictionary<string, Action<MessageBase>> CustomMessageHandlers` - Handlers for custom messages (use the name of the message type for the key)
 - `List<IChannel> Channels` - List of channels
 - `IPEndPoint LocalEndpoint` - Local endpoint
 - `IPEndPoint RemoteEndpoint`- Remote endpoint
@@ -33,3 +32,5 @@ The out-of-the-box Client implementation allows sending objects to the server, m
 - `void CloseChannel(IChannel c)` - Closes and removes a channel
 - `async Task CloseChannelAsync(IChannel c, CancellationToken token = default)` - Closes and removes a channel
 - `void RegisterChannelType<T>(Func<Task<T>> open, Func<ChannelManagementMessage, Task> channelManagement, Func<T, Task> close) where T : IChannel` - Registeres a custom channel so the client can open it, facilitate it on the other end, and close it automatically. (Must also be done server-side to work)
+- `void RegisterMessageHandler<T>(Action<T> handler) where T : MessageBase` - Registers handler for a custom message type
+- `void RegisterMessageHandler(Action<MessageBase> handler, Type messageType)` - Registers handler for a custom message type

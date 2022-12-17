@@ -43,15 +43,13 @@ public partial class MainForm : Form
                 });
             }
         };
-        _client.CustomMessageHandlers.Add(nameof(FileRequestMessage), async (msg) =>
+        _client.RegisterMessageHandler<FileRequestMessage>(async msg =>
         {
-            var fMsg = msg as FileRequestMessage;
-
             Directory.CreateDirectory(_dir);
 
-            using (FileStream fs = File.Create($@"{_dir}\{fMsg.FileName}"))
+            using (FileStream fs = File.Create($@"{_dir}\{msg.FileName}"))
             {
-                await fs.WriteAsync(fMsg.FileData);
+                await fs.WriteAsync(msg.FileData);
             }
         });
         _client.OnChannelOpened += async (obj) =>

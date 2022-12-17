@@ -25,7 +25,7 @@ public class ObjectClient : ObjectClient<TcpChannel>
 
     protected ObjectClient()
     {
-        CustomMessageHandlers.Add(typeof(ChannelManagementMessage).Name, (mb) =>
+        _CustomMessageHandlers.Add(typeof(ChannelManagementMessage), (mb) =>
         {
             var m = mb as ChannelManagementMessage;
             if (m.Info is not null && m.Info.ContainsKey("Type"))

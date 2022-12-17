@@ -48,7 +48,7 @@ public class Server : BaseServer<ServerClient>
     /// <summary>
     /// Handlers for custom message types
     /// </summary>
-    public Dictionary<string, Action<MessageBase, ServerClient>> CustomMessageHandlers = new();
+    protected Dictionary<Type, Action<MessageBase, ServerClient>> _CustomMessageHandlers = new();
 
     /// <summary>
     /// Endpoints passed to the server as arguments
@@ -210,8 +210,8 @@ public class Server : BaseServer<ServerClient>
                     OnUnregisteredMessage?.Invoke(m, c);
                 };
 
-                foreach (var v in CustomMessageHandlers)
-                    c.CustomMessageHandlers.Add(v.Key, (msg) => v.Value(msg, c));
+                foreach (var v in _CustomMessageHandlers)
+                    c.RegisterMessageHandler(mb => v.Value(mb, c), v.Key);
 
                 await Utilities.ConcurrentAccessAsync((ct) =>
                 {
@@ -347,6 +347,12 @@ public class Server : BaseServer<ServerClient>
     /// <typeparam name="T"></typeparam>
     public void RegisterType<T>() =>
         Utilities.RegisterType(typeof(T));
+
+    public void RegisterMessageHandler<T>(Action<T, ServerClient> handler) where T : MessageBase =>
+    _CustomMessageHandlers.Add(typeof(T), (mb, sc) => handler((T)mb, sc));
+
+    public void RegisterMessageHandler(Action<MessageBase, ServerClient> handler, Type messageType) =>
+        _CustomMessageHandlers.Add(messageType, (mb, sc) => handler(mb, sc));
 
     private void InitializeSockets(List<IPEndPoint> endpoints)
     {

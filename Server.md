@@ -1,5 +1,9 @@
 # Server : BaseServer<ServerClient>
+
 The out-of-the-box server implementation allows sending objects, directly accessing ServerClient objects, and follows an event-based approach for receiving data.
+
+`using Net.Connection.Servers;`
+
 #### Constructors
 
 - `Server(IPAddress address, int port, ushort? maxClients = null, NetSettings settings = null)` - Server that listens on one address/port combo
@@ -12,12 +16,11 @@ The out-of-the-box server implementation allows sending objects, directly access
 - `bool Listening { get; private set; }` - True when the server is listening for new connections
 - `bool RemoveAfterDisconnect` Automatically remove a client from Clients after it disconnects
 - `List<ServerClient> Clients`- List of clients
-- `ushort MaxClients` - Maximum number of allowed connections at a given time
+- `ushort? MaxClients` - Maximum number of allowed connections at a given time. Null means unlimited.
 - `ushort LoopDelay` - Delay between client updates; highly reduces CPU usage
 - `readonly List<IPEndPoint> Endpoints` - Endpoints passed to the server as arguements (NOTE: this doesn't necessarily represent what the sockets are listening on due to the chance of port being 0 (sets the port num automatically))
 - `List<IPEndPoint> ActiveEndpoints` - Endpoints that are currently being listened to by the active sockets (NOTE: will be empty if there aren't any active listening sockets)
 - `readonly NetSettings Settings` - Settings
-- `Dictionary<string, Action<MessageBase, ServerClient>> CustomMessageHandlers` - Handlers for custom messages
 
 #### Events/Delegates
 
@@ -39,3 +42,5 @@ The out-of-the-box server implementation allows sending objects, directly access
 - `void ShutDown()` - Stops listening and closes/removes all clients
 - `async Task ShutDownAsync()` - Stops listening and closes/removes all clients
 - `void RegisterChannelType<T>(Func<ServerClient, Task<T>> open, Func<ChannelManagementMessage, ServerClient, Task> channelManagement, Func<T, ServerClient, Task> close) where T : IChannel` - Registers a custom channel on the server (Must also be done on the client to work)
+- `void RegisterMessageHandler<T>(Action<T, ServerClient> handler) where T : MessageBase` - Register a custom message handler
+- `void RegisterMessageHandler(Action<MessageBase, ServerClient> handler, Type messageType)` - Register a custom message handler

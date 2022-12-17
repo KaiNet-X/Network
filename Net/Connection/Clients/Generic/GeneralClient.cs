@@ -6,6 +6,7 @@ using Net;
 using Net.Messages.Parser;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
@@ -45,7 +46,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     /// <summary>
     /// Register message handlers for custom message types with message type name
     /// </summary>
-    public readonly Dictionary<string, Action<MessageBase>> CustomMessageHandlers = new();
+    protected readonly Dictionary<Type, Action<MessageBase>> _CustomMessageHandlers = new();
 
     public List<IChannel> Channels = new();
 
@@ -90,6 +91,12 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     {
         await _SendMessageAsync(message, token);
     }
+
+    public void RegisterMessageHandler<T>(Action<T> handler) where T : MessageBase =>
+        _CustomMessageHandlers.Add(typeof(T), mb => handler((T)mb));
+
+    public void RegisterMessageHandler(Action<MessageBase> handler, Type messageType) =>
+        _CustomMessageHandlers.Add(messageType, mb => handler(mb));
 
     private byte[] GetEncrypted(byte[] bytes) => encryptionStage switch
     {
@@ -154,9 +161,9 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 }
                 break;
             default:
-                var msgHandler = CustomMessageHandlers[message.MessageType];
-                if (msgHandler != null) msgHandler(message);// _invokationList.AddAction(() => msgHandler(message));
-                else OnUnregisteredMessage?.Invoke(message);// _invokationList.AddAction(() => OnUnregisteredMessage?.Invoke(message));
+                var msgHandler = _CustomMessageHandlers.FirstOrDefault(kv => kv.Key.Name.Equals(message.MessageType)).Value;
+                if (msgHandler != null) msgHandler(message);
+                else OnUnregisteredMessage?.Invoke(message);
                 break;
         }
     }

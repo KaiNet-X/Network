@@ -25,10 +25,10 @@ server.OnClientConnected += OnConnect;
 
 server.OnClientDisconnected += OnDisconnect;
 
-server.CustomMessageHandlers.Add(nameof(FileRequestMessage), HandleFileRequest);
+server.RegisterMessageHandler<FileRequestMessage>(HandleFileRequest);
 
 await server.StartAsync();
-
+server.RegisterChannelType
 foreach (var endpoint in endpoints)
     Console.WriteLine($"Hosting on {endpoint}");
 
@@ -64,16 +64,14 @@ void OnDisconnect (ServerClient sc, bool g)
     Console.WriteLine($"{sc.LocalEndpoint} disconnected {(g ? "gracefully" : "ungracefully")}");
 }
 
-async void HandleFileRequest (MessageBase msg, ServerClient c)
+async void HandleFileRequest (FileRequestMessage msg, ServerClient c)
 {
-    var fMsg = msg as FileRequestMessage;
-
-    switch (fMsg.RequestType)
+    switch (msg.RequestType)
     {
         case FileRequestMessage.FileRequestType.Download:
-            using (FileStream fs = File.OpenRead(@$"{workingDirectory}\{fMsg.PathRequest}"))
+            using (FileStream fs = File.OpenRead(@$"{workingDirectory}\{msg.PathRequest}"))
             {
-                var newMsg = new FileRequestMessage() { RequestType = FileRequestMessage.FileRequestType.Upload, FileName = fMsg.PathRequest.Split('\\')[^1] };
+                var newMsg = new FileRequestMessage() { RequestType = FileRequestMessage.FileRequestType.Upload, FileName = msg.PathRequest.Split('\\')[^1] };
                 newMsg.FileData = new byte[fs.Length];
                 await fs.ReadAsync(newMsg.FileData);
                 await c.SendMessageAsync(newMsg);
@@ -81,18 +79,18 @@ async void HandleFileRequest (MessageBase msg, ServerClient c)
                 //await fs.ReadAsync(buffer);
                 //var g = await c.OpenChannelAsync();
                 //await c.SendBytesOnChannelAsync(buffer, g);
-                Console.WriteLine($"{c.RemoteEndpoint} requested {fMsg.PathRequest.Split('\\')[^1]}");
+                Console.WriteLine($"{c.RemoteEndpoint} requested {msg.PathRequest.Split('\\')[^1]}");
             }
             break;
         case FileRequestMessage.FileRequestType.Upload:
-            Directory.CreateDirectory(@$"{workingDirectory}\{fMsg.PathRequest}");
-            using (FileStream fs = File.Create(@$"{workingDirectory}\{fMsg.PathRequest}\{fMsg.FileName}"))
+            Directory.CreateDirectory(@$"{workingDirectory}\{msg.PathRequest}");
+            using (FileStream fs = File.Create(@$"{workingDirectory}\{msg.PathRequest}\{msg.FileName}"))
             {
-                await fs.WriteAsync(fMsg.FileData);
+                await fs.WriteAsync(msg.FileData);
                 var tree = GetTree(workingDirectory);
                 tree.Value = "Root";
                 await c.SendObjectAsync(tree);
-                Console.WriteLine($"{c.RemoteEndpoint} uploaded {fMsg.FileName}");
+                Console.WriteLine($"{c.RemoteEndpoint} uploaded {msg.FileName}");
             }
             break;
         case FileRequestMessage.FileRequestType.Tree:

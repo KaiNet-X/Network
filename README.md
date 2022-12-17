@@ -3,14 +3,17 @@
 As the successor to [KaiNet.SimpleNetwork](https://github.com/KaiNet-X/simple-network-library), this library is designed with 
 performance in mind while still keeping networking simple.
 
-Net is designed to be highly extensible, containing base classes for a server, client, channels, and messages. The out-of-the-box implementation uses socket communication to send "messages" which encapsulate data, and the default client/server are able to transmit objects using this message protocol. Your program is notified via the OnObjectReceived/OnClientObjectReceived events. The default implementations also have the ability to send raw UDP data (doesn't use the message protocol) via channels.
+Net is designed to be highly extensible, containing base classes for a server, client, channels, and messages. The out-of-the-box implementation uses socket communication to send "messages" which encapsulate data, and the default client/server are able to transmit objects using this message protocol. Your program is notified via the OnObjectReceived/OnClientObjectReceived events. 
+
+Channels allow you to open parallel connections to a host to send raw byte data. The two built-in channels use Tcp and Udp respectively.
 
 Click [here](https://github.com/KaiNet-X/Network/blob/master/gettingStarted.md) to get started.
 
 Want to donate? [Buy me a coffee!](https://www.buymeacoffee.com/kainet)
 
-In order to simplify the documentation process, I have been working with xml comments and generated md. The old docs will still be available, but note that they won't be getting updated for now.
+~~For version 2 of the library, In order to simplify the documentation process, I have been working with xml comments and generated md. The old docs will still be available, but note that they won't be getting updated for now.~~
 
+The version 2 docs are listed below, however the V3 docs are in progress and will be replacing the V1 docs.
 
 <table>
 <tbody>

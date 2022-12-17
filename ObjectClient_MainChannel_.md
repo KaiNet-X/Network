@@ -1,0 +1,1 @@
+# ObjectClient\<MainChannel\> : GeneralClient\<MainChannel\> where MainChannel : class, IChannel

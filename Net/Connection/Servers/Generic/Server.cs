@@ -34,7 +34,7 @@ public abstract class Server<ConnectionType> : BaseServer<ServerClient<Connectio
     /// <summary>
     /// Handlers for custom message types
     /// </summary>
-    public Dictionary<string, Action<MessageBase, ServerClient<ConnectionType>>> CustomMessageHandlers = new();
+    public Dictionary<Type, Action<MessageBase, ServerClient<ConnectionType>>> CustomMessageHandlers = new();
 
     /// <summary>
     /// Delay between client updates; highly reduces CPU usage
@@ -117,7 +117,7 @@ public abstract class Server<ConnectionType> : BaseServer<ServerClient<Connectio
                 };
 
                 foreach (var v in CustomMessageHandlers)
-                    c.CustomMessageHandlers.Add(v.Key, (msg) => v.Value(msg, c));
+                    c.RegisterMessageHandler(mb => v.Value(mb, c), v.Key);
 
                 await Utilities.ConcurrentAccessAsync((ct) =>
                 {

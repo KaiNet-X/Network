@@ -1,10 +1,15 @@
 # IChannel
 Interface for channel types
 
+#### Properties
+- `bool Connected { get; }` -Feedback weather this channel is connected or not. Is up to the implementation to use.
+
 #### Methods
 - `void SendBytes(byte[] data)` - Send bytes
 - `Task SendBytesAsync(byte[] data, CancellationToken token = default)` - Send bytes
 - `byte[] RecieveBytes()` - Receive bytes
 - `Task<byte[]> RecieveBytesAsync(CancellationToken token = default)` - Receive bytes
-- `void Close` - Receive bytes
-- `Task CloseAsync` - Receive bytes
+- `int ReceiveToBuffer(byte[] buffer)` - Similar to how data is normally received on sockets, can offer optimizations
+- `Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default)` - Similar to how data is normally received on sockets, can offer optimizations
+- `void Close` - Close the channel
+- `Task CloseAsync` - Close the channel
