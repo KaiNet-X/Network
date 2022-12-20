@@ -13,24 +13,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FileServer", "FileServer\Fi
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FileClient", "FileClient\FileClient.csproj", "{E87463E5-FA70-43EE-8132-9AF15343D18C}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{A5608940-AA1C-40BA-888D-024478AAF258}"
-	ProjectSection(SolutionItems) = preProject
-		BaseClient.md = BaseClient.md
-		BaseServer.md = BaseServer.md
-		Channel.md = Channel.md
-		Client.md = Client.md
-		ExtensiveDocs.md = ExtensiveDocs.md
-		GeneralClient.md = GeneralClient.md
-		GettingStarted.md = GettingStarted.md
-		IChannel.md = IChannel.md
-		MessageBase.md = MessageBase.md
-		ObjectClient.md = ObjectClient.md
-		ObjectClient_MainChannel_.md = ObjectClient_MainChannel_.md
-		RegisterMessageAttribute.md = RegisterMessageAttribute.md
-		Server.md = Server.md
-		ServerClient.md = ServerClient.md
-	EndProjectSection
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestGround", "TestGround\TestGround.csproj", "{B786EFF1-804A-4082-A0E0-F960E3FF1A98}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnitTests", "UnitTests\UnitTests.csproj", "{6B47A04F-775C-4C73-85B9-0CF1CCEEABA1}"
