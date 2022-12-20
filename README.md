@@ -7,7 +7,7 @@ Net is designed to be highly extensible, containing base classes for a server, c
 
 Channels allow you to open parallel connections to a host to send raw byte data. The two built-in channels use Tcp and Udp respectively, but you can implement IChannel and register a custom channel.
 
-Click [here](https://github.com/KaiNet-X/Network/blob/master/Docs/gettingStarted.md) to get started.
+Click [here](https://github.com/KaiNet-X/Network/blob/master/Docs/GettingStarted.md) to get started.
 
 Want to donate? [Buy me a coffee!](https://www.buymeacoffee.com/kainet)
 
