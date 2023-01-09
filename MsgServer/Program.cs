@@ -46,7 +46,7 @@ Console.WriteLine();
 //        s.SendObjectToAll(l);
 //}
 
-await Task.Delay(1000);
+await Task.Delay(10000000);
 
 void Disconnected(ServerClient sc, bool graceful) =>
     Console.WriteLine($"Disconnected {(graceful ? "gracefully" : "ungracefully")}: {sc.RemoteEndpoint}");

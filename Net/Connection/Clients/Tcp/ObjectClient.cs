@@ -173,7 +173,7 @@ public class ObjectClient : ObjectClient<TcpChannel>
             if (m.Info["Mode"] == "Create")
             {
                 var soc = new Socket(SocketType.Stream, ProtocolType.Tcp);
-                soc.Connect(Connection.Local.Address, int.Parse(m.Info["Port"]));
+                soc.Connect(Connection.Remote.Address, int.Parse(m.Info["Port"]));
 
                 TcpChannel c = Settings.EncryptChannels ?
                     new TcpChannel(soc, Key) :

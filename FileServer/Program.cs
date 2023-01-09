@@ -28,7 +28,7 @@ server.OnClientDisconnected += OnDisconnect;
 server.RegisterMessageHandler<FileRequestMessage>(HandleFileRequest);
 
 await server.StartAsync();
-server.RegisterChannelType
+//server.RegisterChannelType
 foreach (var endpoint in endpoints)
     Console.WriteLine($"Hosting on {endpoint}");
 
