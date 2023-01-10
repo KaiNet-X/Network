@@ -7,7 +7,7 @@
     <Description>Net is an extensible networking library that is easy to get running. It is ideal for hobbiest programmers and rapid development as all of the networking features are highly configurable, yet work straight out of the box.</Description>
     <RepositoryUrl>https://github.com/KaiNet-X/Network</RepositoryUrl>
     <Company>KaiNet</Company>
-    <Version>3.0.2</Version>
+    <Version>3.0.3</Version>
 	<GenerateDocumentationFile>true</GenerateDocumentationFile>
 	<PackageProjectUrl>https://github.com/KaiNet-X/Network</PackageProjectUrl>
   </PropertyGroup>

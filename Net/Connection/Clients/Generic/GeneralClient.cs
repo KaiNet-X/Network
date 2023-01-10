@@ -3,6 +3,7 @@
 using Channels;
 using Messages;
 using Net;
+using Net.Connection.Servers;
 using Net.Messages.Parser;
 using System;
 using System.Collections.Generic;
@@ -22,7 +23,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     protected RSAParameters? RsaKey;
     protected volatile byte[] Key;
 
-    protected volatile NetSettings Settings;
+    protected volatile ServerSettings Settings;
 
     protected MainChannel Connection { get; set; }
 
