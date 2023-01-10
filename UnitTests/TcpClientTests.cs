@@ -45,7 +45,7 @@ public class TcpClients
     [Fact]
     public void Connect()
     {
-        var c = new Client(IPAddress.Loopback, decrypted.ActiveEndpoints[0].Port);
+        var c = new Client(IPAddress.Loopback, encrypted.ActiveEndpoints[0].Port);
         var connected = c.Connect();
         c.Close();
         Assert.True(connected);
@@ -54,7 +54,7 @@ public class TcpClients
     [Fact]
     public async Task ConnectAsync()
     {
-        var c = new Client(IPAddress.Loopback, decrypted.ActiveEndpoints[0].Port);
+        var c = new Client(IPAddress.Loopback, encrypted.ActiveEndpoints[0].Port);
         var connected = await c.ConnectAsync();
         await c.CloseAsync();
         Assert.True(connected);
@@ -68,12 +68,12 @@ public class TcpClients
             Assert.True(graceful);
         };
 
-        decrypted.OnClientDisconnected += del;
+        encrypted.OnClientDisconnected += del;
 
-        var c = new Client(IPAddress.Loopback, decrypted.ActiveEndpoints[0].Port);
+        var c = new Client(IPAddress.Loopback, encrypted.ActiveEndpoints[0].Port);
         await c.ConnectAsync();
         await c.CloseAsync();
-        decrypted.OnClientDisconnected -= del;
+        encrypted.OnClientDisconnected -= del;
     }
 
     [Theory]
@@ -262,9 +262,9 @@ public class TcpClients
             s = true;
             ch.SendBytes(Encoding.UTF8.GetBytes("Hello World"));
         };
-        decrypted.OnClientChannelOpened += opened;
+        encrypted.OnClientChannelOpened += opened;
 
-        var c = new Client(IPAddress.Loopback, decrypted.ActiveEndpoints[0].Port);
+        var c = new Client(IPAddress.Loopback, encrypted.ActiveEndpoints[0].Port);
 
         await c.ConnectAsync();
 
@@ -280,11 +280,11 @@ public class TcpClients
         Assert.True(s);
         Assert.NotNull(ch);
         Assert.Single(c.Channels);
-        Assert.Single(decrypted.Clients[^1].Channels);
+        Assert.Single(encrypted.Clients[^1].Channels);
         Assert.Equal("Hello World", text);
         await c.CloseAsync();
 
-        decrypted.OnClientChannelOpened -= opened;
+        encrypted.OnClientChannelOpened -= opened;
     }
 
     [Theory]
@@ -298,9 +298,9 @@ public class TcpClients
         {
             s = true;
         };
-        decrypted.OnClientChannelOpened += opened;
+        encrypted.OnClientChannelOpened += opened;
 
-        var c = new Client(IPAddress.Loopback, decrypted.ActiveEndpoints[0].Port);
+        var c = new Client(IPAddress.Loopback, encrypted.ActiveEndpoints[0].Port);
 
         await c.ConnectAsync();
 
@@ -313,10 +313,10 @@ public class TcpClients
         c.CloseChannel(ch);
 
         await Task.Delay(10);
-        Assert.True(c.Channels.Count == 0 && decrypted.Clients[0].Channels.Count == 0);
+        Assert.True(c.Channels.Count == 0 && encrypted.Clients[0].Channels.Count == 0);
         await c.CloseAsync();
 
-        decrypted.OnClientChannelOpened -= opened;
+        encrypted.OnClientChannelOpened -= opened;
     }
 
     [Fact]
@@ -332,9 +332,9 @@ public class TcpClients
             if (Encoding.UTF8.GetString(await ch.ReceiveBytesAsync()) == "Hello World")
                 s = true;
         };
-        decrypted.OnClientChannelOpened += opened;
+        encrypted.OnClientChannelOpened += opened;
 
-        var c = new Client(IPAddress.Loopback, decrypted.ActiveEndpoints[0].Port);
+        var c = new Client(IPAddress.Loopback, encrypted.ActiveEndpoints[0].Port);
 
         await c.ConnectAsync();
         var ch = await c.OpenChannelAsync<UdpChannel>();
@@ -343,7 +343,7 @@ public class TcpClients
         Assert.True(s && ch is not null);
         await c.CloseAsync();
 
-        decrypted.OnClientChannelOpened -= opened;
+        encrypted.OnClientChannelOpened -= opened;
     }
 
     [Theory]

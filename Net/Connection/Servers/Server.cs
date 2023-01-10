@@ -38,7 +38,7 @@ public class Server : BaseServer<ServerClient>
     /// <summary>
     /// Settings for this server that are set in the constructor
     /// </summary>
-    public readonly NetSettings Settings;
+    public readonly ServerSettings Settings;
 
     /// <summary>
     /// Max connections at one time
@@ -101,7 +101,7 @@ public class Server : BaseServer<ServerClient>
     /// <param name="port">Port for the server to bind to</param>
     /// <param name="maxClients">Max amount of clients</param>
     /// <param name="settings">Settings for connection</param>
-    public Server(IPAddress address, int port, ushort? maxClients = null, NetSettings settings = null) : 
+    public Server(IPAddress address, int port, ushort? maxClients = null, ServerSettings settings = null) : 
         this(new IPEndPoint(address, port), maxClients, settings) { }
 
     /// <summary>
@@ -110,7 +110,7 @@ public class Server : BaseServer<ServerClient>
     /// <param name="endpoint">Endpoint for the server to bind to</param>
     /// <param name="maxClients">Max amount of clients</param>
     /// <param name="settings">Settings for connection</param>
-    public Server(IPEndPoint endpoint, ushort? maxClients = null, NetSettings settings = null) : 
+    public Server(IPEndPoint endpoint, ushort? maxClients = null, ServerSettings settings = null) : 
         this(new List<IPEndPoint> { endpoint}, maxClients, settings) { }
 
     /// <summary>
@@ -119,10 +119,10 @@ public class Server : BaseServer<ServerClient>
     /// <param name="endpoints">List of endpoints for the server to bind to</param>
     /// <param name="maxClients">Max amount of clients</param>
     /// <param name="settings">Settings for connection</param>
-    public Server(List<IPEndPoint> endpoints, ushort? maxClients = null, NetSettings settings = null)
+    public Server(List<IPEndPoint> endpoints, ushort? maxClients = null, ServerSettings settings = null)
     {
         MaxClients = maxClients;
-        Settings = settings ?? new NetSettings();
+        Settings = settings ?? new ServerSettings();
         Endpoints = endpoints;
         _bindingSockets = new List<Socket>();
 

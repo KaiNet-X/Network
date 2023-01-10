@@ -3,6 +3,7 @@
 using Channels;
 using Messages;
 using Net.Connection.Clients.Generic;
+using Net.Connection.Servers;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
@@ -15,11 +16,11 @@ public class ServerClient : ObjectClient
 {
     private IAsyncEnumerator<MessageBase> _receiver;
 
-    internal ServerClient(Socket soc, NetSettings settings = null) : base()
+    internal ServerClient(Socket soc, ServerSettings settings = null) : base()
     {
         ConnectionState = ConnectState.PENDING;
 
-        Settings = settings ?? new NetSettings();
+        Settings = settings ?? new ServerSettings();
         Connection = new TcpChannel(soc);
 
         localEndPoint = Connection.Socket.LocalEndPoint as IPEndPoint;

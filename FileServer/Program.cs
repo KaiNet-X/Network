@@ -15,7 +15,7 @@ foreach (var address in addresses)
 
 endpoints.AddRange(new[] { new IPEndPoint(IPAddress.Any, 6969), new IPEndPoint(IPAddress.IPv6Any, 6969) });
 
-var server = new Server(endpoints, 5, new NetSettings { UseEncryption = true, ConnectionPollTimeout = 50000 });
+var server = new Server(endpoints, 5, new ServerSettings { UseEncryption = true, ConnectionPollTimeout = 50000 });
 
 var workingDirectory = @$"{Directory.GetCurrentDirectory()}\Files";
 if (!Directory.Exists(workingDirectory)) 

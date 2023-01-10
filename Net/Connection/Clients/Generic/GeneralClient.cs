@@ -227,7 +227,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 }
                 while (received == buffer_length);
             }
-            catch
+            catch (Exception ex)
             {
                 if (ConnectionState != ConnectState.CLOSED)
                     await DisconnectedEventAsync();

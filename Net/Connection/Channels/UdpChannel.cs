@@ -1,5 +1,6 @@
 ﻿namespace Net.Connection.Channels;
 
+using System;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
@@ -14,7 +15,6 @@ public class UdpChannel : IChannel
     private SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
     private UdpClient _udp;
     private ConcurrentQueue<byte> _byteQueue = new();
-    private byte[] _aes;
     private CancellationTokenSource _cts = new CancellationTokenSource();
 
     /// <summary>
@@ -43,27 +43,24 @@ public class UdpChannel : IChannel
     }
 
     /// <summary>
-    /// Udp channel bound to an endpoint using an AES encryption key
-    /// </summary>
-    /// <param name="local"></param>
-    /// <param name="aesKey"></param>
-    public UdpChannel(IPEndPoint local, byte[] aesKey) : this(local)
-    {
-        _aes = aesKey;
-    }
-
-    /// <summary>
     /// Receive bytes from internal queue
     /// </summary>
     /// <returns></returns>
     public byte[] ReceiveBytes()
     {
-        //if (!Connected || !_byteQueue.TryDequeueRange(out var res))
-        //    return null;
+        if (!Connected || _cts.IsCancellationRequested)
+            return null;
 
-        //return res;
+        var endpoint = Remote;
 
-        return ReceiveBytesAsync().GetAwaiter().GetResult();
+        try
+        {
+            return _udp.Receive(ref endpoint);  
+        }
+        catch (ObjectDisposedException)
+        {
+            return null;
+        }
     }
 
     /// <summary>
@@ -74,23 +71,24 @@ public class UdpChannel : IChannel
     {
         using var t = CancellationTokenSource.CreateLinkedTokenSource(token, _cts.Token);
 
-        var result = await _udp.ReceiveAsync(t.Token);
-        if (_aes == null)
-            return result.Buffer;
-        else
+        if (!Connected || t.IsCancellationRequested)
+            return null;
+
+        try
         {
-            var decrypted = await CryptoServices.DecryptAESAsync(result.Buffer, _aes, _aes);
-            return decrypted;
+            var result = await _udp.ReceiveAsync(t.Token);
+            return result.Buffer;
+        }
+        catch (ObjectDisposedException)
+        {
+            return null;
         }
     }
 
     public void SendBytes(byte[] data)
     {
-        if (!Connected)
+        if (!Connected || _cts.IsCancellationRequested)
             return;
-
-        if (_aes != null)
-            data = CryptoServices.EncryptAES(data, _aes, _aes);
         
         Utilities.ConcurrentAccess(() => _udp.SendAsync(data, data.Length), _semaphore);
     }
@@ -99,11 +97,8 @@ public class UdpChannel : IChannel
     {
         using var t = CancellationTokenSource.CreateLinkedTokenSource(token, _cts.Token);
 
-        if (!Connected)
+        if (!Connected || t.IsCancellationRequested)
             return;
-
-        if (_aes != null)
-            data = await CryptoServices.EncryptAESAsync(data, _aes, _aes);
 
         await Utilities.ConcurrentAccessAsync(async (ct) => await _udp.SendAsync(data, t.Token), _semaphore);
     }
@@ -134,9 +129,33 @@ public class UdpChannel : IChannel
         return Task.CompletedTask;
     }
 
-    public int ReceiveToBuffer(byte[] buffer) =>
-        _udp.Client.Receive(buffer, SocketFlags.None);
+    public int ReceiveToBuffer(byte[] buffer)
+    {
+        if (!Connected || _cts.IsCancellationRequested)
+            return 0;
 
-    public async Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default) =>
-        await _udp.Client.ReceiveAsync(buffer, SocketFlags.None, token);
+        try
+        {
+            return _udp.Client.Receive(buffer, SocketFlags.None);
+        }
+        catch (ObjectDisposedException)
+        {
+            return 0;
+        }
+    }
+
+    public async Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default)
+    {
+        if (!Connected || _cts.IsCancellationRequested)
+            return 0;
+
+        try
+        {
+            return await _udp.Client.ReceiveAsync(buffer, SocketFlags.None, token);
+        }
+        catch (ObjectDisposedException)
+        {
+            return 0;
+        }
+    }
 }

@@ -1,14 +1,15 @@
 ﻿namespace Net.Messages;
 
 using Attributes;
+using Net.Connection.Servers;
 using System.Text.Json.Serialization;
 
 [RegisterMessage]
 public sealed class SettingsMessage : MessageBase
 {
-    public NetSettings Settings { get; set; }
+    public ServerSettings Settings { get; set; }
 
-    public SettingsMessage(NetSettings settings)
+    public SettingsMessage(ServerSettings settings)
     {
         Settings = settings;
     }

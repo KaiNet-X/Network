@@ -1,19 +1,14 @@
-﻿namespace Net;
+﻿namespace Net.Connection.Servers;
 
 /// <summary>
 /// Settings that you can pass to the server
 /// </summary>
-public class NetSettings
+public class ServerSettings
 {
     /// <summary>
     /// Encrypt the main connection
     /// </summary>
     public bool UseEncryption { get; set; } = true;
-
-    /// <summary>
-    /// Encrypt channels. NOTE: this doesn't work if channels do not implement encryption.
-    /// </summary>
-    public bool EncryptChannels { get; set; } = true;
 
     /// <summary>
     /// Run serverclients on one thread or dedicated threads

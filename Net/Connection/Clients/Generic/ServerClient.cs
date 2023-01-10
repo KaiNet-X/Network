@@ -2,6 +2,7 @@
 
 using Channels;
 using Messages;
+using Net.Connection.Servers;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
@@ -26,11 +27,11 @@ public abstract class ServerClient<MainConnection> : ObjectClient<MainConnection
 
 public class ServerClient : ServerClient<IChannel>
 {
-    public ServerClient(IChannel connection, NetSettings settings = null)
+    public ServerClient(IChannel connection, ServerSettings settings = null)
     {
         ConnectionState = ConnectState.PENDING;
 
-        Settings = settings ?? new NetSettings();
+        Settings = settings ?? new ServerSettings();
         Connection = connection;
 
         _reciever = ReceiveMessagesAsync().GetAsyncEnumerator();

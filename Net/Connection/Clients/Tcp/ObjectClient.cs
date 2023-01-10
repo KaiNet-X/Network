@@ -44,11 +44,8 @@ public class ObjectClient : ObjectClient<TcpChannel>
         {
             var remoteAddr = ((IPEndPoint)Connection.Socket.RemoteEndPoint).Address;
             var localAddr = ((IPEndPoint)Connection.Socket.LocalEndPoint).Address;
-            var key = Settings.EncryptChannels ? CryptoServices.KeyFromHash(CryptoServices.CreateHash(Guid.NewGuid().ToByteArray())) : null;
 
-            UdpChannel c = Settings.EncryptChannels ?
-                new(new IPEndPoint(remoteAddr, 0), key) :
-                new(new IPEndPoint(localAddr, 0));
+            UdpChannel c = new(new IPEndPoint(localAddr, 0));
 
             var info = new Dictionary<string, string>
             {
@@ -158,9 +155,7 @@ public class ObjectClient : ObjectClient<TcpChannel>
 
             await SendMessageAsync(m);
 
-            TcpChannel c = Settings.EncryptChannels ?
-                new(await servSoc.AcceptAsync(), key) :
-                new(await servSoc.AcceptAsync());
+            TcpChannel c = new(await servSoc.AcceptAsync());
 
             servSoc.Close();
 
@@ -175,9 +170,8 @@ public class ObjectClient : ObjectClient<TcpChannel>
                 var soc = new Socket(SocketType.Stream, ProtocolType.Tcp);
                 soc.Connect(Connection.Remote.Address, int.Parse(m.Info["Port"]));
 
-                TcpChannel c = Settings.EncryptChannels ?
-                    new TcpChannel(soc, Key) :
-                    new(soc);
+                TcpChannel c = new (soc);
+
                 Channels.Add(c);
                 ChannelOpened(c);
             }
