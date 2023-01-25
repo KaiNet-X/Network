@@ -18,7 +18,7 @@ public class UdpChannel : IChannel
     private CancellationTokenSource _cts = new CancellationTokenSource();
 
     /// <summary>
-    /// If the channel is connected
+    /// Check if channel is connected
     /// </summary>
     public bool Connected { get; private set; }
 

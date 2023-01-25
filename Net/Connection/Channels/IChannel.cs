@@ -26,13 +26,13 @@ public interface IChannel
     public Task SendBytesAsync(byte[] data, CancellationToken token = default);
 
     /// <summary>
-    /// Receive bytes on from remote
+    /// Receive bytes on from remote host
     /// </summary>
     /// <returns>bytes</returns>
     public byte[] ReceiveBytes();
 
     /// <summary>
-    /// Receive bytes on from remote
+    /// Receive bytes on from remote host
     /// </summary>
     /// <returns>bytes</returns>
     public Task<byte[]> ReceiveBytesAsync(CancellationToken token = default);
@@ -52,12 +52,12 @@ public interface IChannel
     public Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default);
 
     /// <summary>
-    /// Closes the channel
+    /// Closes the channel. Handled by the client it is associated with.
     /// </summary>
     public void Close();
 
     /// <summary>
-    /// Closes the channel
+    /// Closes the channel. Handled by the client it is associated with.
     /// </summary>
     public Task CloseAsync();
 }
