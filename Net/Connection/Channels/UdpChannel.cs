@@ -43,7 +43,7 @@ public class UdpChannel : IChannel
     }
 
     /// <summary>
-    /// Receive bytes from internal queue
+    /// Receive bytes
     /// </summary>
     /// <returns></returns>
     public byte[] ReceiveBytes()
@@ -64,7 +64,7 @@ public class UdpChannel : IChannel
     }
 
     /// <summary>
-    /// Receive bytes from internal queue
+    /// Receive bytes
     /// </summary>
     /// <returns></returns>
     public async Task<byte[]> ReceiveBytesAsync(CancellationToken token = default)
@@ -85,6 +85,10 @@ public class UdpChannel : IChannel
         }
     }
 
+    /// <summary>
+    /// Send bytes to remote host
+    /// </summary>
+    /// <param name="data"></param>
     public void SendBytes(byte[] data)
     {
         if (!Connected || _cts.IsCancellationRequested)
@@ -93,6 +97,11 @@ public class UdpChannel : IChannel
         Utilities.ConcurrentAccess(() => _udp.SendAsync(data, data.Length), _semaphore);
     }
 
+    /// <summary>
+    /// Recieves to a buffer, calling the underlying socket method.
+    /// </summary>
+    /// <param name="buffer">Buffer to receive to</param>
+    /// <returns></returns>
     public async Task SendBytesAsync(byte[] data, CancellationToken token = default)
     {
         using var t = CancellationTokenSource.CreateLinkedTokenSource(token, _cts.Token);
@@ -113,6 +122,9 @@ public class UdpChannel : IChannel
         Connected = true;
     }
 
+    /// <summary>
+    /// Closes the channel. Handled by the client it is associated with.
+    /// </summary>
     public void Close()
     {
         Connected = false;
@@ -123,12 +135,21 @@ public class UdpChannel : IChannel
         _udp.Close();
     }
 
+    /// <summary>
+    /// Closes the channel. Handled by the client it is associated with.
+    /// </summary>
     public Task CloseAsync()
     {
         Close();
         return Task.CompletedTask;
     }
 
+
+    /// <summary>
+    /// Recieves to a buffer from the socket
+    /// </summary>
+    /// <param name="buffer">Buffer to receive to</param>
+    /// <returns>bytes received</returns>
     public int ReceiveToBuffer(byte[] buffer)
     {
         if (!Connected || _cts.IsCancellationRequested)
@@ -144,6 +165,11 @@ public class UdpChannel : IChannel
         }
     }
 
+    /// <summary>
+    /// Recieves to a buffer from the socket
+    /// </summary>
+    /// <param name="buffer">Buffer to receive to</param>
+    /// <returns>bytes received</returns>
     public async Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default)
     {
         if (!Connected || _cts.IsCancellationRequested)

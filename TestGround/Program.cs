@@ -1,5 +1,4 @@
-﻿using Net;
-using Net.Connection.Channels;
+﻿using Net.Connection.Channels;
 using Net.Connection.Clients.Tcp;
 using Net.Connection.Servers;
 using System.Diagnostics;
@@ -13,7 +12,7 @@ var addr = (await Dns.GetHostAddressesAsync(IPAddress.Loopback.ToString()))[0];
 ulong bytes = 0;
 bool running = true;
 
-var server = new Server(new IPEndPoint(addr, 9090), 1, new ServerSettings { EncryptChannels = false});
+var server = new Server(new IPEndPoint(addr, 9090), 1);
 var client = new Client(new IPEndPoint(addr, 9090));
 
 server.OnClientChannelOpened += Server_OnClientChannelOpened;

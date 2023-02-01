@@ -14,13 +14,13 @@ public interface IChannel
     public bool Connected { get; }
 
     /// <summary>
-    /// Send bytes to remote
+    /// Send bytes to remote host
     /// </summary>
     /// <param name="data"></param>
     public void SendBytes(byte[] data);
 
     /// <summary>
-    /// Send bytes to remote
+    /// Send bytes to remote host
     /// </summary>
     /// <param name="data"></param>
     public Task SendBytesAsync(byte[] data, CancellationToken token = default);
@@ -41,14 +41,14 @@ public interface IChannel
     /// Recieves to a buffer instead of the usual method. This can be used as an optimimization or to mimic the way sockets receive bytes.
     /// </summary>
     /// <param name="buffer">Buffer to receive to</param>
-    /// <returns></returns>
+    /// <returns>bytes received</returns>
     public int ReceiveToBuffer(byte[] buffer);
 
     /// <summary>
     /// Recieves to a buffer instead of the usual method. This can be used as an optimimization or to mimic the way sockets receive bytes.
     /// </summary>
     /// <param name="buffer">Buffer to receive to</param>
-    /// <returns></returns>
+    /// <returns>bytes received</returns>
     public Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default);
 
     /// <summary>

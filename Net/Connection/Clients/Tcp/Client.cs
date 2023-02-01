@@ -20,21 +20,21 @@ public class Client : ObjectClient
     private Task _listener { get; set; }
 
     /// <summary>
-    /// 
+    /// Initializes a new client
     /// </summary>
     /// <param name="address">IP address of server</param>
     /// <param name="port">Server port the client will connect to</param>
     public Client(IPAddress address, int port) : this(new IPEndPoint(address, port)) { }
 
     /// <summary>
-    /// 
+    /// Initializes a new client
     /// </summary>
     /// <param name="address">IP address of server</param>
     /// <param name="port">Server port the client will connect to</param>
     public Client(string address, int port) : this(IPAddress.Parse(address), port) { }
 
     /// <summary>
-    /// 
+    /// Initializes a new client
     /// </summary>
     /// <param name="ep">IPEndpoint of the server</param>
     public Client(IPEndPoint ep) : base()
