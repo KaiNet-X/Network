@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 /// </summary>
 public class TcpChannel : IChannel
 {
-    public Socket Socket;
+    internal Socket Socket;
 
     /// <summary>
     /// Check if channel is connected

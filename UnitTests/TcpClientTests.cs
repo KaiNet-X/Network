@@ -14,9 +14,8 @@ public class TcpClients
     {
         get
         {
-            _decrypted ??= new Server(new IPEndPoint(IPAddress.Loopback, 0), 20, new NetSettings
+            _decrypted ??= new Server(new IPEndPoint(IPAddress.Loopback, 0), 20, new ServerSettings
             {
-                EncryptChannels = false,
                 UseEncryption = false,
             });
             if (!_decrypted.Active)
@@ -30,9 +29,8 @@ public class TcpClients
     {
         get
         {
-            _encrypted ??= new Server(new IPEndPoint(IPAddress.Loopback, 0), 20, new NetSettings
+            _encrypted ??= new Server(new IPEndPoint(IPAddress.Loopback, 0), 20, new ServerSettings
             {
-                EncryptChannels = true,
                 UseEncryption = true,
             });
             if (!_encrypted.Active)
@@ -108,7 +106,7 @@ public class TcpClients
     public async Task SendComplex(bool encrypt)
     {
         var server = encrypt ? encrypted : decrypted;
-        var settings = new NetSettings() { ConnectionPollTimeout = int.MaxValue, UseEncryption = false };
+        var settings = new ServerSettings() { ConnectionPollTimeout = int.MaxValue, UseEncryption = false };
 
         Action<object, ServerClient> rec = async (obj, client) =>
         {
@@ -193,7 +191,7 @@ public class TcpClients
     public async Task ServerSendComplex(bool encrypt)
     {
         var server = encrypt ? encrypted : decrypted;
-        var settings = new NetSettings() { ConnectionPollTimeout = int.MaxValue, UseEncryption = false };
+        var settings = new ServerSettings() { ConnectionPollTimeout = int.MaxValue, UseEncryption = false };
 
         Action<ServerClient> conn = async (sc) =>
         {
