@@ -69,7 +69,7 @@ public class UdpChannel : IChannel
     /// <returns></returns>
     public async Task<byte[]> ReceiveBytesAsync(CancellationToken token = default)
     {
-        using var t = CancellationTokenSource.CreateLinkedTokenSource(token, _cts.Token);
+        using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? new[] { token, _cts.Token } : new[] { token });
 
         if (!Connected || t.IsCancellationRequested)
             return null;
@@ -95,7 +95,7 @@ public class UdpChannel : IChannel
 
     public async Task SendBytesAsync(byte[] data, CancellationToken token = default)
     {
-        using var t = CancellationTokenSource.CreateLinkedTokenSource(token, _cts.Token);
+        using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? new[] { token, _cts.Token } : new[] { token });
 
         if (!Connected || t.IsCancellationRequested)
             return;
@@ -119,6 +119,8 @@ public class UdpChannel : IChannel
         _byteQueue.Clear();
         _byteQueue = null;
         _cts.Cancel();
+        _cts.Dispose();
+        _cts = null;
         _semaphore.Dispose();
         _udp.Close();
     }

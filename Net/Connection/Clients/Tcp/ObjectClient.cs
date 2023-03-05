@@ -59,9 +59,6 @@ public class ObjectClient : ObjectClient<TcpChannel>
                 Type = typeof(UdpChannel).Name
             };
 
-            if (Settings.EncryptChannels)
-                m.Crypto = key;
-
             _connectionWait.Add(c);
 
             await SendMessageAsync(m);
@@ -79,9 +76,7 @@ public class ObjectClient : ObjectClient<TcpChannel>
             if (m.Info["Mode"] == "Create")
             {
                 var remoteEndpoint = new IPEndPoint(remoteAddr, int.Parse(m.Info["Port"]));
-                UdpChannel c = Settings.EncryptChannels ?
-                    new(new IPEndPoint(localAddr, 0), m.Crypto) :
-                    new(new IPEndPoint(localAddr, 0));
+                UdpChannel c = new(new IPEndPoint(localAddr, 0));
 
                 c.SetRemote(remoteEndpoint);
 
@@ -132,7 +127,6 @@ public class ObjectClient : ObjectClient<TcpChannel>
         {
             var remoteAddr = ((IPEndPoint)Connection.Socket.RemoteEndPoint).Address;
             var localAddr = ((IPEndPoint)Connection.Socket.LocalEndPoint).Address;
-            var key = Settings.EncryptChannels ? CryptoServices.KeyFromHash(CryptoServices.CreateHash(Guid.NewGuid().ToByteArray())) : null;
 
             Socket servSoc = new Socket(SocketType.Stream, ProtocolType.Tcp);
             servSoc.Bind(new IPEndPoint((Connection.Socket.LocalEndPoint as IPEndPoint).Address, 0));
@@ -149,9 +143,6 @@ public class ObjectClient : ObjectClient<TcpChannel>
                 Info = info,
                 Type = typeof(TcpChannel).Name
             };
-
-            if (Settings.EncryptChannels)
-                m.Crypto = key;
 
             await SendMessageAsync(m);
 

@@ -34,6 +34,7 @@ public class TcpChannel : IChannel
         Connected = false;
         cancellationTokenSource.Cancel();
         cancellationTokenSource.Dispose();
+        cancellationTokenSource = null;
     }
 
     public Task CloseAsync()
@@ -72,7 +73,7 @@ public class TcpChannel : IChannel
 
     public async Task<byte[]> ReceiveBytesAsync(CancellationToken token = default)
     {
-        using var source = CancellationTokenSource.CreateLinkedTokenSource(token, cancellationTokenSource.Token);
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? new [] { token, cancellationTokenSource.Token } : new [] { token });
 
         if (!Connected || source.IsCancellationRequested) return null;
 
@@ -116,7 +117,7 @@ public class TcpChannel : IChannel
 
     public async Task SendBytesAsync(byte[] data, CancellationToken token = default)
     {
-        using var source = CancellationTokenSource.CreateLinkedTokenSource(token, cancellationTokenSource.Token);
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? new[] { token, cancellationTokenSource.Token } : new[] { token });
 
         if (!Connected || source.IsCancellationRequested) return;
 
@@ -146,7 +147,7 @@ public class TcpChannel : IChannel
 
     public async Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default)
     {
-        using var source = CancellationTokenSource.CreateLinkedTokenSource(token, cancellationTokenSource.Token);
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? new[] { token, cancellationTokenSource.Token } : new[] { token });
 
         if (!Connected || source.IsCancellationRequested) return 0;
 
