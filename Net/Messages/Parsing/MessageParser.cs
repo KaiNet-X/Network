@@ -43,7 +43,7 @@ public class MessageParser
 
     public static IEnumerable<MessageBase> GetMessagesEnum(List<byte> obj)
     {
-        byte[] sub = null;
+        byte[] sub;
 
         while (true)
         {
@@ -57,7 +57,7 @@ public class MessageParser
 
     public static IEnumerable<MessageBase> GetMessagesAesEnum(List<byte> obj, byte[] encKey)
     {
-        byte[] sub = null;
+        byte[] sub;
         while (true)
         {
             sub = RemoveTags(obj);
@@ -72,7 +72,7 @@ public class MessageParser
 
     public static IEnumerable<MessageBase> GetMessagesRsaEnum(List<byte> obj, RSAParameters encKey)
     {
-        byte[] sub = null;
+        byte[] sub;
         List<MessageBase> msg = new List<MessageBase>();
 
         while (true)
