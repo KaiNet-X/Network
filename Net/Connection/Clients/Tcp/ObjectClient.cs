@@ -15,10 +15,24 @@ using System.Threading.Tasks;
 /// </summary>
 public class ObjectClient : ObjectClient<TcpChannel>
 {
+    /// <summary>
+    /// Gets the local endpoint
+    /// </summary>
     public IPEndPoint LocalEndpoint => localEndPoint;
+
+    /// <summary>
+    /// Gets the remote endpoint
+    /// </summary>
     public IPEndPoint RemoteEndpoint => remoteEndPoint;
 
+    /// <summary>
+    /// Local endpoint
+    /// </summary>
     protected IPEndPoint localEndPoint;
+
+    /// <summary>
+    /// Remote endpoint
+    /// </summary>
     protected IPEndPoint remoteEndPoint;
 
     protected List<IChannel> _connectionWait = new();

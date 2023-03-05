@@ -19,10 +19,9 @@ public class MessageParser
         int len = Start.Length + bytes.Length + End.Length;
 
         byte[] b = new byte[len];
-
-        Array.Copy(Start, 0, b, 0, Start.Length);
-        Array.Copy(bytes, 0, b, Start.Length, bytes.Length);
-        Array.Copy(End, 0, b, Start.Length + bytes.Length, End.Length);
+        Buffer.BlockCopy(Start, 0, b, 0, Start.Length);
+        Buffer.BlockCopy(bytes, 0, b, Start.Length, bytes.Length);
+        Buffer.BlockCopy(End, 0, b, Start.Length + bytes.Length, End.Length);
 
         return b;
     }
@@ -44,7 +43,7 @@ public class MessageParser
 
     public static IEnumerable<MessageBase> GetMessagesEnum(List<byte> obj)
     {
-        byte[] sub = null;
+        byte[] sub;
 
         while (true)
         {
@@ -58,7 +57,7 @@ public class MessageParser
 
     public static IEnumerable<MessageBase> GetMessagesAesEnum(List<byte> obj, byte[] encKey)
     {
-        byte[] sub = null;
+        byte[] sub;
         while (true)
         {
             sub = RemoveTags(obj);
@@ -73,7 +72,7 @@ public class MessageParser
 
     public static IEnumerable<MessageBase> GetMessagesRsaEnum(List<byte> obj, RSAParameters encKey)
     {
-        byte[] sub = null;
+        byte[] sub;
         List<MessageBase> msg = new List<MessageBase>();
 
         while (true)
@@ -110,7 +109,7 @@ public class MessageParser
         byte[] bytes = new byte[serialized.Length + message.MessageType.Length + 1];
 
         Array.Copy(Encoding.UTF8.GetBytes($"{message.MessageType}}}"), bytes, message.MessageType.Length + 1);
-        Array.Copy(serialized, 0, bytes, message.MessageType.Length + 1, serialized.Length);
+        Buffer.BlockCopy(serialized, 0, bytes, message.MessageType.Length + 1, serialized.Length);
 
         return bytes;
     }
@@ -121,7 +120,7 @@ public class MessageParser
         byte[] bytes = new byte[serialized.Length + message.MessageType.Length + 1];
 
         Array.Copy(Encoding.UTF8.GetBytes($"{message.MessageType}}}"), bytes, message.MessageType.Length + 1);
-        Array.Copy(serialized, 0, bytes, message.MessageType.Length + 1, serialized.Length);
+        Buffer.BlockCopy(serialized, 0, bytes, message.MessageType.Length + 1, serialized.Length);
 
         return bytes;
     }

@@ -1,33 +1,49 @@
-﻿using System;
+﻿namespace Net.Connection.Channels;
+
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Net.Connection.Channels;
-
 /// <summary>
 /// A channel that communicates using TCP. Encryption is not yet supported.
 /// </summary>
 public class TcpChannel : IChannel
 {
-    public Socket Socket;
+    internal Socket Socket;
 
+    /// <summary>
+    /// Check if channel is connected
+    /// </summary>
     public bool Connected { get; private set; }
 
+    /// <summary>
+    /// Remote endpoint
+    /// </summary>
     public IPEndPoint Remote => Socket.RemoteEndPoint as IPEndPoint;
 
+    /// <summary>
+    /// Local endpoint
+    /// </summary>
     public IPEndPoint Local => Socket.LocalEndPoint as IPEndPoint;
 
     private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 
+    /// <summary>
+    /// Opens a tcp channel on an already connected socket
+    /// </summary>
+    /// <param name="socket"></param>
     public TcpChannel(Socket socket)
     {
         Socket = socket;
         Connected = true;
     }
 
+    /// <summary>
+    /// Closes the channel. Handled by the client it is associated with.
+    /// </summary>
     public void Close()
     {
         Socket.Close();
@@ -37,12 +53,19 @@ public class TcpChannel : IChannel
         cancellationTokenSource = null;
     }
 
+    /// <summary>
+    /// Closes the channel. Handled by the client it is associated with.
+    /// </summary>
     public Task CloseAsync()
     {
         Close();
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Receive bytes on from remote host
+    /// </summary>
+    /// <returns>bytes</returns>
     public byte[] ReceiveBytes()
     {
         if (!Connected || cancellationTokenSource.IsCancellationRequested) return null;
@@ -71,6 +94,10 @@ public class TcpChannel : IChannel
         return allBytes.ToArray();
     }
 
+    /// <summary>
+    /// Receive bytes on from remote host
+    /// </summary>
+    /// <returns>bytes</returns>
     public async Task<byte[]> ReceiveBytesAsync(CancellationToken token = default)
     {
         using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? new [] { token, cancellationTokenSource.Token } : new [] { token });
@@ -101,6 +128,10 @@ public class TcpChannel : IChannel
         return allBytes.ToArray();
     }
 
+    /// <summary>
+    /// Send bytes to remote host
+    /// </summary>
+    /// <param name="data"></param>
     public void SendBytes(byte[] data)
     {
         if (!Connected || cancellationTokenSource.IsCancellationRequested) return;
@@ -115,6 +146,10 @@ public class TcpChannel : IChannel
         }
     }
 
+    /// <summary>
+    /// Send bytes to remote host
+    /// </summary>
+    /// <param name="data"></param>
     public async Task SendBytesAsync(byte[] data, CancellationToken token = default)
     {
         using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? new[] { token, cancellationTokenSource.Token } : new[] { token });
@@ -131,6 +166,11 @@ public class TcpChannel : IChannel
         }
     }
 
+    /// <summary>
+    /// Recieves to a buffer, calling the underlying socket method.
+    /// </summary>
+    /// <param name="buffer">Buffer to receive to</param>
+    /// <returns></returns>
     public int ReceiveToBuffer(byte[] buffer)
     {
         if (!Connected || cancellationTokenSource.IsCancellationRequested) return 0;
@@ -145,6 +185,11 @@ public class TcpChannel : IChannel
         }
     }
 
+    /// <summary>
+    /// Recieves to a buffer, calling the underlying socket method.
+    /// </summary>
+    /// <param name="buffer">Buffer to receive to</param>
+    /// <returns></returns>
     public async Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default)
     {
         using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? new[] { token, cancellationTokenSource.Token } : new[] { token });
