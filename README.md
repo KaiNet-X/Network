@@ -11,7 +11,7 @@ Click [here](https://github.com/KaiNet-X/Network/blob/master/Docs/GettingStarted
 
 Want to donate? [Buy me a coffee!](https://www.buymeacoffee.com/kainet)
 
-See the [v2](https://github.com/KaiNet-X/Network/blob/master/Docs/V2Docs.md) docs.
+Using an older version? See the [v2](https://github.com/KaiNet-X/Network/blob/master/Docs/V2Docs.md) docs.
 
 ## V3 Docs (in progress)
 
