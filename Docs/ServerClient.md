@@ -1,5 +1,7 @@
 # ServerClient  : ObjectClient
-The out-of-the-box ServerClient is similar to the Client class, but it is designed to work on the server-side.
+The default ServerClient is the server-side representation of a client and has many of the same methods as a regular client.
+
+Namespace: `Net.Connection.Clients.Tcp`
 
 #### Fields/Properties
 - `List<IChannel> Channels` - List of channels

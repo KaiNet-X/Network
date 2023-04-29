@@ -1,11 +1,13 @@
 # Client : ObjectClient
 The out-of-the-box Client implementation allows sending objects to the server, managing UDP channels, and follows an event based approach to receiving data.
 
+Namespace: `Net.Connection.Clients.Tcp`
+
 #### Constructors
 
-- `Client(IPEndPoint ep)` - Client targeting endpoint
-- `Client(IPAddress address, int port)` - Client targeting endpoint
-- `Client(string address, int port)` - Client targeting endpoint
+- `Client(IPEndPoint ep)` - Client with target server
+- `Client(IPAddress address, int port)` - Client with target server
+- `Client(string address, int port)` - Client with target server
 
 #### Fields/Properties
 - `List<IChannel> Channels` - List of channels

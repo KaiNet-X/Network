@@ -1,8 +1,8 @@
 # Server : BaseServer<ServerClient>
 
-The out-of-the-box server implementation allows sending objects, directly accessing ServerClient objects, and follows an event-based approach for receiving data.
+The default server implementation allows sending objects, directly accessing ServerClient objects, and follows an event-based approach for receiving data.
 
-`using Net.Connection.Servers;`
+Namespace: `Net.Connection.Servers`
 
 #### Constructors
 

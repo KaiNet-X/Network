@@ -18,7 +18,7 @@ See the [v2](https://github.com/KaiNet-X/Network/blob/master/Docs/V2Docs.md) doc
 #### Clients (Tcp)
 
 - [Client](https://github.com/KaiNet-X/Network/blob/master/Docs/Client.md) - The client represents one host, and connects to a server. The server will fire an event that provides a ServerClient object.
-- [ServerClient](https://github.com/KaiNet-X/Network/blob/master/Docs/Client.md) - Once a client connects to the server, it fires an event that provides a ServerClient object. This object is used to communicate with the remote client. 
+- [ServerClient](https://github.com/KaiNet-X/Network/blob/master/Docs/ServerClient.md) - Once a client connects to the server, it fires an event that provides a ServerClient object. This object is used to communicate with the remote client. 
 - [ObjectClient\<TcpChannel\>](https://github.com/KaiNet-X/Network/blob/master/Docs/ObjectClient.md) - The base class of server and client, encapsulating the common functionality of both.
 
 #### Server (Tcp)
