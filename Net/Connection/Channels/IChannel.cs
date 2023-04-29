@@ -50,14 +50,4 @@ public interface IChannel
     /// <param name="buffer">Buffer to receive to</param>
     /// <returns>bytes received</returns>
     public Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default);
-
-    /// <summary>
-    /// Closes the channel. Handled by the client it is associated with.
-    /// </summary>
-    public void Close();
-
-    /// <summary>
-    /// Closes the channel. Handled by the client it is associated with.
-    /// </summary>
-    public Task CloseAsync();
 }

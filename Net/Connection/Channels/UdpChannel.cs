@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 /// <summary>
 /// This channel is designed to send UDP data between clients. Call SetRemote to connect to a remote endpoint
 /// </summary>
-public class UdpChannel : IChannel
+public class UdpChannel : IChannel, IDisposable
 {
     private SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
     private UdpClient _udp;
@@ -125,7 +125,7 @@ public class UdpChannel : IChannel
     /// <summary>
     /// Closes the channel. Handled by the client it is associated with.
     /// </summary>
-    public void Close()
+    public void Dispose()
     {
         Connected = false;
         _byteQueue.Clear();
@@ -136,16 +136,6 @@ public class UdpChannel : IChannel
         _semaphore.Dispose();
         _udp.Close();
     }
-
-    /// <summary>
-    /// Closes the channel. Handled by the client it is associated with.
-    /// </summary>
-    public Task CloseAsync()
-    {
-        Close();
-        return Task.CompletedTask;
-    }
-
 
     /// <summary>
     /// Recieves to a buffer from the socket

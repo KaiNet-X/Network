@@ -10,9 +10,9 @@ using System.Threading.Tasks;
 /// <summary>
 /// A channel that communicates using TCP. Encryption is not yet supported.
 /// </summary>
-public class TcpChannel : IChannel
+public class TcpChannel : IChannel, IDisposable
 {
-    internal Socket Socket;
+    protected internal Socket Socket;
 
     /// <summary>
     /// Check if channel is connected
@@ -44,22 +44,13 @@ public class TcpChannel : IChannel
     /// <summary>
     /// Closes the channel. Handled by the client it is associated with.
     /// </summary>
-    public void Close()
+    public void Dispose()
     {
         Socket.Close();
         Connected = false;
         cancellationTokenSource.Cancel();
         cancellationTokenSource.Dispose();
         cancellationTokenSource = null;
-    }
-
-    /// <summary>
-    /// Closes the channel. Handled by the client it is associated with.
-    /// </summary>
-    public Task CloseAsync()
-    {
-        Close();
-        return Task.CompletedTask;
     }
 
     /// <summary>

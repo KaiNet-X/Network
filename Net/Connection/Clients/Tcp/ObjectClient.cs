@@ -119,7 +119,7 @@ public class ObjectClient : ObjectClient<TcpChannel>
             else if (m.Info["Mode"] == "Close")
             {
                 var c = Channels.First(ch => ch is UdpChannel c && c.Local.Port.ToString() == m.Info["IdPort"]) as UdpChannel;
-                await c.CloseAsync();
+                c.Dispose();
                 Channels.Remove(c);
             }
         }, async (c) =>
@@ -133,7 +133,7 @@ public class ObjectClient : ObjectClient<TcpChannel>
                     { "Mode", "Close" }
                 }
             });
-            await c.CloseAsync();
+            c.Dispose();
             Channels.Remove(c);
         });
 
@@ -183,7 +183,7 @@ public class ObjectClient : ObjectClient<TcpChannel>
             else if (m.Info["Mode"] == "Close")
             {
                 var c = Channels.First(ch => ch is TcpChannel c && c.Local.Port.ToString() == m.Info["IdPort"]) as TcpChannel;
-                c.Close();
+                c.Dispose();
                 Channels.Remove(c);
             }
         },
@@ -198,7 +198,7 @@ public class ObjectClient : ObjectClient<TcpChannel>
                     { "Mode", "Close" }
                 }
             });
-            await c.CloseAsync();
+            c.Dispose();
             Channels.Remove(c);
         });
     }
