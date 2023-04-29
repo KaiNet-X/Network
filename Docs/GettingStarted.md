@@ -1,6 +1,6 @@
 # Getting started
 
-This page shows an example of how to use the most important features of this library. To see some "practical" examples, see the example projects in the repository.
+This page shows an example of how to use the most important features of this library. To see some more practical examples, see the example projects in the repository.
 
 #### Note
 

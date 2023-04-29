@@ -29,3 +29,8 @@ See the [v2](https://github.com/KaiNet-X/Network/blob/master/Docs/V2Docs.md) doc
 
 - [ObjectClient\(generic\)](https://github.com/KaiNet-X/Network/blob/master/Docs/ObjectClient_MainChannel_.md) - A generic client object that provides the ability to send and receive objects, as well as functionality to use channels.
 - [GeneralClient\(generic\)](https://github.com/KaiNet-X/Network/blob/master/Docs/GeneralClient.md) - Generic client that impliments the message protocol and handles a connection handshake by default.
+
+#### Channels
+
+- [TcpChannel](https://github.com/KaiNet-X/Network/blob/master/Docs/TcpChannel.md) - Tcp communication channel
+- [UdpChannel](https://github.com/KaiNet-X/Network/blob/master/Docs/UdpChannel.md) - Udp communication channel
