@@ -1,15 +1,22 @@
 ﻿namespace Net.Connection.Channels;
 
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
-public class EncryptedTcpChannel : IChannel
+public class EncryptedTcpChannel : IChannel, IDisposable
 {
     internal Socket Socket;
+    internal TcpClient Client;
+
     private byte[] _aesKey;
+
+    private List<byte> _received = new List<byte>();
+
     /// <summary>
     /// Check if channel is connected
     /// </summary>
@@ -60,12 +67,75 @@ public class EncryptedTcpChannel : IChannel
 
     public byte[] ReceiveBytes()
     {
-        throw new NotImplementedException();
+        byte[] Process(int length)
+        {
+            ReadOnlySpan<byte> back = CollectionsMarshal.AsSpan(_received);
+            byte[] data = back.Slice(4, length).ToArray();
+            _received.RemoveRange(0, length + 4);
+            return CryptoServices.DecryptAES(data, _aesKey, _aesKey);
+        }
+
+        if (!Connected || cancellationTokenSource.IsCancellationRequested) 
+            return Array.Empty<byte>();
+
+        byte[] buffer = new byte[1024];
+
+        int length = -1;
+
+        if (_received.Count > 0)
+        {
+            if (length == -1 && _received.Count >= 4)
+                length = BitConverter.ToInt32(_received.GetRange(0, 4).ToArray());
+            if (_received.Count >= length + 4)
+                return Process(length);
+        }
+
+        do
+        {
+            var receiveLength = Socket.Receive(buffer, SocketFlags.None);
+            _received.AddRange(buffer[..receiveLength]);
+            if (length == -1 && _received.Count >= 4)
+                length = BitConverter.ToInt32(_received.GetRange(0, 4).ToArray());
+        }
+        while (length == -1 || _received.Count < length + 4 && !cancellationTokenSource.IsCancellationRequested);
+
+        return Process(length);
     }
 
-    public Task<byte[]> ReceiveBytesAsync(CancellationToken token = default)
+    public async Task<byte[]> ReceiveBytesAsync(CancellationToken token = default)
     {
-        throw new NotImplementedException();
+        byte[] Process(int length)
+        {
+            ReadOnlySpan<byte> back = CollectionsMarshal.AsSpan(_received);
+            byte[] data = back.Slice(4, length).ToArray();
+            _received.RemoveRange(0, length + 4);
+            return CryptoServices.DecryptAES(data, _aesKey, _aesKey);
+        }
+
+        if (!Connected || cancellationTokenSource.IsCancellationRequested) return Array.Empty<byte>();
+
+        byte[] buffer = new byte[1024];
+
+        int length = -1;
+
+        if (_received.Count > 0)
+        {
+            if (length == -1 && _received.Count >= 4)
+                length = BitConverter.ToInt32(_received.GetRange(0, 4).ToArray());
+            if (_received.Count >= length + 4)
+                return Process(length);
+        }
+
+        do
+        {
+            await Socket.ReceiveAsync(buffer, SocketFlags.None);
+            _received.AddRange(buffer);
+            if (length == -1 && _received.Count >= 4)
+                length = BitConverter.ToInt32(_received.GetRange(0, 4).ToArray());
+        }
+        while (length == -1 || _received.Count < length + 4 && !cancellationTokenSource.IsCancellationRequested);
+
+        return Process(length);
     }
 
     public int ReceiveToBuffer(byte[] buffer)
@@ -80,12 +150,39 @@ public class EncryptedTcpChannel : IChannel
 
     public void SendBytes(byte[] data)
     {
-        CryptoServices.EncryptAES(data, _aesKey, _aesKey);
-        throw new NotImplementedException();
+        if (!Connected || cancellationTokenSource.IsCancellationRequested) return;
+
+        ReadOnlySpan<byte> encrypted = CryptoServices.EncryptAES(data, _aesKey, _aesKey);
+        ReadOnlySpan<byte> head = BitConverter.GetBytes(encrypted.Length);
+        Span<byte> buffer = new byte[head.Length + encrypted.Length];
+
+        head.CopyTo(buffer);
+        encrypted.CopyTo(buffer.Slice(4));
+
+        Socket.Send(buffer);
     }
 
-    public Task SendBytesAsync(byte[] data, CancellationToken token = default)
+    public async Task SendBytesAsync(byte[] data, CancellationToken token = default)
     {
-        throw new NotImplementedException();
+        if (!Connected || cancellationTokenSource.IsCancellationRequested) 
+            return;
+
+        ReadOnlyMemory<byte> encrypted = CryptoServices.EncryptAES(data, _aesKey, _aesKey);
+        ReadOnlyMemory<byte> head = BitConverter.GetBytes(encrypted.Length);
+        Memory<byte> buffer = new byte[head.Length + encrypted.Length];
+
+        head.CopyTo(buffer);
+        encrypted.CopyTo(buffer.Slice(4));
+
+        await Socket.SendAsync(buffer, SocketFlags.None, token);
+    }
+
+    public void Dispose()
+    {
+        Socket.Close();
+        Connected = false;
+        cancellationTokenSource.Cancel();
+        cancellationTokenSource.Dispose();
+        cancellationTokenSource = null;
     }
 }

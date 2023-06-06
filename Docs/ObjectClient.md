@@ -2,7 +2,7 @@
 
 The object client is the base class for Client and ServerClient and provides a concrete implementation of ObjectClient\<MainChannel\>, as well as provides methods to send objects. This client uses a TcpChannel for communication.
 
-Namespace: Namespace: `Net.Connection.Clients.Tcp`
+Namespace: `Net.Connection.Clients.Tcp`
 
 #### Fields/Properties:
 - `ConnectState ConnectionState` - State of the connection

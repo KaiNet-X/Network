@@ -21,7 +21,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     protected CancellationTokenSource TokenSource = new CancellationTokenSource();
 
     protected RSAParameters? RsaKey;
-    protected volatile byte[] Key;
+    protected volatile byte[] AesKey;
 
     protected volatile ServerSettings Settings;
 
@@ -31,6 +31,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     /// The state of the current connection.
     /// </summary>
     public ConnectState ConnectionState { get; protected set; } = ConnectState.NONE;
+
 
     protected EncryptionMessage.Stage encryptionStage = EncryptionMessage.Stage.NONE;
 
@@ -48,8 +49,6 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     /// Register message handlers for custom message types with message type name
     /// </summary>
     protected readonly Dictionary<Type, Action<MessageBase>> _CustomMessageHandlers = new();
-
-    public List<IChannel> Channels = new();
 
     private void _SendMessage(MessageBase message)
     {
@@ -88,10 +87,8 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         }
     }
 
-    public override async Task SendMessageAsync(MessageBase message, CancellationToken token = default)
-    {
+    public override async Task SendMessageAsync(MessageBase message, CancellationToken token = default) =>
         await _SendMessageAsync(message, token);
-    }
 
     public void RegisterMessageHandler<T>(Action<T> handler) where T : MessageBase =>
         _CustomMessageHandlers.Add(typeof(T), mb => handler((T)mb));
@@ -102,16 +99,16 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     private byte[] GetEncrypted(byte[] bytes) => encryptionStage switch
     {
         EncryptionMessage.Stage.SYN => CryptoServices.EncryptRSA(bytes, RsaKey.Value),
-        EncryptionMessage.Stage.ACK => CryptoServices.EncryptAES(bytes, Key, Key),
-        EncryptionMessage.Stage.SYNACK => CryptoServices.EncryptAES(bytes, Key, Key),
+        EncryptionMessage.Stage.ACK => CryptoServices.EncryptAES(bytes, AesKey, AesKey),
+        EncryptionMessage.Stage.SYNACK => CryptoServices.EncryptAES(bytes, AesKey, AesKey),
         EncryptionMessage.Stage.NONE or _ => bytes
     };
 
     private async Task<byte[]> GetEncryptedAsync(byte[] bytes) => encryptionStage switch
     {
         EncryptionMessage.Stage.SYN => CryptoServices.EncryptRSA(bytes, RsaKey.Value),
-        EncryptionMessage.Stage.ACK => await CryptoServices.EncryptAESAsync(bytes, Key, Key),
-        EncryptionMessage.Stage.SYNACK => await CryptoServices.EncryptAESAsync(bytes, Key, Key),
+        EncryptionMessage.Stage.ACK => await CryptoServices.EncryptAESAsync(bytes, AesKey, AesKey),
+        EncryptionMessage.Stage.SYNACK => await CryptoServices.EncryptAESAsync(bytes, AesKey, AesKey),
         EncryptionMessage.Stage.NONE or _ => bytes
     };
 
@@ -133,12 +130,12 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 if (encryptionStage == EncryptionMessage.Stage.SYN)
                 {
                     RsaKey = m.RSA;
-                    Key = CryptoServices.KeyFromHash(CryptoServices.CreateHash(Guid.NewGuid().ToByteArray()));
-                    _SendMessage(new EncryptionMessage(Key));
+                    AesKey = CryptoServices.KeyFromHash(CryptoServices.CreateHash(Guid.NewGuid().ToByteArray()));
+                    _SendMessage(new EncryptionMessage(AesKey));
                 }
                 else if (encryptionStage == EncryptionMessage.Stage.ACK)
                 {
-                    Key = m.AES;
+                    AesKey = m.AES;
                     _SendMessage(new EncryptionMessage(EncryptionMessage.Stage.SYNACK));
                     encryptionStage = EncryptionMessage.Stage.SYNACK;
                 }
@@ -199,9 +196,9 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
             if (Settings != null && Settings.UseEncryption)
                 messages = encryptionStage switch
                 {
-                    EncryptionMessage.Stage.SYN => MessageParser.GetMessagesAesEnum(allBytes, Key),
+                    EncryptionMessage.Stage.SYN => MessageParser.GetMessagesAesEnum(allBytes, AesKey),
                     EncryptionMessage.Stage.ACK => MessageParser.GetMessagesRsaEnum(allBytes, RsaKey.Value),
-                    EncryptionMessage.Stage.SYNACK => MessageParser.GetMessagesAesEnum(allBytes, Key),
+                    EncryptionMessage.Stage.SYNACK => MessageParser.GetMessagesAesEnum(allBytes, AesKey),
                     _ => RsaKey == null ? MessageParser.GetMessagesEnum(allBytes) : MessageParser.GetMessagesRsaEnum(allBytes, RsaKey.Value)
                 };
             else messages = MessageParser.GetMessagesEnum(allBytes);
@@ -240,9 +237,9 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
             if (Settings != null && Settings.UseEncryption)
                 messages = encryptionStage switch
                 {
-                    EncryptionMessage.Stage.SYN => MessageParser.GetMessagesAesEnum(allBytes, Key),
+                    EncryptionMessage.Stage.SYN => MessageParser.GetMessagesAesEnum(allBytes, AesKey),
                     EncryptionMessage.Stage.ACK => MessageParser.GetMessagesRsaEnum(allBytes, RsaKey.Value),
-                    EncryptionMessage.Stage.SYNACK => MessageParser.GetMessagesAesEnum(allBytes, Key),
+                    EncryptionMessage.Stage.SYNACK => MessageParser.GetMessagesAesEnum(allBytes, AesKey),
                     _ => RsaKey == null ? MessageParser.GetMessagesEnum(allBytes) : MessageParser.GetMessagesRsaEnum(allBytes, RsaKey.Value)
                 };
             else messages = MessageParser.GetMessagesEnum(allBytes);
@@ -251,22 +248,19 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         }
     }
 
+    private protected abstract void CloseConnection();
+
     protected void Disconnected()
     {
         TokenSource.Cancel();
 
         ConnectionState = ConnectState.CLOSED;
-        Connection.Close();
-        Connection = null;
+        CloseConnection();
 
-        foreach (var c in Channels)
-            c.Close();
-
-        Channels.Clear();
         encryptionStage = EncryptionMessage.Stage.NONE;
         Settings = null;
         RsaKey = null;
-        Key = null;
+        AesKey = null;
     }
 
     public override void Close() =>

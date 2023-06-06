@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
-/// Base class for all clients. Has channels, methods to send and receive messages, work with channels, and close the connection.
+/// Base class for all clients. Provices methods to send and receive messages and close the connection.
 /// </summary>
 public abstract class BaseClient
 {
@@ -33,33 +33,6 @@ public abstract class BaseClient
     /// </summary>
     /// <returns></returns>
     protected abstract IAsyncEnumerable<MessageBase> ReceiveMessagesAsync();
-
-    /// <summary>
-    /// Opens a channel on the client
-    /// </summary>
-    /// <returns></returns>
-    //public abstract IChannel OpenChannel();
-
-    /// <summary>
-    /// Opens a channel on the client
-    /// </summary>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    //public abstract Task<IChannel> OpenChannelAsync(CancellationToken token = default);
-
-    /// <summary>
-    /// Closes a channel. This should handle all disposing of the channel and dependency within the client
-    /// </summary>
-    /// <param name="c"></param>
-    //public abstract void CloseChannel(IChannel c);
-
-    /// <summary>
-    /// Closes a channel. This should handle all disposing of the channel and dependency within the client
-    /// </summary>
-    /// <param name="c"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    //public abstract Task CloseChannelAsync(IChannel c, CancellationToken token = default);
 
     /// <summary>
     /// Closes the connection

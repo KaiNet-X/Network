@@ -3,6 +3,7 @@
 using Net.Serialization;
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -19,20 +20,33 @@ public class MessageParser
         int len = Start.Length + bytes.Length + End.Length;
 
         byte[] b = new byte[len];
-        Buffer.BlockCopy(Start, 0, b, 0, Start.Length);
-        Buffer.BlockCopy(bytes, 0, b, Start.Length, bytes.Length);
-        Buffer.BlockCopy(End, 0, b, Start.Length + bytes.Length, End.Length);
+        Array.Copy(Start, 0, b, 0, Start.Length);
+        Array.Copy(bytes, 0, b, Start.Length, bytes.Length);
+        Array.Copy(End, 0, b, Start.Length + bytes.Length, End.Length);
 
         return b;
     }
 
-    public static byte[] RemoveTags(List<byte> b)
+    public static Span<byte> Encapsulate(ReadOnlySpan<byte> bytes)
     {
-        int start = Utilities.IndexInByteArray(b, Start);
-        int end = Utilities.IndexInByteArray(b, End);
+        int len = Start.Length + bytes.Length + End.Length;
+
+        Span<byte> b = new byte[len];
+        Start.AsSpan().CopyTo(b);
+        bytes.CopyTo(b.Slice(Start.Length));
+        End.AsSpan().CopyTo(b.Slice(Start.Length + bytes.Length));
+
+        return b;
+    }
+
+    private static byte[] RemoveTags(List<byte> b)
+    {
+        var span = CollectionsMarshal.AsSpan(b);
+        int start = Utilities.IndexInByteSpan(span, Start);
+        int end = Utilities.IndexInByteSpan(span, End);
 
         if (end == -1 || start == -1)
-            return new byte[0];
+            return Array.Empty<byte>();
 
         List<byte> sub = b.GetRange(start + Start.Length, end - start - Start.Length);
         b.RemoveRange(start, end - start + End.Length);

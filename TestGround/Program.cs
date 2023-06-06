@@ -5,62 +5,47 @@ using System.Diagnostics;
 using System.Net;
 using System.Text;
 
-var addr = (await Dns.GetHostAddressesAsync(IPAddress.Loopback.ToString()))[0];
-//
+IPAddress address = (await Dns.GetHostAddressesAsync(IPAddress.Loopback.ToString()))[0];
+IPEndPoint endpoint = new IPEndPoint(address, 15555);
 
-//
-ulong bytes = 0;
-bool running = true;
+Server server = new Server(endpoint, 5, new ServerSettings { UseEncryption = true});
+Client client = new Client(endpoint);
 
-var server = new Server(new IPEndPoint(addr, 9090), 1);
-var client = new Client(new IPEndPoint(addr, 9090));
+server.OnClientConnected += ClientConnected;
+server.OnClientDisconnected += ClientDisconnected;
+server.OnClientChannelOpened += ChannelOpened;
 
-server.OnClientChannelOpened += Server_OnClientChannelOpened;
-await server.StartAsync();
+server.Start();
 
-await client.ConnectAsync();
+client.Connect();
 
-IChannel c1 = await client.OpenChannelAsync<UdpChannel>();
+var c = await client.OpenChannelAsync<EncryptedTcpChannel>();
 
-var stopwatch = Stopwatch.StartNew();
-await c1.SendBytesAsync(Encoding.UTF8.GetBytes("Hello from the other side"));
-Console.CancelKeyPress += Cancel;
+output();
+output();
 
-while (running)
+async void ChannelOpened(IChannel channel, ServerClient sc)
 {
-    var b = await c1.ReceiveBytesAsync();
-    if (b != null && b.Length > 0)
-    {
-        bytes += (ulong)b.Length;
-        Console.WriteLine($"{(c1 as UdpChannel).Remote.Port}: {Encoding.UTF8.GetString(b)}");
-    }
-    await c1.SendBytesAsync(b);
+    Console.WriteLine("Channel opened");
+    await channel.SendBytesAsync(Encoding.UTF8.GetBytes("Hello world"));
+    await channel.SendBytesAsync(Encoding.UTF8.GetBytes("Hello world"));
 }
 
-async void Server_OnClientChannelOpened(IChannel ch, ServerClient arg2)
+void ClientDisconnected(ServerClient client, bool graceful)
 {
-    //Task.Run(async () =>
-    //{
-    //    await (await client.OpenChannelAsync<UdpChannel>()).SendBytesAsync(Encoding.UTF8.GetBytes("Hello from the other side 0"));
-    //});
-    while (running)
-    {
-        var b = await ch.ReceiveBytesAsync();
-        if (b != null && b.Length > 0)
-        {
-            bytes += (ulong)b.Length;
-            Console.WriteLine($"{(ch as UdpChannel).Remote.Port}: {Encoding.UTF8.GetString(b)}");
-        }
-        await ch.SendBytesAsync(b);
-    }
+    if (graceful)
+        Console.WriteLine($"{client.RemoteEndpoint.Address}:{client.RemoteEndpoint.Port} disconnected gracefully.");
+    else
+        Console.WriteLine($"{client.RemoteEndpoint.Address}:{client.RemoteEndpoint.Port} lost connection.");
 }
 
-async void Cancel(object? obj, ConsoleCancelEventArgs args)
+void ClientConnected(ServerClient client)
 {
-    Console.CancelKeyPress -= Cancel;
-    stopwatch.Stop();
-    Console.WriteLine($"Average bitrate: {bytes / stopwatch.Elapsed.TotalSeconds / 1000000 * 8} megabit");
-    Console.SetOut(null);
-    await server.ShutDownAsync();
-    running = false;
+    Console.WriteLine($"{client.RemoteEndpoint.Address}:{client.RemoteEndpoint.Port} connected.");
+}
+
+async Task output()
+{
+    var bytes = await c.ReceiveBytesAsync();
+    Console.WriteLine(Encoding.UTF8.GetString(bytes));
 }

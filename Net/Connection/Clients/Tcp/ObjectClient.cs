@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading.Tasks;
 
 /// <summary>
@@ -175,7 +176,7 @@ public class ObjectClient : ObjectClient<TcpChannel>
                 var soc = new Socket(SocketType.Stream, ProtocolType.Tcp);
                 soc.Connect(Connection.Remote.Address, int.Parse(m.Info["Port"]));
 
-                TcpChannel c = new (soc);
+                TcpChannel c = new(soc);
 
                 Channels.Add(c);
                 ChannelOpened(c);
@@ -201,5 +202,78 @@ public class ObjectClient : ObjectClient<TcpChannel>
             c.Dispose();
             Channels.Remove(c);
         });
+
+        RegisterChannelType<EncryptedTcpChannel>(async () =>
+        {
+            var remoteAddr = ((IPEndPoint)Connection.Socket.RemoteEndPoint).Address;
+            var localAddr = ((IPEndPoint)Connection.Socket.LocalEndPoint).Address;
+
+            Socket servSoc = new Socket(SocketType.Stream, ProtocolType.Tcp);
+            servSoc.Bind(new IPEndPoint((Connection.Socket.LocalEndPoint as IPEndPoint).Address, 0));
+            servSoc.Listen();
+
+            var aesKey = CryptoServices.KeyFromHash(CryptoServices.CreateHash(Guid.NewGuid().ToByteArray()));
+            var info = new Dictionary<string, string>
+            {
+                { "Port", (servSoc.LocalEndPoint as IPEndPoint).Port.ToString() },
+                { "Mode", "Create" },
+                { "AesKey", Convert.ToBase64String(aesKey) }
+            };
+
+            var m = new ChannelManagementMessage
+            {
+                Info = info,
+                Type = typeof(EncryptedTcpChannel).Name
+            };
+
+            await SendMessageAsync(m);
+
+            EncryptedTcpChannel c = new(await servSoc.AcceptAsync(), aesKey);
+
+            servSoc.Close();
+
+            Channels.Add(c);
+
+            return c;
+        },
+        async (m) =>
+        {
+            if (m.Info["Mode"] == "Create")
+            {
+                var soc = new Socket(SocketType.Stream, ProtocolType.Tcp);
+                soc.Connect(Connection.Remote.Address, int.Parse(m.Info["Port"]));
+                var aesKey = Convert.FromBase64String(m.Info["AesKey"]);
+                EncryptedTcpChannel c = new(soc, aesKey);
+
+                Channels.Add(c);
+                ChannelOpened(c);
+            }
+            else if (m.Info["Mode"] == "Close")
+            {
+                var c = Channels.First(ch => ch is EncryptedTcpChannel c && c.Local.Port.ToString() == m.Info["IdPort"]) as EncryptedTcpChannel;
+                c.Dispose();
+                Channels.Remove(c);
+            }
+        },
+        async (c) =>
+        {
+            await SendMessageAsync(new ChannelManagementMessage
+            {
+                Type = typeof(TcpChannel).Name,
+                Info = new Dictionary<string, string>
+                {
+                    { "IdPort", c.Remote.Port.ToString() },
+                    { "Mode", "Close" }
+                }
+            });
+            c.Dispose();
+            Channels.Remove(c);
+        });
+    }
+
+    private protected override void CloseConnection()
+    {
+        Connection.Socket.Close();
+        Connection = null;
     }
 }

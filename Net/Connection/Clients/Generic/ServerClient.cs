@@ -38,4 +38,9 @@ public class ServerClient : ServerClient<IChannel>
 
         (this as GeneralClient<IChannel>).SendMessage(new SettingsMessage(Settings));
     }
+
+    private protected override void CloseConnection()
+    {
+        
+    }
 }

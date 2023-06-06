@@ -78,7 +78,20 @@ public class Client : Client<IChannel>
     public async override Task<bool> ConnectAsync() =>
         await ConnectMethodAsync();
 
-    public override void Close() => CloseMethod();
+    public override void Close()
+    {
+        CloseMethod();
+        base.Close();
+    }
 
-    public override async Task CloseAsync() => await CloseMethodAsync();
+    public override async Task CloseAsync()
+    {
+        await CloseMethodAsync();
+        await base.CloseAsync();
+    }
+
+    private protected override void CloseConnection()
+    {
+        // Do nothing
+    }
 }

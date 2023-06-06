@@ -1,8 +1,6 @@
 ﻿using FileServer;
-using Net;
 using Net.Connection.Clients.Tcp;
 using Net.Connection.Servers;
-using Net.Messages;
 using System.Net;
 
 // NOTE: This doesn't work for large files. For that, you would have to send the file in multiple segments and reassemble it on the client
@@ -28,7 +26,7 @@ server.OnClientDisconnected += OnDisconnect;
 server.RegisterMessageHandler<FileRequestMessage>(HandleFileRequest);
 
 await server.StartAsync();
-//server.RegisterChannelType
+
 foreach (var endpoint in endpoints)
     Console.WriteLine($"Hosting on {endpoint}");
 

@@ -10,11 +10,13 @@ using System.Threading.Tasks;
 /// <summary>
 /// Base client for Client and ServerClient that adds functionality for sending/receiving objects.
 /// </summary>
-public class ObjectClient<MainChannel> : GeneralClient<MainChannel> where MainChannel : class, IChannel
+public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> where MainChannel : class, IChannel
 {
     protected Dictionary<Type, Func<Task<IChannel>>> OpenChannelMethods = new();
     protected Dictionary<Type, Func<ChannelManagementMessage, Task>> ChannelMessages = new();
     protected Dictionary<Type, Func<IChannel, Task>> CloseChannelMethods = new();
+
+    public List<IChannel> Channels = new();
 
     /// <summary>
     /// Invoked when the client receives an object

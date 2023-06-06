@@ -34,6 +34,17 @@ internal static class Utilities
         return -1;
     }
 
+    public static int IndexInByteSpan(Span<byte> bytes, Span<byte> SearchBytes, int offset = 0)
+    {
+        for (int i = offset; i <= bytes.Length - SearchBytes.Length; i++)
+            for (int I = 0; I < SearchBytes.Length; I++)
+                if (!SearchBytes[I].Equals(bytes[i + I]))
+                    break;
+                else if (I == SearchBytes.Length - 1 && SearchBytes[I].Equals(bytes[i + I]))
+                    return i;
+        return -1;
+    }
+
     public static bool IsArray(string typeName) => typeName.Contains('[');
 
     public static void RegisterType(Type t)
