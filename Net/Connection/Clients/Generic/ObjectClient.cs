@@ -17,7 +17,8 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     protected Dictionary<Type, Func<IChannel, Task>> CloseChannelMethods = new();
 
     public List<IChannel> Channels = new();
-
+    private Dictionary<Type, IInvokable> objectEvents = new();
+    private Dictionary<Type, IAsyncInvokable> asyncObjectEvents = new();
     /// <summary>
     /// Invoked when the client receives an object
     /// </summary>
@@ -32,6 +33,52 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
 
     protected void ChannelOpened(IChannel c) =>
         OnChannelOpened?.Invoke(c);
+
+    /// <summary>
+    /// Registers a generic action to be invoked when an object of specified type is received
+    /// </summary>
+    /// <typeparam name="T">Type to return</typeparam>
+    /// <param name="action"></param>
+    /// <returns>False if there is already a handler for type T, otherwise true</returns>
+    public bool RegisterReceiveObject<T>(Action<T> action) => 
+        objectEvents.TryAdd(typeof(T), new Invokable<T>(action));
+
+    /// <summary>
+    /// Registers a generic action to be invoked asynchronously when an object of specified type is received
+    /// </summary>
+    /// <typeparam name="T">Type to return</typeparam>
+    /// <param name="action"></param>
+    /// <returns>False if there is already a handler for type T, otherwise true</returns>
+    public bool RegisterReceiveObjectAsync<T>(Func<T, Task> action) => 
+        asyncObjectEvents.TryAdd(typeof(T), new AsyncInvokable<T>(action));
+
+    /// <summary>
+    /// Unregisters handlers for T
+    /// </summary>
+    /// <typeparam name="T">Type of the handler</typeparam>
+    /// <returns>True if a handler existed, otherwise false</returns>
+    public bool UnregisterReceiveObject<T>()
+    {
+        var type = typeof(T);
+        if (!objectEvents.ContainsKey(type))
+            return false;
+        objectEvents.Remove(type);
+        return true;
+    }
+
+    /// <summary>
+    /// Unregisters handlers for T
+    /// </summary>
+    /// <typeparam name="T">Type of the handler</typeparam>
+    /// <returns>True if a handler existed, otherwise false</returns>
+    public bool UnregisterReceiveObjectAsync<T>()
+    {
+        var type = typeof(T);
+        if (!asyncObjectEvents.ContainsKey(type))
+            return false;
+        asyncObjectEvents.Remove(type);
+        return true;
+    }
 
     /// <summary>
     /// Sends an object to the remote client
@@ -65,7 +112,7 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
         CloseChannelMethods[typeof(T)] = async (t) => await close((T)t);
     }
 
-    protected override void HandleMessage(MessageBase message)
+    protected override async Task HandleMessageAsync(MessageBase message)
     {
         switch (message)
         {
@@ -79,7 +126,7 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
                 ChannelMessages[Utilities.ResolveType(m.Type)](m);
                 break;
             default:
-                base.HandleMessage(message);
+                await base.HandleMessageAsync(message);
                 break;
         }
     }
@@ -87,9 +134,16 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     private void HandleObject(MessageBase mb)
     {
         var m = mb as ObjectMessage;
-
+        var obj = m.GetValue();
+        var type = obj.GetType();
+        if (objectEvents.ContainsKey(type))
+        {
+            Task.Run(() => objectEvents[type].Invoke(obj));
+            Task.Run(async () => await asyncObjectEvents[type].InvokeAsync(obj));
+            return;
+        }
         if (OnReceiveObject is not null)
-            _invokationList.AddAction(() => OnReceiveObject(m.GetValue()));
+            Task.Run(() => OnReceiveObject(obj));
     }
 
     private void HandleDisconnect(MessageBase _)

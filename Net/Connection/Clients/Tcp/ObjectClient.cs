@@ -8,7 +8,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading.Tasks;
 
 /// <summary>
@@ -212,7 +211,7 @@ public class ObjectClient : ObjectClient<TcpChannel>
             servSoc.Bind(new IPEndPoint((Connection.Socket.LocalEndPoint as IPEndPoint).Address, 0));
             servSoc.Listen();
 
-            var aesKey = CryptoServices.KeyFromHash(CryptoServices.CreateHash(Guid.NewGuid().ToByteArray()));
+            var aesKey = CryptographyService.KeyFromHash(CryptographyService.CreateHash(Guid.NewGuid().ToByteArray()));
             var info = new Dictionary<string, string>
             {
                 { "Port", (servSoc.LocalEndPoint as IPEndPoint).Port.ToString() },

@@ -111,7 +111,7 @@ public class Server : BaseServer<ServerClient>
     /// <param name="maxClients">Max amount of clients</param>
     /// <param name="settings">Settings for connection</param>
     public Server(IPEndPoint endpoint, ushort? maxClients = null, ServerSettings settings = null) : 
-        this(new List<IPEndPoint> { endpoint}, maxClients, settings) { }
+        this(new List<IPEndPoint> { endpoint }, maxClients, settings) { }
 
     /// <summary>
     /// New server object

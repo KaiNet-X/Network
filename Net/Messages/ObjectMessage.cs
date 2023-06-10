@@ -1,7 +1,7 @@
 ﻿namespace Net.Messages;
 
 using Attributes;
-using Net.Messages.Parser;
+using Net.Serialization;
 using System;
 
 [RegisterMessage]
@@ -9,16 +9,17 @@ public sealed class ObjectMessage : MessageBase
 {
     public string TypeName { get; set; }
     public byte[] Data { get; set; }
+    public static ISerializer DefaultSerializer = MpSerializer.Instance;
 
     public ObjectMessage(object obj)
     {
         Type t = obj.GetType();
         TypeName = t.Name;
-        Data = MessageParser.Serializer.Serialize(obj, t);
+        Data = DefaultSerializer.Serialize(obj, t);
     }
 
     public ObjectMessage() { }
 
     internal object GetValue() =>
-        MessageParser.Serializer.Deserialize(Data, Utilities.GetTypeFromName(TypeName));
+        DefaultSerializer.Deserialize(Data, Utilities.GetTypeFromName(TypeName));
 }

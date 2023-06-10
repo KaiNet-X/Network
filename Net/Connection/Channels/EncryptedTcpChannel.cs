@@ -13,7 +13,9 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     internal Socket Socket;
     internal TcpClient Client;
 
-    private byte[] _aesKey;
+    private CryptographyService _crypto;
+
+    //private byte[] _aesKey;
 
     private List<byte> _received = new List<byte>();
 
@@ -40,7 +42,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// <param name="socket"></param>
     public EncryptedTcpChannel(Socket socket, byte[] aesKey)
     {
-        _aesKey = aesKey;
+        _crypto.AesKey = aesKey;
         Socket = socket;
         Connected = true;
     }
@@ -67,12 +69,12 @@ public class EncryptedTcpChannel : IChannel, IDisposable
 
     public byte[] ReceiveBytes()
     {
-        byte[] Process(int length)
+        ReadOnlySpan<byte> Process(int length)
         {
             ReadOnlySpan<byte> back = CollectionsMarshal.AsSpan(_received);
             byte[] data = back.Slice(4, length).ToArray();
             _received.RemoveRange(0, length + 4);
-            return CryptoServices.DecryptAES(data, _aesKey, _aesKey);
+            return _crypto.DecryptAES(data.AsSpan(), _crypto.AesKey);
         }
 
         if (!Connected || cancellationTokenSource.IsCancellationRequested) 
@@ -87,7 +89,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
             if (length == -1 && _received.Count >= 4)
                 length = BitConverter.ToInt32(_received.GetRange(0, 4).ToArray());
             if (_received.Count >= length + 4)
-                return Process(length);
+                return Process(length).ToArray();
         }
 
         do
@@ -99,7 +101,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
         }
         while (length == -1 || _received.Count < length + 4 && !cancellationTokenSource.IsCancellationRequested);
 
-        return Process(length);
+        return Process(length).ToArray();
     }
 
     public async Task<byte[]> ReceiveBytesAsync(CancellationToken token = default)
@@ -109,7 +111,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
             ReadOnlySpan<byte> back = CollectionsMarshal.AsSpan(_received);
             byte[] data = back.Slice(4, length).ToArray();
             _received.RemoveRange(0, length + 4);
-            return CryptoServices.DecryptAES(data, _aesKey, _aesKey);
+            return _crypto.DecryptAES(data, _crypto.AesKey);
         }
 
         if (!Connected || cancellationTokenSource.IsCancellationRequested) return Array.Empty<byte>();
@@ -148,11 +150,26 @@ public class EncryptedTcpChannel : IChannel, IDisposable
         throw new NotImplementedException();
     }
 
-    public void SendBytes(byte[] data)
+    public void SendBytes(byte[] data) =>
+        SendBytes(data.AsSpan());
+
+    public async Task SendBytesAsync(byte[] data, CancellationToken token = default) =>
+        SendBytesAsync(data.AsMemory(), token);
+
+    public void Dispose()
+    {
+        Socket.Close();
+        Connected = false;
+        cancellationTokenSource.Cancel();
+        cancellationTokenSource.Dispose();
+        cancellationTokenSource = null;
+    }
+
+    public void SendBytes(ReadOnlySpan<byte> data)
     {
         if (!Connected || cancellationTokenSource.IsCancellationRequested) return;
 
-        ReadOnlySpan<byte> encrypted = CryptoServices.EncryptAES(data, _aesKey, _aesKey);
+        ReadOnlySpan<byte> encrypted = _crypto.EncryptAES(data, _crypto.AesKey);
         ReadOnlySpan<byte> head = BitConverter.GetBytes(encrypted.Length);
         Span<byte> buffer = new byte[head.Length + encrypted.Length];
 
@@ -162,12 +179,12 @@ public class EncryptedTcpChannel : IChannel, IDisposable
         Socket.Send(buffer);
     }
 
-    public async Task SendBytesAsync(byte[] data, CancellationToken token = default)
+    public async Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
     {
-        if (!Connected || cancellationTokenSource.IsCancellationRequested) 
+        if (!Connected || cancellationTokenSource.IsCancellationRequested)
             return;
 
-        ReadOnlyMemory<byte> encrypted = CryptoServices.EncryptAES(data, _aesKey, _aesKey);
+        ReadOnlyMemory<byte> encrypted = _crypto.EncryptAES(data, _crypto.AesKey);
         ReadOnlyMemory<byte> head = BitConverter.GetBytes(encrypted.Length);
         Memory<byte> buffer = new byte[head.Length + encrypted.Length];
 
@@ -175,14 +192,5 @@ public class EncryptedTcpChannel : IChannel, IDisposable
         encrypted.CopyTo(buffer.Slice(4));
 
         await Socket.SendAsync(buffer, SocketFlags.None, token);
-    }
-
-    public void Dispose()
-    {
-        Socket.Close();
-        Connected = false;
-        cancellationTokenSource.Cancel();
-        cancellationTokenSource.Dispose();
-        cancellationTokenSource = null;
     }
 }

@@ -1,5 +1,6 @@
 ﻿namespace Net.Connection.Channels;
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -23,7 +24,19 @@ public interface IChannel
     /// Send bytes to remote host
     /// </summary>
     /// <param name="data"></param>
+    public void SendBytes(ReadOnlySpan<byte> data);
+
+    /// <summary>
+    /// Send bytes to remote host
+    /// </summary>
+    /// <param name="data"></param>
     public Task SendBytesAsync(byte[] data, CancellationToken token = default);
+
+    /// <summary>
+    /// Send bytes to remote host
+    /// </summary>
+    /// <param name="data"></param>
+    public Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default);
 
     /// <summary>
     /// Receive bytes on from remote host

@@ -1,60 +1,9 @@
-﻿namespace Net;
-
+﻿using Net.Serialization;
 using System;
-using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 
-public class Invoker
-{
-    private List<Action> InvokationList = new();
-    private SemaphoreSlim _semaphore = new(1, 1);
-    private Task runner;
+namespace Net;
 
-    public void AddAction(Action t)
-    {
-        Utilities.ConcurrentAccess(() =>
-        {
-            InvokationList.Add(t);
-        }, _semaphore);
-
-        if (runner == null || runner.IsCompleted)
-            runner = Task.Run(async () => await InvokeTasks());
-    }
-
-    private async Task InvokeTasks()
-    {
-        List<Action> actions = new List<Action>();
-        while (true)
-        {
-            if (InvokationList.Count == 0)
-                await Task.Delay(1);
-
-            await Utilities.ConcurrentAccessAsync((ct) =>
-            {
-                if (InvokationList.Count == 0)
-                {
-                    return Task.CompletedTask;
-                }
-                actions = new List<Action>(InvokationList);
-                InvokationList.Clear();
-                return Task.CompletedTask;
-            }, _semaphore);
-
-            foreach (var a in actions)
-                try
-                {
-                    a();
-                }
-                catch
-                {
-
-                }
-
-            actions.Clear();
-        }
-    }
-}
 /// <summary>
 /// State of the connection
 /// </summary>
@@ -64,4 +13,53 @@ public enum ConnectState
     PENDING,
     CONNECTED,
     CLOSED
+}
+
+internal interface IInvokable
+{ 
+    void Invoke(object o);
+}
+
+internal class Invokable<T> : IInvokable
+{
+    public T Value { get; set; }
+    private readonly Action<T> _action;
+
+    public Invokable(Action<T> action)
+    {
+        _action = action;
+    }
+
+    public void Invoke(object o) =>
+        _action((T)o);
+}
+
+internal interface IAsyncInvokable
+{
+    Task InvokeAsync(object o);
+}
+
+internal class AsyncInvokable<T> : IAsyncInvokable
+{
+    public T Value { get; set; }
+    private readonly Func<T, Task> _action;
+
+    public AsyncInvokable(Func<T, Task> action)
+    {
+        _action = action;
+    }
+
+    public Task InvokeAsync(object o) =>
+        _action((T)o);
+}
+
+/// <summary>
+/// Default values or constants the library uses
+/// </summary>
+public static class Consts
+{
+    /// <summary>
+    /// Default serializer is the MpSerializer
+    /// </summary>
+    public static ISerializer DefaultSerializer = MpSerializer.Instance;
 }

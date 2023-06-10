@@ -40,7 +40,7 @@ public abstract class Client<MainConnection> : ObjectClient<MainConnection> wher
             await foreach (var msg in ReceiveMessagesAsync())
             {
                 if (msg != null)
-                    HandleMessage(msg);
+                    await HandleMessageAsync(msg);
             }
         });
     }
@@ -66,7 +66,7 @@ public class Client : Client<IChannel>
                 await foreach (var msg in ReceiveMessagesAsync())
                 {
                     if (msg != null)
-                        HandleMessage(msg);
+                        await HandleMessageAsync(msg);
                 }
             });
         }

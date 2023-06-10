@@ -10,14 +10,34 @@ using System.Threading.Tasks;
 public class MpSerializer : ISerializer
 {
     public MessagePackSerializerOptions Options { get; set; } = ContractlessStandardResolverAllowPrivate.Options;
+    private static MpSerializer instance;
+    public static MpSerializer Instance { get => instance ??= new MpSerializer(); }
+
+    private MpSerializer()
+    {
+
+    }
+
+    public object Deserialize(ReadOnlyMemory<byte> bytes, Type type) =>
+        MessagePackSerializer.Deserialize(type, bytes, Options);
 
     public object Deserialize(byte[] bytes, Type type) =>
-        MessagePackSerializer.Deserialize(type, bytes, Options);
+        Deserialize((ReadOnlyMemory<byte>)bytes, type);
+
+    public object Deserialize(ReadOnlySpan<byte> bytes, Type type) =>
+        Deserialize(bytes.ToArray(), type);
 
     public async Task<object> DeserializeAsync(byte[] bytes, Type type, CancellationToken token = default)
     {
         using (var memStream = new MemoryStream(bytes))
             return await MessagePackSerializer.DeserializeAsync(type, memStream, Options);
+    }
+
+    public async Task<object> DeserializeAsync(ReadOnlyMemory<byte> bytes, Type type, CancellationToken token = default)
+    {
+        using var memStream = new MemoryStream();
+        await memStream.WriteAsync(bytes);
+        return await MessagePackSerializer.DeserializeAsync(type, memStream, Options);
     }
 
     public byte[] Serialize(object obj, Type type) =>

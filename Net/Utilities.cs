@@ -34,7 +34,7 @@ internal static class Utilities
         return -1;
     }
 
-    public static int IndexInByteSpan(Span<byte> bytes, Span<byte> SearchBytes, int offset = 0)
+    public static int IndexInByteSpan(ReadOnlySpan<byte> bytes, Span<byte> SearchBytes, int offset = 0)
     {
         for (int i = offset; i <= bytes.Length - SearchBytes.Length; i++)
             for (int I = 0; I < SearchBytes.Length; I++)

@@ -135,7 +135,7 @@ public class Client : ObjectClient
             await foreach (var msg in ReceiveMessagesAsync())
             {
                 if (msg != null)
-                    HandleMessage(msg);
+                    await HandleMessageAsync(msg);
             }
         });
     }

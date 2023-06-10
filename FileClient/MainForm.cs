@@ -12,11 +12,16 @@ public partial class MainForm : Form
     { 
         get => Program.Client;
         set => Program.Client = value;
-    } 
+    }
+
+    List<Guid> inProgress = new List<Guid>();
 
     private string _path;
 
     string _dir = @$"{Directory.GetCurrentDirectory()}\Files";
+    SemaphoreSlim _semaphore = new SemaphoreSlim(1);
+
+    FileStream current = null;
 
     public MainForm()
     {
@@ -47,10 +52,30 @@ public partial class MainForm : Form
         {
             Directory.CreateDirectory(_dir);
 
-            using (FileStream fs = File.Create($@"{_dir}\{msg.FileName}"))
+            if (msg.EndOfMessage)
+                inProgress.Remove(msg.RequestId);
+
+            if(!msg.EndOfMessage && !inProgress.Contains(msg.RequestId))
             {
-                await fs.WriteAsync(msg.FileData);
+                inProgress.Add(msg.RequestId);
+                current = File.Create($@"{_dir}\{msg.FileName}");
+                await current.WriteAsync(msg.FileData);
             }
+            else
+            {
+                await _semaphore.WaitAsync();
+                try
+                {
+                    await current.WriteAsync(msg.FileData);
+                }
+                finally
+                {
+                    _semaphore.Release();
+                }
+            }
+
+            if (msg.EndOfMessage)
+                current.Dispose();
         });
         _client.OnChannelOpened += async (obj) =>
         {

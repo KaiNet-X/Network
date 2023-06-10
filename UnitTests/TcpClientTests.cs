@@ -367,6 +367,7 @@ public class TcpClients
         var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
         await c.ConnectAsync();
+        c.SendMessage(msg);
         await Task.Delay(500);
         await c.CloseAsync();
 
@@ -395,6 +396,7 @@ public class TcpClients
         };
 
         await c.ConnectAsync();
+        server.SendMessageToAll(msg);
         await Task.Delay(500);
         await c.CloseAsync();
     }

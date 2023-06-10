@@ -36,7 +36,7 @@ public class ServerClient : ObjectClient
         var msg = _receiver.Current;
 
         if (msg != null)
-            HandleMessage(msg);
+            await HandleMessageAsync(msg);
 
         await _receiver.MoveNextAsync();
     }

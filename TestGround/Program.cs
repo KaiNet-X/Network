@@ -1,51 +1,49 @@
-﻿using Net.Connection.Channels;
+﻿using Net;
+using Net.Connection.Channels;
 using Net.Connection.Clients.Tcp;
 using Net.Connection.Servers;
-using System.Diagnostics;
+using Net.Messages.Parser;
+using Net.Serialization;
 using System.Net;
 using System.Text;
 
 IPAddress address = (await Dns.GetHostAddressesAsync(IPAddress.Loopback.ToString()))[0];
 IPEndPoint endpoint = new IPEndPoint(address, 15555);
 
-Server server = new Server(endpoint, 5, new ServerSettings { UseEncryption = true});
-Client client = new Client(endpoint);
+DateTime last = DateTime.Now;
 
+//MessageParser.Serializer = new JSerializer();
+Server server = new Server(endpoint, 5, new ServerSettings { UseEncryption = true, ConnectionPollTimeout = 10000000 });
 server.OnClientConnected += ClientConnected;
-server.OnClientDisconnected += ClientDisconnected;
-server.OnClientChannelOpened += ChannelOpened;
+server.OnClientObjectReceived += Server_OnClientObjectReceived;
 
 server.Start();
 
+Client client = new Client(endpoint);
+
+client.OnReceiveObject += Client_OnReceiveObject;
+
 client.Connect();
 
-var c = await client.OpenChannelAsync<EncryptedTcpChannel>();
+Console.ReadKey();
 
-output();
-output();
-
-async void ChannelOpened(IChannel channel, ServerClient sc)
-{
-    Console.WriteLine("Channel opened");
-    await channel.SendBytesAsync(Encoding.UTF8.GetBytes("Hello world"));
-    await channel.SendBytesAsync(Encoding.UTF8.GetBytes("Hello world"));
-}
-
-void ClientDisconnected(ServerClient client, bool graceful)
-{
-    if (graceful)
-        Console.WriteLine($"{client.RemoteEndpoint.Address}:{client.RemoteEndpoint.Port} disconnected gracefully.");
-    else
-        Console.WriteLine($"{client.RemoteEndpoint.Address}:{client.RemoteEndpoint.Port} lost connection.");
-}
 
 void ClientConnected(ServerClient client)
 {
-    Console.WriteLine($"{client.RemoteEndpoint.Address}:{client.RemoteEndpoint.Port} connected.");
+    last = DateTime.Now;
+    client.SendObject(0);
 }
 
-async Task output()
+void Server_OnClientObjectReceived(object arg1, ServerClient arg2)
 {
-    var bytes = await c.ReceiveBytesAsync();
-    Console.WriteLine(Encoding.UTF8.GetString(bytes));
+    Console.WriteLine($"Up: {(DateTime.Now - last).Milliseconds}");
+    last = DateTime.Now;
+    arg2.SendObject(0);
+}
+
+void Client_OnReceiveObject(object obj)
+{
+    Console.WriteLine($"Down: {(DateTime.Now - last).Milliseconds}");
+    last = DateTime.Now;
+    client.SendObject(0);
 }

@@ -123,7 +123,14 @@ public class TcpChannel : IChannel, IDisposable
     /// Send bytes to remote host
     /// </summary>
     /// <param name="data"></param>
-    public void SendBytes(byte[] data)
+    public void SendBytes(byte[] data) => 
+        SendBytes(data.AsSpan());
+
+    /// <summary>
+    /// Send bytes to remote host
+    /// </summary>
+    /// <param name="data"></param>
+    public void SendBytes(ReadOnlySpan<byte> data)
     {
         if (!Connected || cancellationTokenSource.IsCancellationRequested) return;
 
@@ -131,9 +138,9 @@ public class TcpChannel : IChannel, IDisposable
         {
             Socket.Send(data);
         }
-        catch(ObjectDisposedException)
+        catch (ObjectDisposedException)
         {
-            
+
         }
     }
 
@@ -141,7 +148,14 @@ public class TcpChannel : IChannel, IDisposable
     /// Send bytes to remote host
     /// </summary>
     /// <param name="data"></param>
-    public async Task SendBytesAsync(byte[] data, CancellationToken token = default)
+    public async Task SendBytesAsync(byte[] data, CancellationToken token = default) =>
+        await SendBytesAsync(data.AsMemory(), token);
+
+    /// <summary>
+    /// Send bytes to remote host
+    /// </summary>
+    /// <param name="data"></param>
+    public async Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
     {
         using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? new[] { token, cancellationTokenSource.Token } : new[] { token });
 
@@ -151,9 +165,9 @@ public class TcpChannel : IChannel, IDisposable
         {
             await Socket.SendAsync(data, SocketFlags.None, source.Token);
         }
-        catch(ObjectDisposedException)
+        catch (ObjectDisposedException)
         {
-            
+
         }
     }
 

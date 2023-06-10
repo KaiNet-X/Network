@@ -13,7 +13,7 @@ foreach (var address in addresses)
 
 endpoints.AddRange(new[] { new IPEndPoint(IPAddress.Any, 6969), new IPEndPoint(IPAddress.IPv6Any, 6969) });
 
-var server = new Server(endpoints, 5, new ServerSettings { UseEncryption = true, ConnectionPollTimeout = 50000 });
+var server = new Server(endpoints, 5, new ServerSettings { UseEncryption = true, ConnectionPollTimeout = 600000 });
 
 var workingDirectory = @$"{Directory.GetCurrentDirectory()}\Files";
 if (!Directory.Exists(workingDirectory)) 
@@ -69,15 +69,7 @@ async void HandleFileRequest (FileRequestMessage msg, ServerClient c)
         case FileRequestMessage.FileRequestType.Download:
             using (FileStream fs = File.OpenRead(@$"{workingDirectory}\{msg.PathRequest}"))
             {
-                var newMsg = new FileRequestMessage() { RequestType = FileRequestMessage.FileRequestType.Upload, FileName = msg.PathRequest.Split('\\')[^1] };
-                newMsg.FileData = new byte[fs.Length];
-                await fs.ReadAsync(newMsg.FileData);
-                await c.SendMessageAsync(newMsg);
-                //var buffer = new byte[fs.Length];
-                //await fs.ReadAsync(buffer);
-                //var g = await c.OpenChannelAsync();
-                //await c.SendBytesOnChannelAsync(buffer, g);
-                Console.WriteLine($"{c.RemoteEndpoint} requested {msg.PathRequest.Split('\\')[^1]}");
+                await SendFile(fs, c, msg);
             }
             break;
         case FileRequestMessage.FileRequestType.Upload:
@@ -98,5 +90,52 @@ async void HandleFileRequest (FileRequestMessage msg, ServerClient c)
                 await c.SendObjectAsync(tree);
             }
             break;
+    }
+}
+
+async Task SendFile(FileStream file, ServerClient client, FileRequestMessage msg)
+{
+    const int sendChunkSize = 16384;
+
+    Console.WriteLine($"{client.RemoteEndpoint} requested {msg.PathRequest.Split('\\')[^1]}");
+
+    var id = Guid.NewGuid();
+    if (file.Length <= sendChunkSize)
+    {
+        var newMsg = new FileRequestMessage()
+        {
+            RequestType = FileRequestMessage.FileRequestType.Upload,
+            FileName = msg.PathRequest.Split('\\')[^1],
+            RequestId = id, 
+            EndOfMessage = true
+        };
+        newMsg.FileData = new byte[file.Length];
+        await file.ReadAsync(newMsg.FileData);
+        await client.SendMessageAsync(newMsg);
+        return;
+    }
+    byte[] bytes = new byte[sendChunkSize];
+    var max = Math.Ceiling(((float)file.Length) / (float)sendChunkSize);
+    for (int i = 0; i < max; i++)
+    {
+        var newMsg = new FileRequestMessage()
+        {
+            RequestType = FileRequestMessage.FileRequestType.Upload,
+            FileName = msg.PathRequest.Split('\\')[^1],
+            RequestId = id,
+            EndOfMessage = i == max - 1 ? true : false
+        };
+        if (i != max - 1)
+        {
+            newMsg.FileData = bytes;
+            await file.ReadAsync(newMsg.FileData);
+            await client.SendMessageAsync(newMsg);
+        }
+        else
+        {
+            newMsg.FileData = new byte[file.Length - file.Position];
+            await file.ReadAsync(newMsg.FileData);
+            await client.SendMessageAsync(newMsg);
+        }
     }
 }

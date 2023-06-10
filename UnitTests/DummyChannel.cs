@@ -49,8 +49,18 @@ internal class DummyChannel : IChannel
         throw new NotImplementedException();
     }
 
+    public void SendBytes(ReadOnlySpan<byte> data)
+    {
+        throw new NotImplementedException();
+    }
+
     public Task SendBytesAsync(byte[] data, CancellationToken token = default)
     {
         return null;
+    }
+
+    public Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
+    {
+        throw new NotImplementedException();
     }
 }

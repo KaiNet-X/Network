@@ -23,12 +23,6 @@ public abstract class BaseClient
     public abstract Task SendMessageAsync(MessageBase message, CancellationToken token = default);
 
     /// <summary>
-    /// Lazily receives messages
-    /// </summary>
-    /// <returns></returns>
-    protected abstract IEnumerable<MessageBase> ReceiveMessages();
-
-    /// <summary>
     /// Asynchronously and lazily receives messages
     /// </summary>
     /// <returns></returns>

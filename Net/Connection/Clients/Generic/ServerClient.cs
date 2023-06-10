@@ -19,7 +19,7 @@ public abstract class ServerClient<MainConnection> : ObjectClient<MainConnection
         var msg = _reciever.Current;
 
         if (msg != null)
-            HandleMessage(msg);
+            await HandleMessageAsync(msg);
 
         await _reciever.MoveNextAsync();
     }

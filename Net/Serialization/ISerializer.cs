@@ -26,6 +26,14 @@ public interface ISerializer
     public object Deserialize(byte[] bytes, Type type);
 
     /// <summary>
+    /// Converts bytes to an object
+    /// </summary>
+    /// <param name="bytes"></param>
+    /// <param name="type"></param>
+    /// <returns></returns>
+    public object Deserialize(ReadOnlySpan<byte> bytes, Type type);
+
+    /// <summary>
     /// Converts an object to bytes
     /// </summary>
     /// <param name="obj"></param>
@@ -40,4 +48,12 @@ public interface ISerializer
     /// <param name="type"></param>
     /// <returns></returns>
     public Task<object> DeserializeAsync(byte[] bytes, Type type, CancellationToken token = default);
+
+    /// <summary>
+    /// Converts bytes to an object
+    /// </summary>
+    /// <param name="bytes"></param>
+    /// <param name="type"></param>
+    /// <returns></returns>
+    public Task<object> DeserializeAsync(ReadOnlyMemory<byte> bytes, Type type, CancellationToken token = default);
 }
