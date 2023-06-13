@@ -90,7 +90,7 @@ public class UdpChannel : IChannel, IDisposable
     /// </summary>
     /// <param name="data"></param>
     public void SendBytes(byte[] data) => 
-        SendBytes(data);
+        SendBytes(data.AsSpan());
 
     /// Send bytes to remote host
     /// </summary>

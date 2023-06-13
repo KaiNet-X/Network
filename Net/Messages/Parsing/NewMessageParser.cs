@@ -11,7 +11,6 @@ using System.Text;
 /// </summary>
 public class NewMessageParser : IMessageParser
 {
-    //
     private readonly CryptographyService _cryptographyService;
     private readonly ISerializer _serializer;
 

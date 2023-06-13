@@ -8,7 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
-/// A channel that communicates using TCP. Encryption is not yet supported.
+/// A channel that communicates using TCP
 /// </summary>
 public class TcpChannel : IChannel, IDisposable
 {

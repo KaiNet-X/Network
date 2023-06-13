@@ -8,12 +8,15 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
+/// <summary>
+/// This channel sends encrypted data over TCP
+/// </summary>
 public class EncryptedTcpChannel : IChannel, IDisposable
 {
     internal Socket Socket;
     internal TcpClient Client;
 
-    private CryptographyService _crypto;
+    private CryptographyService _crypto = new CryptographyService();
 
     //private byte[] _aesKey;
 

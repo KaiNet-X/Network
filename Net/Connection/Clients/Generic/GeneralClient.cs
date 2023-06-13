@@ -5,7 +5,6 @@ using Messages;
 using Net;
 using Net.Connection.Servers;
 using Net.Messages.Parsing;
-using Net.Serialization;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,8 +14,8 @@ using System.Threading.Tasks;
 
 public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel : class, IChannel
 {
-    private SemaphoreSlim _sendSemaphore = new SemaphoreSlim(1, 1);
-    private SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
+    protected SemaphoreSlim _sendSemaphore = new SemaphoreSlim(1, 1);
+    protected SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
     private CryptographyService _crypto = new();
 
@@ -231,7 +230,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     protected void Disconnected()
     {
         TokenSource.Cancel();
-        _pollTimer.Dispose();
+        _pollTimer?.Dispose();
         ConnectionState = ConnectState.CLOSED;
         CloseConnection();
 

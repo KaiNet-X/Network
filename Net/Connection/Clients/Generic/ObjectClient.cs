@@ -29,8 +29,6 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     /// </summary>
     public event Action<IChannel> OnChannelOpened;
 
-    protected List<IChannel> _connectionWait = new();
-
     protected void ChannelOpened(IChannel c) =>
         OnChannelOpened?.Invoke(c);
 
@@ -136,12 +134,13 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
         var m = mb as ObjectMessage;
         var obj = m.GetValue();
         var type = obj.GetType();
+
         if (objectEvents.ContainsKey(type))
-        {
             Task.Run(() => objectEvents[type].Invoke(obj));
+
+        if (asyncObjectEvents.ContainsKey(type))
             Task.Run(async () => await asyncObjectEvents[type].InvokeAsync(obj));
-            return;
-        }
+
         if (OnReceiveObject is not null)
             Task.Run(() => OnReceiveObject(obj));
     }
