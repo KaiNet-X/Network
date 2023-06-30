@@ -37,20 +37,23 @@ public partial class MainForm : Form
         sAddr.Text = _client.RemoteEndpoint.Address.ToString();
         sPort.Text = _client.RemoteEndpoint.Port.ToString();
 
-        _client.OnReceiveObject += (obj) =>
+        _client.RegisterReceiveObject<Tree>(t =>
         {
-            if (obj is Tree t)
+            Invoke(() =>
             {
-                Invoke(() =>
-                {
-                    treeView.Nodes.Clear();
-                    treeView.Nodes.Add(ToNode(t));
-                });
-            }
-        };
+                treeView.Nodes.Clear();
+                treeView.Nodes.Add(ToNode(t));
+            });
+        });
         _client.RegisterMessageHandler<FileRequestMessage>(async msg =>
         {
             Directory.CreateDirectory(_dir);
+
+            if (!inProgress.Contains(msg.RequestId))
+            {
+                inProgress.Add(msg.RequestId);
+                current = File.Create($@"{_dir}\{msg.FileName}");
+            }
 
             if (msg.EndOfMessage)
                 inProgress.Remove(msg.RequestId);
@@ -59,14 +62,14 @@ public partial class MainForm : Form
             {
                 inProgress.Add(msg.RequestId);
                 current = File.Create($@"{_dir}\{msg.FileName}");
-                await current.WriteAsync(msg.FileData);
+                await current.WriteAsync(msg.FileData.AsMemory());
             }
             else
             {
                 await _semaphore.WaitAsync();
                 try
                 {
-                    await current.WriteAsync(msg.FileData);
+                    await current.WriteAsync(msg.FileData.AsMemory());
                 }
                 finally
                 {

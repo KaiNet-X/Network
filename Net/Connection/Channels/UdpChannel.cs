@@ -43,49 +43,6 @@ public class UdpChannel : IChannel, IDisposable
     }
 
     /// <summary>
-    /// Receive bytes
-    /// </summary>
-    /// <returns></returns>
-    public byte[] ReceiveBytes()
-    {
-        if (!Connected || _cts.IsCancellationRequested)
-            return null;
-
-        var endpoint = Remote;
-
-        try
-        {
-            return _udp.Receive(ref endpoint);  
-        }
-        catch (ObjectDisposedException)
-        {
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// Receive bytes
-    /// </summary>
-    /// <returns></returns>
-    public async Task<byte[]> ReceiveBytesAsync(CancellationToken token = default)
-    {
-        using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? new[] { token, _cts.Token } : new[] { token });
-
-        if (!Connected || t.IsCancellationRequested)
-            return null;
-
-        try
-        {
-            var result = await _udp.ReceiveAsync(t.Token);
-            return result.Buffer;
-        }
-        catch (ObjectDisposedException)
-        {
-            return null;
-        }
-    }
-
-    /// <summary>
     /// Send bytes to remote host
     /// </summary>
     /// <param name="data"></param>
@@ -117,8 +74,8 @@ public class UdpChannel : IChannel, IDisposable
     /// </summary>
     /// <param name="buffer">Buffer to receive to</param>
     /// <returns></returns>
-    public async Task SendBytesAsync(byte[] data, CancellationToken token = default) =>
-        await SendBytesAsync(data.AsMemory(), token);
+    public Task SendBytesAsync(byte[] data, CancellationToken token = default) =>
+        SendBytesAsync(data.AsMemory(), token);
 
     /// <summary>
     /// Recieves to a buffer, calling the underlying socket method.
@@ -136,28 +93,46 @@ public class UdpChannel : IChannel, IDisposable
     }
 
     /// <summary>
-    /// Sets the remote endpoint and connects to it 
+    /// Receive bytes
     /// </summary>
-    /// <param name="endpoint"></param>
-    public void SetRemote(IPEndPoint endpoint)
+    /// <returns></returns>
+    public byte[] ReceiveBytes()
     {
-        _udp.Connect(Remote = endpoint);
-        Connected = true;
+        if (!Connected || _cts.IsCancellationRequested)
+            return null;
+
+        var endpoint = Remote;
+
+        try
+        {
+            return _udp.Receive(ref endpoint);
+        }
+        catch (ObjectDisposedException)
+        {
+            return null;
+        }
     }
 
     /// <summary>
-    /// Closes the channel. Handled by the client it is associated with.
+    /// Receive bytes
     /// </summary>
-    public void Dispose()
+    /// <returns></returns>
+    public async Task<byte[]> ReceiveBytesAsync(CancellationToken token = default)
     {
-        Connected = false;
-        _byteQueue.Clear();
-        _byteQueue = null;
-        _cts.Cancel();
-        _cts.Dispose();
-        _cts = null;
-        _semaphore.Dispose();
-        _udp.Close();
+        using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? new[] { token, _cts.Token } : new[] { token });
+
+        if (!Connected || t.IsCancellationRequested)
+            return null;
+
+        try
+        {
+            var result = await _udp.ReceiveAsync(t.Token);
+            return result.Buffer;
+        }
+        catch (ObjectDisposedException)
+        {
+            return null;
+        }
     }
 
     /// <summary>
@@ -185,6 +160,27 @@ public class UdpChannel : IChannel, IDisposable
     /// </summary>
     /// <param name="buffer">Buffer to receive to</param>
     /// <returns>bytes received</returns>
+    public int ReceiveToBuffer(Span<byte> buffer)
+    {
+        if (!Connected || _cts.IsCancellationRequested)
+            return 0;
+
+        try
+        {
+            return _udp.Client.Receive(buffer, SocketFlags.None);
+        }
+        catch (ObjectDisposedException)
+        {
+            return 0;
+        }
+    }
+
+
+    /// <summary>
+    /// Recieves to a buffer from the socket
+    /// </summary>
+    /// <param name="buffer">Buffer to receive to</param>
+    /// <returns>bytes received</returns>
     public async Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default)
     {
         if (!Connected || _cts.IsCancellationRequested)
@@ -198,5 +194,50 @@ public class UdpChannel : IChannel, IDisposable
         {
             return 0;
         }
+    }
+
+    /// <summary>
+    /// Recieves to a buffer from the socket
+    /// </summary>
+    /// <param name="buffer">Buffer to receive to</param>
+    /// <returns>bytes received</returns>
+    public async Task<int> ReceiveToBufferAsync(Memory<byte> buffer, CancellationToken token = default)
+    {
+        if (!Connected || _cts.IsCancellationRequested)
+            return 0;
+
+        try
+        {
+            return await _udp.Client.ReceiveAsync(buffer, token);
+        }
+        catch (ObjectDisposedException)
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// Sets the remote endpoint and connects to it 
+    /// </summary>
+    /// <param name="endpoint"></param>
+    public void SetRemote(IPEndPoint endpoint)
+    {
+        _udp.Connect(Remote = endpoint);
+        Connected = true;
+    }
+
+    /// <summary>
+    /// Closes the channel. Handled by the client it is associated with.
+    /// </summary>
+    public void Dispose()
+    {
+        Connected = false;
+        _byteQueue.Clear();
+        _byteQueue = null;
+        _cts.Cancel();
+        _cts.Dispose();
+        _cts = null;
+        _semaphore.Dispose();
+        _udp.Close();
     }
 }

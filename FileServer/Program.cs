@@ -1,4 +1,5 @@
 ﻿using FileServer;
+using Net;
 using Net.Connection.Clients.Tcp;
 using Net.Connection.Servers;
 using System.Net;
@@ -57,9 +58,9 @@ void OnConnect(ServerClient sc)
     Console.WriteLine($"{sc.LocalEndpoint} connected");
 }
 
-void OnDisconnect (ServerClient sc, bool g)
+void OnDisconnect (ServerClient sc, DisconnectionInfo info)
 {
-    Console.WriteLine($"{sc.LocalEndpoint} disconnected {(g ? "gracefully" : "ungracefully")}");
+    Console.WriteLine($"{sc.LocalEndpoint} disconnected {info.Reason}");
 }
 
 async void HandleFileRequest (FileRequestMessage msg, ServerClient c)

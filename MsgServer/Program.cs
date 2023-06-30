@@ -1,4 +1,5 @@
-﻿using Net.Connection.Clients.Tcp;
+﻿using Net;
+using Net.Connection.Clients.Tcp;
 using Net.Connection.Servers;
 using System;
 using System.Collections.Generic;
@@ -48,8 +49,8 @@ Console.WriteLine();
 
 await Task.Delay(10000000);
 
-void Disconnected(ServerClient sc, bool graceful) =>
-    Console.WriteLine($"Disconnected {(graceful ? "gracefully" : "ungracefully")}: {sc.RemoteEndpoint}");
+void Disconnected(ServerClient sc, DisconnectionInfo info) =>
+    Console.WriteLine($"{info.Reason}");
 
 void Connected(ServerClient c) =>
     Console.WriteLine($"Connected: {c.RemoteEndpoint}");

@@ -4,6 +4,7 @@ using Channels;
 using Messages;
 using Net.Connection.Clients.Generic;
 using Net.Connection.Servers;
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
@@ -15,6 +16,12 @@ using System.Threading.Tasks;
 public class ServerClient : ObjectClient
 {
     private IAsyncEnumerator<MessageBase> _receiver;
+    protected internal Task connectedTask => Connected.Task;
+
+    /// <summary>
+    /// If the controll loop fails, get the exception
+    /// </summary>
+    public Exception ControlLoopException { get; private set; }
 
     internal ServerClient(Socket soc, ServerSettings settings = null) : base()
     {
@@ -33,11 +40,19 @@ public class ServerClient : ObjectClient
 
     internal async Task GetNextMessageAsync()
     {
-        var msg = _receiver.Current;
+        try
+        {
+            var msg = _receiver.Current;
 
-        if (msg != null)
-            await HandleMessageAsync(msg);
+            if (msg != null)
+                await HandleMessageAsync(msg);
 
-        await _receiver.MoveNextAsync();
+            await _receiver.MoveNextAsync();
+        }
+        catch (Exception ex)
+        {
+            ControlLoopException = ex;
+            throw;
+        }
     }
 }

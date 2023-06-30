@@ -2,6 +2,7 @@
 using System.Net;
 using System.Text;
 using CmdLineMsgClient;
+using Net;
 using Net.Connection.Channels;
 using Net.Connection.Clients.Tcp;
 
@@ -44,9 +45,9 @@ async void C1_OnChannelOpened(IChannel ch)
     client.CloseChannel(c);
 }
 
-void C1_OnDisconnect(bool graceful)
+void C1_OnDisconnect(DisconnectionInfo inf)
 {
-    Console.WriteLine($"Disconnected {(graceful ? "gracefully" : "ungracefully")}");
+    Console.WriteLine($"{inf.Reason}");
     client.Connect(15);
 }
 

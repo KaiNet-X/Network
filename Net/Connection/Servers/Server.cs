@@ -88,7 +88,7 @@ public class Server : BaseServer<ServerClient>
     /// <summary>
     /// Invoked when a client disconnects
     /// </summary>
-    public event Action<ServerClient, bool> OnClientDisconnected;
+    public event Action<ServerClient, DisconnectionInfo> OnClientDisconnected;
 
     protected Dictionary<Type, Func<ServerClient, Task<IChannel>>> OpenChannelMethods = new();
     protected Dictionary<Type, Func<ChannelManagementMessage, ServerClient, Task>> ChannelMessages = new();
@@ -150,13 +150,22 @@ public class Server : BaseServer<ServerClient>
     /// </summary>
     public override void Start()
     {
+        _ = StartAsync();
+    }
+
+    /// <summary>
+    /// Causes the server to listen for incoming connections. Will accept connections until max clients is reached, but will continue after connections are removed.
+    /// </summary>
+    /// <returns>A task representing the runner. Doesn't complete until the server stops listening to incomming connections.</returns>
+    public override Task StartAsync()
+    {
         Active = Listening = true;
 
         if (_bindingSockets.Count == 0)
             InitializeSockets(Endpoints);
 
         if (Settings.SingleThreadedServer)
-            Task.Run(async () =>
+            _ = Task.Run(async () =>
             {
                 while (Active)
                 {
@@ -172,15 +181,17 @@ public class Server : BaseServer<ServerClient>
                 }
             });
 
-        Task.Run(async () =>
+        var tcs = new TaskCompletionSource();
+
+        return Task.Run(async () =>
         {
             StartListening();
             while (Listening)
             {
                 if (MaxClients != null && Clients.Count >= MaxClients)
                 {
-                    await Task.Delay(LoopDelay);
-                    continue;
+                    await tcs.Task;
+                    tcs = new TaskCompletionSource();
                 }
 
                 var c = new ServerClient(await GetNextConnection(), Settings);
@@ -189,20 +200,19 @@ public class Server : BaseServer<ServerClient>
                 c.OnReceiveObject += (obj) => OnClientObjectReceived?.Invoke(obj, c);
                 c.OnDisconnect += async (g) =>
                 {
-                    await Utilities.ConcurrentAccessAsync((ct) =>
-                    {
-                        Clients.Remove(c);
-                        return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
-                    }, _semaphore);
-
                     OnClientDisconnected?.Invoke(c, g);
 
                     if (RemoveAfterDisconnect)
+                    {
                         await Utilities.ConcurrentAccessAsync((ct) =>
                         {
+                            if (MaxClients != null && Clients.Count == MaxClients)
+                                tcs.SetResult();
+
                             Clients.Remove(c);
-                            return Task.CompletedTask;
+                            return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
                         }, _semaphore);
+                    }
                 };
 
                 c.OnUnregisteredMessage += (m) =>
@@ -224,24 +234,14 @@ public class Server : BaseServer<ServerClient>
                     {
                         while (c.ConnectionState != ConnectState.CLOSED && Active)
                             await c.GetNextMessageAsync();
-
                     });
 
-                while (c.ConnectionState == ConnectState.PENDING) ;
+                await c.connectedTask;
 
-                c.SendMessage(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));
                 OnClientConnected?.Invoke(c);
             }
             _bindingSockets.ForEach(socket => socket.Close());
         });
-    }
-
-    /// <summary>
-    /// Causes the server to listen for incoming connections. Will accept connections until max clients is reached, but will continue after connections are removed.
-    /// </summary>
-    public override async Task StartAsync()
-    {
-        await Task.Run(Start);
     }
 
     /// <summary>
@@ -275,7 +275,7 @@ public class Server : BaseServer<ServerClient>
     }
 
     /// <summary>
-    /// Stops listening for new connections, but still maintains active ones.
+    /// Stops listening for new connections but still maintains active ones.
     /// </summary>
     public override void Stop()
     {
@@ -291,7 +291,7 @@ public class Server : BaseServer<ServerClient>
     }
 
     /// <summary>
-    /// Stops listening for new connections, but still maintains active ones.
+    /// Stops listening for new connections but still maintains active ones.
     /// </summary>
     public override async Task StopAsync()
     {
@@ -334,6 +334,13 @@ public class Server : BaseServer<ServerClient>
         }, _semaphore);
     }
 
+    /// <summary>
+    /// Tells clients that connect after this method is called how to add a channel of type T.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="open">Method to create a new channel and notify the other host.</param>
+    /// <param name="channelManagement">Manages the creation of this channel. This can be called multiple times before negotiation is complete and the connection is created.</param>
+    /// <param name="close">Specifies how to close the channel.</param>
     public void RegisterChannelType<T>(Func<ServerClient, Task<T>> open, Func<ChannelManagementMessage, ServerClient, Task> channelManagement, Func<T, ServerClient, Task> close) where T : IChannel
     {
         OpenChannelMethods[typeof(T)] = async (sc) => await open(sc);
@@ -348,8 +355,13 @@ public class Server : BaseServer<ServerClient>
     public void RegisterType<T>() =>
         Utilities.RegisterType(typeof(T));
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="handler"></param>
     public void RegisterMessageHandler<T>(Action<T, ServerClient> handler) where T : MessageBase =>
-    _CustomMessageHandlers.Add(typeof(T), (mb, sc) => handler((T)mb, sc));
+        _CustomMessageHandlers.Add(typeof(T), (mb, sc) => handler((T)mb, sc));
 
     public void RegisterMessageHandler(Action<MessageBase, ServerClient> handler, Type messageType) =>
         _CustomMessageHandlers.Add(messageType, (mb, sc) => handler(mb, sc));

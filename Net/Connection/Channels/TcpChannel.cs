@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 public class TcpChannel : IChannel, IDisposable
 {
     protected internal Socket Socket;
+    private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 
     /// <summary>
     /// Check if channel is connected
@@ -29,8 +30,6 @@ public class TcpChannel : IChannel, IDisposable
     /// </summary>
     public IPEndPoint Local => Socket.LocalEndPoint as IPEndPoint;
 
-    private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-
     /// <summary>
     /// Opens a tcp channel on an already connected socket
     /// </summary>
@@ -42,15 +41,55 @@ public class TcpChannel : IChannel, IDisposable
     }
 
     /// <summary>
-    /// Closes the channel. Handled by the client it is associated with.
+    /// Send bytes to remote host
     /// </summary>
-    public void Dispose()
+    /// <param name="data"></param>
+    public void SendBytes(byte[] data) =>
+        SendBytes(data.AsSpan());
+
+    /// <summary>
+    /// Send bytes to remote host
+    /// </summary>
+    /// <param name="data"></param>
+    public void SendBytes(ReadOnlySpan<byte> data)
     {
-        Socket.Close();
-        Connected = false;
-        cancellationTokenSource.Cancel();
-        cancellationTokenSource.Dispose();
-        cancellationTokenSource = null;
+        if (!Connected || cancellationTokenSource.IsCancellationRequested) return;
+
+        try
+        {
+            Socket.Send(data);
+        }
+        catch (ObjectDisposedException)
+        {
+
+        }
+    }
+
+    /// <summary>
+    /// Send bytes to remote host
+    /// </summary>
+    /// <param name="data"></param>
+    public Task SendBytesAsync(byte[] data, CancellationToken token = default) =>
+        SendBytesAsync(data.AsMemory(), token);
+
+    /// <summary>
+    /// Send bytes to remote host
+    /// </summary>
+    /// <param name="data"></param>
+    public async Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
+    {
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? new[] { token, cancellationTokenSource.Token } : new[] { token });
+
+        if (!Connected || source.IsCancellationRequested) return;
+
+        try
+        {
+            await Socket.SendAsync(data, SocketFlags.None, source.Token);
+        }
+        catch (ObjectDisposedException)
+        {
+
+        }
     }
 
     /// <summary>
@@ -120,54 +159,21 @@ public class TcpChannel : IChannel, IDisposable
     }
 
     /// <summary>
-    /// Send bytes to remote host
+    /// Recieves to a buffer, calling the underlying socket method.
     /// </summary>
-    /// <param name="data"></param>
-    public void SendBytes(byte[] data) => 
-        SendBytes(data.AsSpan());
-
-    /// <summary>
-    /// Send bytes to remote host
-    /// </summary>
-    /// <param name="data"></param>
-    public void SendBytes(ReadOnlySpan<byte> data)
+    /// <param name="buffer">Buffer to receive to</param>
+    /// <returns></returns>
+    public int ReceiveToBuffer(byte[] buffer)
     {
-        if (!Connected || cancellationTokenSource.IsCancellationRequested) return;
+        if (!Connected || cancellationTokenSource.IsCancellationRequested) return 0;
 
         try
         {
-            Socket.Send(data);
+            return Socket.Receive(buffer, SocketFlags.None);
         }
         catch (ObjectDisposedException)
         {
-
-        }
-    }
-
-    /// <summary>
-    /// Send bytes to remote host
-    /// </summary>
-    /// <param name="data"></param>
-    public async Task SendBytesAsync(byte[] data, CancellationToken token = default) =>
-        await SendBytesAsync(data.AsMemory(), token);
-
-    /// <summary>
-    /// Send bytes to remote host
-    /// </summary>
-    /// <param name="data"></param>
-    public async Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
-    {
-        using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? new[] { token, cancellationTokenSource.Token } : new[] { token });
-
-        if (!Connected || source.IsCancellationRequested) return;
-
-        try
-        {
-            await Socket.SendAsync(data, SocketFlags.None, source.Token);
-        }
-        catch (ObjectDisposedException)
-        {
-
+            return 0;
         }
     }
 
@@ -176,7 +182,7 @@ public class TcpChannel : IChannel, IDisposable
     /// </summary>
     /// <param name="buffer">Buffer to receive to</param>
     /// <returns></returns>
-    public int ReceiveToBuffer(byte[] buffer)
+    public int ReceiveToBuffer(Span<byte> buffer)
     {
         if (!Connected || cancellationTokenSource.IsCancellationRequested) return 0;
 
@@ -209,5 +215,38 @@ public class TcpChannel : IChannel, IDisposable
         {
             return 0;
         }
+    }
+
+    /// <summary>
+    /// Recieves to a buffer, calling the underlying socket method.
+    /// </summary>
+    /// <param name="buffer">Buffer to receive to</param>
+    /// <returns></returns>
+    public async Task<int> ReceiveToBufferAsync(Memory<byte> buffer, CancellationToken token = default)
+    {
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? new[] { token, cancellationTokenSource.Token } : new[] { token });
+
+        if (!Connected || source.IsCancellationRequested) return 0;
+
+        try
+        {
+            return await Socket.ReceiveAsync(buffer, token);
+        }
+        catch (ObjectDisposedException)
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// Closes the channel. Handled by the client it is associated with.
+    /// </summary>
+    public void Dispose()
+    {
+        Socket.Close();
+        Connected = false;
+        cancellationTokenSource.Cancel();
+        cancellationTokenSource.Dispose();
+        cancellationTokenSource = null;
     }
 }

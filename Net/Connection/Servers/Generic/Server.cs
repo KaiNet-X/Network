@@ -64,7 +64,7 @@ public abstract class Server<ConnectionType> : BaseServer<ServerClient<Connectio
     /// <summary>
     /// Invoked when a client disconnects
     /// </summary>
-    public event Action<ServerClient<ConnectionType>, bool> OnClientDisconnected;
+    public event Action<ServerClient<ConnectionType>, DisconnectionInfo> OnClientDisconnected;
 
     /// <summary>
     /// Sends an object to all clients
@@ -134,7 +134,6 @@ public abstract class Server<ConnectionType> : BaseServer<ServerClient<Connectio
                 });
                 while (c.ConnectionState == ConnectState.PENDING) ;
 
-                c.SendMessage(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));
                 OnClientConnected?.Invoke(c);
             }
         });

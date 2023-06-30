@@ -8,17 +8,24 @@ using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
-/// Base client for Client and ServerClient that adds functionality for sending/receiving objects.
+/// Generic base client for Client and ServerClient that adds functionality for sending/receiving objects.
 /// </summary>
 public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> where MainChannel : class, IChannel
 {
+    private Dictionary<Type, IInvokable> objectEvents = new();
+    private Dictionary<Type, IAsyncInvokable> asyncObjectEvents = new();
+    private GuardedList<IChannel> _channelsBack;
+
     protected Dictionary<Type, Func<Task<IChannel>>> OpenChannelMethods = new();
     protected Dictionary<Type, Func<ChannelManagementMessage, Task>> ChannelMessages = new();
     protected Dictionary<Type, Func<IChannel, Task>> CloseChannelMethods = new();
+    protected List<IChannel> _channels = new();
 
-    public List<IChannel> Channels = new();
-    private Dictionary<Type, IInvokable> objectEvents = new();
-    private Dictionary<Type, IAsyncInvokable> asyncObjectEvents = new();
+    /// <summary>
+    /// List of active channels associated with this object
+    /// </summary>
+    public GuardedList<IChannel> Channels => _channelsBack ??= _channels;
+
     /// <summary>
     /// Invoked when the client receives an object
     /// </summary>
@@ -29,8 +36,11 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     /// </summary>
     public event Action<IChannel> OnChannelOpened;
 
-    protected void ChannelOpened(IChannel c) =>
+    protected void ChannelOpened(IChannel c) 
+    {
+        _channels.Add(c);
         OnChannelOpened?.Invoke(c);
+    }
 
     /// <summary>
     /// Registers a generic action to be invoked when an object of specified type is received
@@ -94,15 +104,46 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     public virtual async Task SendObjectAsync<T>(T obj, CancellationToken token = default) =>
         await SendMessageAsync(new ObjectMessage(obj), token);
 
+    /// <summary>
+    /// Closes a channel associated with this client. 
+    /// </summary>
+    /// <param name="c"></param>
     public void CloseChannel(IChannel c) =>
-        CloseChannelMethods[c.GetType()](c).GetAwaiter().GetResult();
+        CloseChannelAsync(c).GetAwaiter().GetResult();
 
-    public async Task CloseChannelAsync(IChannel c) =>
+    /// <summary>
+    /// Closes a channel associated with this client. 
+    /// </summary>
+    /// <param name="c"></param>
+    /// <returns></returns>
+    public async Task CloseChannelAsync(IChannel c)
+    {
+        if (!Channels.Contains(c)) 
+            throw new InvalidOperationException("This channel does not belong to this client.");
+
         await CloseChannelMethods[c.GetType()](c);
+        _channels.Remove(c);
+    }
 
-    public async Task<T> OpenChannelAsync<T>() where T : class, IChannel =>
-        (await OpenChannelMethods[typeof(T)]()) as T;
+    /// <summary>
+    /// Opens a new channel of the given type.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <returns></returns>
+    public async Task<T> OpenChannelAsync<T>() where T : class, IChannel
+    {
+        var c = (await OpenChannelMethods[typeof(T)]()) as T;
+        _channels.Add(c);
+        return c;
+    }
 
+    /// <summary>
+    /// Tells the client how to add a channel of type T.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="open">Method to create a new channel and notify the other host.</param>
+    /// <param name="channelManagement">Manages the creation of this channel. This can be called multiple times before negotiation is complete and the connection is created.</param>
+    /// <param name="close">Specifies how to close the channel.</param>
     public void RegisterChannelType<T>(Func<Task<T>> open, Func<ChannelManagementMessage, Task> channelManagement, Func<T, Task> close) where T : IChannel
     {
         OpenChannelMethods[typeof(T)] = async () => await open();
@@ -110,6 +151,11 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
         CloseChannelMethods[typeof(T)] = async (t) => await close((T)t);
     }
 
+    /// <summary>
+    /// This is called whenever a message is recieved. 
+    /// </summary>
+    /// <param name="message"></param>
+    /// <returns></returns>
     protected override async Task HandleMessageAsync(MessageBase message)
     {
         switch (message)
@@ -121,7 +167,7 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
                 HandleDisconnect(m);
                 break;
             case ChannelManagementMessage m:
-                ChannelMessages[Utilities.ResolveType(m.Type)](m);
+                await ChannelMessages[Utilities.ResolveType(m.Type)](m);
                 break;
             default:
                 await base.HandleMessageAsync(message);
@@ -147,6 +193,6 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
 
     private void HandleDisconnect(MessageBase _)
     {
-        DisconnectedEvent(true);
+        DisconnectedEvent(new DisconnectionInfo { Reason = "Remote host disconnected." });
     }
 }

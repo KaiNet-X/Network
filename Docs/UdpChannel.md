@@ -17,10 +17,11 @@ Namespace: `Net.Connection.Channels`
 #### Methods
 
 - `void SendBytes(byte[] data)` - Send raw bytes
+- `void SendBytes(ReadOnlySpan<byte> data)` - Send raw bytes
+- `Task SendBytesAsync(byte[] data, CancellationToken token = default)` - Send raw bytes
+- `Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)` - Send raw bytes
 - `byte[] RecieveBytes()` - Receive raw bytes
-- `async Task SendBytesAsync(byte[] data, CancellationToken token = default)` - Send raw bytes
 - `Task<byte[]> RecieveBytesAsync(CancellationToken token = default)` - Receive raw bytes
-- `void SetRemote(IPEndPoint remote)` - Only use when calling second constructor
 - `int ReceiveToBuffer(byte[] buffer)` - Same signature as socket receive method
 - `async Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default)`- Same signature as socket receive method
 - `void Dispose()` - Closes the connection and disposes the channel

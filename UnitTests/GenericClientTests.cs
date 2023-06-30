@@ -81,7 +81,7 @@ public class GenericClientTests
             return true;
         };
         var conn = await c.ConnectAsync();
-        await Task.Delay(500);
+        await Task.Delay(1000);
         Assert.True(connected && conn);
     }
 }

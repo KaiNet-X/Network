@@ -1,6 +1,7 @@
 ﻿namespace Net.Connection.Clients.Tcp;
 
 using Channels;
+using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -11,13 +12,19 @@ using System.Threading.Tasks;
 /// </summary>
 public class Client : ObjectClient
 {
+    private readonly IPEndPoint _targetEndpoint;
+
+    private Task _listener { get; set; }
+
+    /// <summary>
+    /// If the controll loop fails, get the exception
+    /// </summary>
+    public Exception ControlLoopException => _listener.Exception;
+
     /// <summary>
     /// Delay between client updates; highly reduces CPU usage
     /// </summary>
     public ushort LoopDelay = 1;
-    private readonly IPEndPoint _targetEndpoint;
-
-    private Task _listener { get; set; }
 
     /// <summary>
     /// Initializes a new client
@@ -114,8 +121,7 @@ public class Client : ObjectClient
         localEndPoint = Connection.Socket.LocalEndPoint as IPEndPoint;
         remoteEndPoint = Connection.Socket.RemoteEndPoint as IPEndPoint;
 
-        while (ConnectionState == ConnectState.PENDING)
-            await Task.Delay(10);
+        await Connected.Task;
 
         return true;
     }

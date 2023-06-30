@@ -8,15 +8,15 @@ public class ServerSettings
     /// <summary>
     /// Encrypt the main connection
     /// </summary>
-    public bool UseEncryption { get; set; } = true;
+    public bool UseEncryption { get; init; } = true;
 
     /// <summary>
     /// Run serverclients on one thread or dedicated threads
     /// </summary>
-    public bool SingleThreadedServer { get; set; } = false;
+    public bool SingleThreadedServer { get; init; } = false;
 
     /// <summary>
     /// Timeout for connection checks
     /// </summary>
-    public int ConnectionPollTimeout { get; set; } = 8000;
+    public int ConnectionPollTimeout { get; init; } = 8000;
 }

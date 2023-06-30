@@ -39,7 +39,7 @@ public class ObjectClient : ObjectClient<TcpChannel>
 
     protected ObjectClient()
     {
-        _CustomMessageHandlers.Add(typeof(ChannelManagementMessage), (mb) =>
+        _MessageHandlers.Add(typeof(ChannelManagementMessage), (mb) =>
         {
             var m = mb as ChannelManagementMessage;
             if (m.Info is not null && m.Info.ContainsKey("Type"))
@@ -84,8 +84,6 @@ public class ObjectClient : ObjectClient<TcpChannel>
 
                 _wait.Remove(u);
 
-                Channels.Add(c);
-
                 return c;
             }, 
             async (m) =>
@@ -111,7 +109,6 @@ public class ObjectClient : ObjectClient<TcpChannel>
                     };
 
                     await SendMessageAsync(msg);
-                    Channels.Add(c);
 
                     ChannelOpened(c);
                 }
@@ -123,9 +120,9 @@ public class ObjectClient : ObjectClient<TcpChannel>
                 }
                 else if (m.Info["Mode"] == "Close")
                 {
-                    var c = Channels.First(ch => ch is UdpChannel c && c.Local.Port.ToString() == m.Info["IdPort"]) as UdpChannel;
+                    var c = _channels.First(ch => ch is UdpChannel c && c.Local.Port.ToString() == m.Info["IdPort"]) as UdpChannel;
                     c.Dispose();
-                    Channels.Remove(c);
+                    _channels.Remove(c);
                 }
             }, 
             async (c) =>
@@ -140,7 +137,7 @@ public class ObjectClient : ObjectClient<TcpChannel>
                     }
                 });
                 c.Dispose();
-                Channels.Remove(c);
+                _channels.Remove(c);
             });
 
         RegisterChannelType<TcpChannel>(
@@ -171,43 +168,40 @@ public class ObjectClient : ObjectClient<TcpChannel>
 
                 servSoc.Close();
 
-                Channels.Add(c);
-
                 return c;
             },
             async (m) =>
-        {
-            if (m.Info["Mode"] == "Create")
             {
-                var soc = new Socket(SocketType.Stream, ProtocolType.Tcp);
-                soc.Connect(Connection.Remote.Address, int.Parse(m.Info["Port"]));
-
-                TcpChannel c = new(soc);
-
-                Channels.Add(c);
-                ChannelOpened(c);
-            }
-            else if (m.Info["Mode"] == "Close")
-            {
-                var c = Channels.First(ch => ch is TcpChannel c && c.Local.Port.ToString() == m.Info["IdPort"]) as TcpChannel;
-                c.Dispose();
-                Channels.Remove(c);
-            }
-        },
-            async (c) =>
-        {
-            await SendMessageAsync(new ChannelManagementMessage
-            {
-                Type = typeof(TcpChannel).Name,
-                Info = new Dictionary<string, string>
+                if (m.Info["Mode"] == "Create")
                 {
-                    { "IdPort", c.Remote.Port.ToString() },
-                    { "Mode", "Close" }
+                    var soc = new Socket(SocketType.Stream, ProtocolType.Tcp);
+                    soc.Connect(Connection.Remote.Address, int.Parse(m.Info["Port"]));
+
+                    TcpChannel c = new(soc);
+
+                    ChannelOpened(c);
                 }
+                else if (m.Info["Mode"] == "Close")
+                {
+                    var c = _channels.First(ch => ch is TcpChannel c && c.Local.Port.ToString() == m.Info["IdPort"]) as TcpChannel;
+                    c.Dispose();
+                    _channels.Remove(c);
+                }
+            },
+            async (c) =>
+            {
+                await SendMessageAsync(new ChannelManagementMessage
+                {
+                    Type = typeof(TcpChannel).Name,
+                    Info = new Dictionary<string, string>
+                    {
+                        { "IdPort", c.Remote.Port.ToString() },
+                        { "Mode", "Close" }
+                    }
+                });
+                c.Dispose();
+                _channels.Remove(c);
             });
-            c.Dispose();
-            Channels.Remove(c);
-        });
 
         RegisterChannelType<EncryptedTcpChannel>(async () =>
         {
@@ -238,8 +232,6 @@ public class ObjectClient : ObjectClient<TcpChannel>
 
             servSoc.Close();
 
-            Channels.Add(c);
-
             return c;
         },
         async (m) =>
@@ -251,14 +243,13 @@ public class ObjectClient : ObjectClient<TcpChannel>
                 var aesKey = Convert.FromBase64String(m.Info["AesKey"]);
                 EncryptedTcpChannel c = new(soc, aesKey);
 
-                Channels.Add(c);
                 ChannelOpened(c);
             }
             else if (m.Info["Mode"] == "Close")
             {
-                var c = Channels.First(ch => ch is EncryptedTcpChannel c && c.Local.Port.ToString() == m.Info["IdPort"]) as EncryptedTcpChannel;
+                var c = _channels.First(ch => ch is EncryptedTcpChannel c && c.Local.Port.ToString() == m.Info["IdPort"]) as EncryptedTcpChannel;
                 c.Dispose();
-                Channels.Remove(c);
+                _channels.Remove(c);
             }
         },
         async (c) =>
@@ -273,7 +264,7 @@ public class ObjectClient : ObjectClient<TcpChannel>
                 }
             });
             c.Dispose();
-            Channels.Remove(c);
+            _channels.Remove(c);
         });
     }
 

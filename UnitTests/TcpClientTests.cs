@@ -12,9 +12,7 @@ public class TcpClients
 {    
     private Server NewServer(bool encrypted)
     {
-        var settings = new ServerSettings();
-        if (!encrypted)
-            settings.UseEncryption = false;
+        var settings = encrypted ? new ServerSettings() : new ServerSettings { UseEncryption = false };
 
         return new Server(new IPEndPoint(IPAddress.Loopback, 0), 20, settings);
     }
@@ -49,9 +47,10 @@ public class TcpClients
     {
         var server = NewServer(true);
 
-        Action<ServerClient, bool> del = async (ServerClient client, bool graceful) =>
+        Action<ServerClient, DisconnectionInfo> del = async (ServerClient client, DisconnectionInfo info) =>
         {
-            Assert.True(graceful);
+            Assert.Equal("Remote host disconnected.", info.Reason);
+            Assert.Null(info.Exception);
         };
 
         server.OnClientDisconnected += del;

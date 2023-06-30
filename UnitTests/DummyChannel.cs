@@ -34,12 +34,22 @@ internal class DummyChannel : IChannel
         throw new NotImplementedException();
     }
 
+    public int ReceiveToBuffer(Span<byte> buffer)
+    {
+        throw new NotImplementedException();
+    }
+
     public Task<int> ReceiveToBufferAsync(byte[] buffer)
     {
         throw new NotImplementedException();
     }
 
     public Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<int> ReceiveToBufferAsync(Memory<byte> buffer, CancellationToken token = default)
     {
         throw new NotImplementedException();
     }

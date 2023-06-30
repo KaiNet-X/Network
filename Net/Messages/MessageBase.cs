@@ -25,11 +25,12 @@ public abstract class MessageBase
     internal static Dictionary<string, Type> InitializeMessages()
     {
         var dict = new Dictionary<string, Type>();
-
+        
         var assemblies = AppDomain.CurrentDomain.GetAssemblies();
         var types =
             from type in assemblies.SelectMany(a => a.GetTypes())
-            where type.IsDefined(typeof(RegisterMessageAttribute), false)
+            //where type.IsDefined(typeof(RegisterMessageAttribute), false)
+            where type.IsHerritableType<MessageBase>()
             select type;
 
         foreach (var v in types)

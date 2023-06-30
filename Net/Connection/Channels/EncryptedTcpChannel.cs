@@ -13,14 +13,11 @@ using System.Threading.Tasks;
 /// </summary>
 public class EncryptedTcpChannel : IChannel, IDisposable
 {
-    internal Socket Socket;
-    internal TcpClient Client;
-
     private CryptographyService _crypto = new CryptographyService();
-
-    //private byte[] _aesKey;
-
+    private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
     private List<byte> _received = new List<byte>();
+
+    internal Socket Socket;
 
     /// <summary>
     /// Check if channel is connected
@@ -37,8 +34,6 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// </summary>
     public IPEndPoint Local => Socket.LocalEndPoint as IPEndPoint;
 
-    private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-
     /// <summary>
     /// Opens a tcp channel on an already connected socket
     /// </summary>
@@ -51,25 +46,60 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     }
 
     /// <summary>
-    /// Closes the channel. Handled by the client it is associated with.
+    /// Send bytes to remote host
     /// </summary>
-    public void Close()
+    /// <param name="data"></param>
+    public void SendBytes(byte[] data) =>
+        SendBytes(data.AsSpan());
+
+    /// <summary>
+    /// Send bytes to remote host
+    /// </summary>
+    /// <param name="data"></param>
+    public void SendBytes(ReadOnlySpan<byte> data)
     {
-        Socket.Close();
-        Connected = false;
-        cancellationTokenSource.Cancel();
-        cancellationTokenSource.Dispose();
+        if (!Connected || cancellationTokenSource.IsCancellationRequested) return;
+
+        ReadOnlySpan<byte> encrypted = _crypto.EncryptAES(data, _crypto.AesKey);
+        ReadOnlySpan<byte> head = BitConverter.GetBytes(encrypted.Length);
+        Span<byte> buffer = new byte[head.Length + encrypted.Length];
+
+        head.CopyTo(buffer);
+        encrypted.CopyTo(buffer.Slice(4));
+
+        Socket.Send(buffer);
     }
 
     /// <summary>
-    /// Closes the channel. Handled by the client it is associated with.
+    /// Send bytes to remote host
     /// </summary>
-    public Task CloseAsync()
+    /// <param name="data"></param>
+    public Task SendBytesAsync(byte[] data, CancellationToken token = default) =>
+        SendBytesAsync(data.AsMemory(), token);
+
+    /// <summary>
+    /// Send bytes to remote host
+    /// </summary>
+    /// <param name="data"></param>
+    public async Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
     {
-        Close();
-        return Task.CompletedTask;
+        if (!Connected || cancellationTokenSource.IsCancellationRequested)
+            return;
+
+        ReadOnlyMemory<byte> encrypted = _crypto.EncryptAES(data, _crypto.AesKey);
+        ReadOnlyMemory<byte> head = BitConverter.GetBytes(encrypted.Length);
+        Memory<byte> buffer = new byte[head.Length + encrypted.Length];
+
+        head.CopyTo(buffer);
+        encrypted.CopyTo(buffer.Slice(4));
+
+        await Socket.SendAsync(buffer, SocketFlags.None, token);
     }
 
+    /// <summary>
+    /// Receive bytes on from remote host
+    /// </summary>
+    /// <returns>bytes</returns>
     public byte[] ReceiveBytes()
     {
         ReadOnlySpan<byte> Process(int length)
@@ -107,6 +137,10 @@ public class EncryptedTcpChannel : IChannel, IDisposable
         return Process(length).ToArray();
     }
 
+    /// <summary>
+    /// Receive bytes on from remote host
+    /// </summary>
+    /// <returns>bytes</returns>
     public async Task<byte[]> ReceiveBytesAsync(CancellationToken token = default)
     {
         byte[] Process(int length)
@@ -143,22 +177,75 @@ public class EncryptedTcpChannel : IChannel, IDisposable
         return Process(length);
     }
 
+    /// <summary>
+    /// This method is not implemented
+    /// </summary>
+    /// <param name="buffer"></param>
+    /// <returns></returns>
+    /// <exception cref="NotImplementedException"></exception>
     public int ReceiveToBuffer(byte[] buffer)
     {
         throw new NotImplementedException();
     }
 
+    /// <summary>
+    /// This method is not implemented
+    /// </summary>
+    /// <param name="buffer"></param>
+    /// <returns></returns>
+    /// <exception cref="NotImplementedException"></exception>
+    public int ReceiveToBuffer(Span<byte> buffer)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <summary>
+    /// This method is not implemented
+    /// </summary>
+    /// <param name="buffer"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    /// <exception cref="NotImplementedException"></exception>
     public Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default)
     {
         throw new NotImplementedException();
     }
 
-    public void SendBytes(byte[] data) =>
-        SendBytes(data.AsSpan());
+    /// <summary>
+    /// This method is not implemented
+    /// </summary>
+    /// <param name="buffer"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    /// <exception cref="NotImplementedException"></exception>
+    public Task<int> ReceiveToBufferAsync(Memory<byte> buffer, CancellationToken token = default)
+    {
+        throw new NotImplementedException();
+    }
 
-    public async Task SendBytesAsync(byte[] data, CancellationToken token = default) =>
-        SendBytesAsync(data.AsMemory(), token);
+    /// <summary>
+    /// Closes the channel. Handled by the client it is associated with
+    /// </summary>
+    public void Close()
+    {
+        Socket.Close();
+        Connected = false;
+        cancellationTokenSource.Cancel();
+        cancellationTokenSource.Dispose();
+    }
 
+    /// <summary>
+    /// Closes the channel. Handled by the client it is associated with
+    /// </summary>
+    public Task CloseAsync()
+    {
+        Close();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Disposes the channel. Typically only called internally
+    /// </summary>
     public void Dispose()
     {
         Socket.Close();
@@ -166,34 +253,5 @@ public class EncryptedTcpChannel : IChannel, IDisposable
         cancellationTokenSource.Cancel();
         cancellationTokenSource.Dispose();
         cancellationTokenSource = null;
-    }
-
-    public void SendBytes(ReadOnlySpan<byte> data)
-    {
-        if (!Connected || cancellationTokenSource.IsCancellationRequested) return;
-
-        ReadOnlySpan<byte> encrypted = _crypto.EncryptAES(data, _crypto.AesKey);
-        ReadOnlySpan<byte> head = BitConverter.GetBytes(encrypted.Length);
-        Span<byte> buffer = new byte[head.Length + encrypted.Length];
-
-        head.CopyTo(buffer);
-        encrypted.CopyTo(buffer.Slice(4));
-
-        Socket.Send(buffer);
-    }
-
-    public async Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
-    {
-        if (!Connected || cancellationTokenSource.IsCancellationRequested)
-            return;
-
-        ReadOnlyMemory<byte> encrypted = _crypto.EncryptAES(data, _crypto.AesKey);
-        ReadOnlyMemory<byte> head = BitConverter.GetBytes(encrypted.Length);
-        Memory<byte> buffer = new byte[head.Length + encrypted.Length];
-
-        head.CopyTo(buffer);
-        encrypted.CopyTo(buffer.Slice(4));
-
-        await Socket.SendAsync(buffer, SocketFlags.None, token);
     }
 }

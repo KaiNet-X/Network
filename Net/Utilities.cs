@@ -45,12 +45,11 @@ internal static class Utilities
         return -1;
     }
 
-    public static bool IsArray(string typeName) => typeName.Contains('[');
+    public static bool IsArray(string typeName) => 
+        typeName.Contains('[');
 
-    public static void RegisterType(Type t)
-    {
+    public static void RegisterType(Type t) =>
         NameTypeAssociations[t.Name] = t;
-    }
 
     public static Type GetTypeFromName(string name)
     {
@@ -85,10 +84,8 @@ internal static class Utilities
         return type;
     }
 
-    public static bool IsHerritableType<T>(Type obType)
-    {
-        return typeof(T).IsAssignableFrom(obType);
-    }
+    public static bool IsHerritableType<T>(this Type obType) =>
+        typeof(T).IsAssignableFrom(obType);
 
     public static string GetBaseTypeName(string typeName) =>
         typeName.Replace("[", "").Replace(",", "").Replace("]", "");
@@ -97,9 +94,7 @@ internal static class Utilities
     {
         Type type = baseType;
         for (int i = 0; i < dimensions; i++)
-        {
             type = Array.CreateInstance(type, 0).GetType();
-        }
         return type;
     }
 
@@ -147,9 +142,8 @@ internal static class Utilities
     public static bool MatchAny<T>(T original, params T[] matches)
     {
         foreach (var match in matches)
-        {
-            if (original.Equals(match)) return true;
-        }
+            if (original.Equals(match)) 
+                return true;
         return false;
     }
 
@@ -158,14 +152,12 @@ internal static class Utilities
         result = new T[queue.Count];
 
         for (int i = 0; i < result.Length; i++)
-        {
             if (queue.TryDequeue(out T item))
                 result[i] = item;
             else if (i == 0)
                 return false;
             else
                 result = result[..(i - 1)];
-        }
         return true;
     }
 
