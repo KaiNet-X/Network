@@ -202,7 +202,6 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 break;
             case ConnectionPollMessage:
                 _timedOut = false;
-                await SendMessageAsync(new ConnectionPollMessage());
                 break;
             default:
                 var msgHandler = _MessageHandlers.FirstOrDefault(kv => kv.Key.Name.Equals(message.MessageType)).Value;
