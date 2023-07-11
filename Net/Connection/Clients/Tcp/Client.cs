@@ -46,7 +46,7 @@ public class Client : ObjectClient
     /// <param name="ep">IPEndpoint of the server</param>
     public Client(IPEndPoint ep) : base()
     {
-        ConnectionState = ConnectState.PENDING;
+        ConnectionState = ConnectionState.PENDING;
         _targetEndpoint = ep;
 
         Initialize();
@@ -85,7 +85,7 @@ public class Client : ObjectClient
         localEndPoint = Connection.Socket.LocalEndPoint as IPEndPoint;
         remoteEndPoint = Connection.Socket.RemoteEndPoint as IPEndPoint;
 
-        while (ConnectionState == ConnectState.PENDING) ;
+        while (ConnectionState == ConnectionState.PENDING) ;
         return true;
     }
 
@@ -130,7 +130,7 @@ public class Client : ObjectClient
     {
         Connection = new TcpChannel(new Socket(_targetEndpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp));
 
-        ConnectionState = ConnectState.PENDING;
+        ConnectionState = ConnectionState.PENDING;
         TokenSource = new CancellationTokenSource();
     }
 

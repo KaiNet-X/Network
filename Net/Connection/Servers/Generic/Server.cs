@@ -127,12 +127,12 @@ public abstract class Server<ConnectionType> : BaseServer<ServerClient<Connectio
 
                 _ = Task.Run(async () =>
                 {
-                    while (c.ConnectionState != ConnectState.CLOSED && Active)
+                    while (c.ConnectionState != ConnectionState.CLOSED && Active)
                     {
                         await c.GetNextMessageAsync();
                     }
                 });
-                while (c.ConnectionState == ConnectState.PENDING) ;
+                while (c.ConnectionState == ConnectionState.PENDING) ;
 
                 OnClientConnected?.Invoke(c);
             }

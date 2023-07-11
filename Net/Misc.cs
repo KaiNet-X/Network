@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 /// <summary>
 /// State of the connection
 /// </summary>
-public enum ConnectState
+public enum ConnectionState
 {
     NONE,
     PENDING,

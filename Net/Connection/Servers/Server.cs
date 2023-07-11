@@ -173,7 +173,7 @@ public class Server : BaseServer<ServerClient>
                     {
                         foreach (ServerClient c in Clients)
                         {
-                            if (ct.IsCancellationRequested || c.ConnectionState == ConnectState.CLOSED)
+                            if (ct.IsCancellationRequested || c.ConnectionState == ConnectionState.CLOSED)
                                 return;
                             await c.GetNextMessageAsync();
                         }
@@ -232,7 +232,7 @@ public class Server : BaseServer<ServerClient>
                 if (!Settings.SingleThreadedServer)
                     _ = Task.Run(async () =>
                     {
-                        while (c.ConnectionState != ConnectState.CLOSED && Active)
+                        while (c.ConnectionState != ConnectionState.CLOSED && Active)
                             await c.GetNextMessageAsync();
                     });
 

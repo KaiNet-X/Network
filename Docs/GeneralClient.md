@@ -1,6 +1,6 @@
 # GeneralClient\<MainChannel\> : BaseClient where MainChannel : class, IChannel
 
-This client is the base class of ObjectClient\<MainChannel\>. This class provides the message protocol layer that uses the main connection channel. Also, the handshake is implemented by this class. This class can be inherrited to create a client that uses any underlying connection protocol provided by the MainChannel. For example, this could be adapted to send data via bluetooth or websockets.
+This client is the base class of ObjectClient\<MainChannel\>. This class implements the message protocol layer using the main connection channel. Also, the handshake is implemented by this class. This class can be inherrited to create a client that uses any underlying connection protocol provided by the MainChannel. For example, this could be adapted to send data via bluetooth or websockets.
 
 `using Net.Connection.Clients.Generic;`
 

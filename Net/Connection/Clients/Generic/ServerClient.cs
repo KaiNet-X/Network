@@ -28,7 +28,7 @@ public class ServerClient : ServerClient<IChannel>
 {
     public ServerClient(IChannel connection, ServerSettings settings = null)
     {
-        ConnectionState = ConnectState.PENDING;
+        ConnectionState = ConnectionState.PENDING;
 
         Settings = settings ?? new ServerSettings();
         Connection = connection;

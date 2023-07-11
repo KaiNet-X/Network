@@ -25,7 +25,7 @@ public class ServerClient : ObjectClient
 
     internal ServerClient(Socket soc, ServerSettings settings = null) : base()
     {
-        ConnectionState = ConnectState.PENDING;
+        ConnectionState = ConnectionState.PENDING;
 
         Settings = settings ?? new ServerSettings();
         Connection = new TcpChannel(soc);

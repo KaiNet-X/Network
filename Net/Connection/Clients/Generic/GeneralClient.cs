@@ -12,6 +12,10 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 
+/// <summary>
+/// This is the base client that provides connection management capabilities.
+/// </summary>
+/// <typeparam name="MainChannel">The main channel implementing the connection protocol. It should be a reliable type, however that is not enforced.</typeparam>
 public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel : class, IChannel
 {
     private CryptographyService _crypto = new();
@@ -40,19 +44,19 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     };
 
     /// <summary>
-    /// Task that completes when the connection is finished
+    /// Task that completes when the connection is finished. Call this in inherrited classes to asynchrounously complete the connection.
     /// </summary>
     protected TaskCompletionSource Connected { get => connectedSource; set => connectedSource = value; }
 
     /// <summary>
     /// The state of the current connection.
     /// </summary>
-    public ConnectState ConnectionState { get; protected set; } = ConnectState.NONE;
+    public ConnectionState ConnectionState { get; protected set; } = ConnectionState.NONE;
 
     /// <summary>
     /// Message parser the library uses (by default, NewMessageParser with MpSerializer
     /// </summary>
-    public IMessageParser MessageParser { get => _parser ??= new NewMessageParser(_crypto, Consts.DefaultSerializer); }
+    public IMessageParser MessageParser { get => _parser ??= new NewMessageParser(_crypto, Consts.DefaultSerializer); init => _parser = value; }
 
     /// <summary>
     /// Invoked when an unregistered message is received
@@ -75,7 +79,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         }
         catch (Exception ex)
         {
-            if (ConnectionState != ConnectState.CLOSED)
+            if (ConnectionState != ConnectionState.CLOSED)
                 DisconnectedEvent(new DisconnectionInfo
                 {
                     Exception = ex
@@ -109,7 +113,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         }
         catch (Exception ex)
         {
-            if (ConnectionState != ConnectState.CLOSED)
+            if (ConnectionState != ConnectionState.CLOSED)
                 await DisconnectedEventAsync(new DisconnectionInfo 
                 {
                     Exception = ex
@@ -157,7 +161,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 if (!Settings.UseEncryption)
                 {
                     await _SendMessageAsync(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));
-                    ConnectionState = ConnectState.CONNECTED;
+                    ConnectionState = ConnectionState.CONNECTED;
                     connectedSource.SetResult();
                     StartPoll();
                 }
@@ -180,7 +184,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 else if (encryptionStage == EncryptionMessage.Stage.SYNACK)
                 {
                     await _SendMessageAsync(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));
-                    ConnectionState = ConnectState.CONNECTED;
+                    ConnectionState = ConnectionState.CONNECTED;
                     connectedSource.SetResult();
                     StartPoll();
                 }
@@ -189,7 +193,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 switch (m.Confirm)
                 {
                     case ConfirmationMessage.Confirmation.RESOLVED:
-                        ConnectionState = ConnectState.CONNECTED;
+                        ConnectionState = ConnectionState.CONNECTED;
                         connectedSource.SetResult();
                         StartPoll();
                         break;
@@ -217,7 +221,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         byte[] buffer = new byte[buffer_length];
         List<byte> allBytes = new List<byte>();
 
-        while (ConnectionState != ConnectState.CLOSED)
+        while (ConnectionState != ConnectionState.CLOSED)
         {
             try
             {
@@ -231,7 +235,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
             }
             catch (Exception ex)
             {
-                if (ConnectionState != ConnectState.CLOSED)
+                if (ConnectionState != ConnectionState.CLOSED)
                     await DisconnectedEventAsync(new DisconnectionInfo 
                     {
                         Exception = ex
@@ -268,7 +272,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     {
         TokenSource.Cancel();
         _pollTimer?.Dispose();
-        ConnectionState = ConnectState.CLOSED;
+        ConnectionState = ConnectionState.CLOSED;
         CloseConnection();
 
         encryptionStage = EncryptionMessage.Stage.NONE;
@@ -278,7 +282,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     public override void Close() =>
         Utilities.ConcurrentAccess(() =>
         {
-            if (ConnectionState == ConnectState.CLOSED) return;
+            if (ConnectionState == ConnectionState.CLOSED) return;
 
             _SendMessage(new DisconnectMessage());
             Disconnected();
@@ -287,7 +291,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     public override async Task CloseAsync() =>
         await Utilities.ConcurrentAccessAsync(async (ct) =>
         {
-            if (ConnectionState == ConnectState.CLOSED) return;
+            if (ConnectionState == ConnectionState.CLOSED) return;
 
             await _SendMessageAsync(new DisconnectMessage());
             Disconnected();
@@ -296,7 +300,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     protected async Task DisconnectedEventAsync(DisconnectionInfo info) =>
         await Utilities.ConcurrentAccessAsync((c) =>
         {
-            if (ConnectionState == ConnectState.CLOSED) return Task.CompletedTask;
+            if (ConnectionState == ConnectionState.CLOSED) return Task.CompletedTask;
 
             Disconnected();
             OnDisconnect?.Invoke(info);
@@ -306,7 +310,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     protected void DisconnectedEvent(DisconnectionInfo info) =>
         Utilities.ConcurrentAccess(() =>
         {
-            if (ConnectionState == ConnectState.CLOSED) return;
+            if (ConnectionState == ConnectionState.CLOSED) return;
 
             Disconnected();
             OnDisconnect?.Invoke(info);
@@ -320,7 +324,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         _pollTimer = new System.Timers.Timer(Settings.ConnectionPollTimeout);
         _pollTimer.Elapsed += (obj, args) =>
         {
-            if (ConnectionState == ConnectState.CONNECTED)
+            if (ConnectionState == ConnectionState.CONNECTED)
             {
                 if (_timedOut)
                 {

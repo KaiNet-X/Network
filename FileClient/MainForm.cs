@@ -100,7 +100,7 @@ public partial class MainForm : Form
 
         Task.Run(async () =>
         {
-            while (_client.ConnectionState != ConnectState.CONNECTED) 
+            while (_client.ConnectionState != ConnectionState.CONNECTED) 
                 await Task.Delay(10);
 
             try
