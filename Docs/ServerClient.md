@@ -7,7 +7,7 @@ Namespace: `Net.Connection.Clients.Tcp`
 - `List<IChannel> Channels` - List of channels
 - `IPEndPoint LocalEndpoint` - Local endpoint
 - `IPEndPoint RemoteEndpoint`- Remote endpoint
-- `ConnectState ConnectionState { get; protected set; }` - State of the connection
+- `ConnectionState ConnectionState { get; protected set; }` - State of the connection
 
 #### Events/Delegates
 

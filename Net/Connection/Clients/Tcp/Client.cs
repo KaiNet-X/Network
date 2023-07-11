@@ -2,6 +2,7 @@
 
 using Channels;
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -17,14 +18,9 @@ public class Client : ObjectClient
     private Task _listener { get; set; }
 
     /// <summary>
-    /// If the controll loop fails, get the exception
+    /// If the control loop fails, get the exception
     /// </summary>
     public Exception ControlLoopException => _listener.Exception;
-
-    /// <summary>
-    /// Delay between client updates; highly reduces CPU usage
-    /// </summary>
-    public ushort LoopDelay = 1;
 
     /// <summary>
     /// Initializes a new client
@@ -60,6 +56,8 @@ public class Client : ObjectClient
     /// <returns>true if connected, otherwise false</returns>
     public bool Connect(ulong maxAttempts = 0, bool throwWhenExausted = false)
     {
+        List<Exception> exceptions = null;
+
         if (Connection == null) Initialize();
 
         for (ulong i = 0; i <= maxAttempts; i++)
@@ -72,11 +70,16 @@ public class Client : ObjectClient
                 StartLoop();
                 break;
             }
-            catch
+            catch (Exception e)
             {
+                if (throwWhenExausted && exceptions == null)
+                    exceptions = new List<Exception>();
+
+                exceptions?.Add(e);
+
                 if (i == maxAttempts)
                     if (throwWhenExausted)
-                        throw;
+                        throw new AggregateException(exceptions);
                     else
                         return false;
             }
@@ -97,6 +100,8 @@ public class Client : ObjectClient
     /// <returns>true if connected, otherwise false</returns>
     public async Task<bool> ConnectAsync(ulong maxAttempts = 0, bool throwWhenExausted = false)
     {
+        List<Exception> exceptions = null;
+
         if (Connection == null) Initialize();
 
         for (ulong i = 0; i <= maxAttempts; i++)
@@ -109,11 +114,16 @@ public class Client : ObjectClient
                 StartLoop();
                 break;
             }
-            catch
+            catch (Exception e)
             {
+                if (throwWhenExausted && exceptions == null)
+                    exceptions = new List<Exception>();
+
+                exceptions?.Add(e);
+
                 if (i == maxAttempts)
                     if (throwWhenExausted)
-                        throw;
+                        throw new AggregateException(exceptions);
                     else
                         return false;
             }

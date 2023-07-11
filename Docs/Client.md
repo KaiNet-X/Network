@@ -1,5 +1,5 @@
 # Client : ObjectClient
-The out-of-the-box Client implementation allows sending objects to the server, managing UDP channels, and follows an event based approach to receiving data.
+The out-of-the-box Client implementation allows sending objects to the server, managing data channels, and follows an event based approach to receiving data.
 
 Namespace: `Net.Connection.Clients.Tcp`
 
@@ -13,8 +13,8 @@ Namespace: `Net.Connection.Clients.Tcp`
 - `List<IChannel> Channels` - List of channels
 - `IPEndPoint LocalEndpoint` - Local endpoint
 - `IPEndPoint RemoteEndpoint`- Remote endpoint
-- `ConnectState ConnectionState { get; protected set; }` - State of the connection
-- `ushort LoopDelay` - Delay between client updates; highly reduces CPU usage
+- `ConnectionState ConnectionState { get; protected set; }` - State of the connection
+- `Exception ControlLoopException { get; }` - If the control loop throws an exception, expose it to users
 
 #### Events/Delegates
 
@@ -36,3 +36,5 @@ Namespace: `Net.Connection.Clients.Tcp`
 - `void RegisterChannelType<T>(Func<Task<T>> open, Func<ChannelManagementMessage, Task> channelManagement, Func<T, Task> close) where T : IChannel` - Registeres a custom channel so the client can open it, facilitate it on the other end, and close it automatically. (Must also be done server-side to work)
 - `void RegisterMessageHandler<T>(Action<T> handler) where T : MessageBase` - Registers handler for a custom message type
 - `void RegisterMessageHandler(Action<MessageBase> handler, Type messageType)` - Registers handler for a custom message type
+- `bool Connect(ulong maxAttempts = 0, bool throwWhenExausted = false)` - Tries to connect to the server endpoint specified in the constructor. If it fails, throw aggregate exception or return false.
+- `Task<bool> ConnectAsync(ulong maxAttempts = 0, bool throwWhenExausted = false)` - Tries to connect to the server endpoint specified in the constructor. If it fails, throw aggregate exception or return false.

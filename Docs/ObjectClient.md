@@ -5,7 +5,7 @@ The object client is the base class for Client and ServerClient and provides a c
 Namespace: `Net.Connection.Clients.Tcp`
 
 #### Fields/Properties:
-- `ConnectState ConnectionState` - State of the connection
+- `ConnectionState ConnectionState` - State of the connection
 - `IPEndPoint LocalEndpoint` - Local endpoint
 - `IPEndPoint RemoteEndpoint` - Remote endpoint
 - `List<IChannel> Channels` - List of channels

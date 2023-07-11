@@ -5,7 +5,7 @@ This client is the base class of ObjectClient\<TcpChannel\>. It provides methods
 `using Net.Connection.Clients.Generic;`
 
 #### Fields/Properties:
-- `ConnectState ConnectionState` - State of the connection
+- `ConnectionState ConnectionState` - State of the connection
 - `List<IChannel> Channels` - List of channels
 
 #### Events/Deleages:
