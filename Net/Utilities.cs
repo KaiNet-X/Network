@@ -1,14 +1,20 @@
 ﻿namespace Net;
 
+using Net.Connection.Channels;
+using Net.Connection.Clients.Generic;
+using Net.Messages;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
 internal static class Utilities
 {
     private static Type[] allTypes = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes()).ToArray();
+    private static List<(IChannel channel, TaskCompletionSource tcs)> _wait = new();
 
     public static Dictionary<string, Type> NameTypeAssociations = new Dictionary<string, Type>();
 
@@ -45,7 +51,7 @@ internal static class Utilities
         return -1;
     }
 
-    public static bool IsArray(string typeName) => 
+    public static bool IsArray(string typeName) =>
         typeName.Contains('[');
 
     public static void RegisterType(Type t) =>
@@ -139,10 +145,12 @@ internal static class Utilities
         }
     }
 
-    public static bool MatchAny<T>(T original, params T[] matches)
+    public static bool MatchAny<T>(T original, params T[] matches) => MatchAny<T>(original, matches as IEnumerable<T>);
+
+    public static bool MatchAny<T>(T original, IEnumerable<T> matches)
     {
         foreach (var match in matches)
-            if (original.Equals(match)) 
+            if (original.Equals(match))
                 return true;
         return false;
     }
@@ -165,5 +173,228 @@ internal static class Utilities
     {
         foreach (T r in range)
             queue.Enqueue(r);
+    }
+
+    internal static void RegisterTcpChannel<T>(ObjectClient<T> client, TcpChannel mainConnection) where T : class, IChannel
+    {
+        client.RegisterChannelType<TcpChannel>(
+            async () =>
+            {
+                var remoteAddr = mainConnection.Remote.Address;
+                var localAddr = mainConnection.Local.Address;
+
+                Socket servSoc = new Socket(SocketType.Stream, ProtocolType.Tcp);
+                servSoc.Bind(new IPEndPoint((mainConnection.Socket.LocalEndPoint as IPEndPoint).Address, 0));
+                servSoc.Listen();
+
+                var info = new Dictionary<string, string>
+                {
+                    { "Port", (servSoc.LocalEndPoint as IPEndPoint).Port.ToString() },
+                    { "Mode", "Create" }
+                };
+
+                var m = new ChannelManagementMessage
+                {
+                    Info = info,
+                    Type = typeof(TcpChannel).Name
+                };
+
+                await client.SendMessageAsync(m);
+
+                var c = new TcpChannel(await servSoc.AcceptAsync());
+
+                servSoc.Close();
+
+                return c;
+            },
+            async (m) =>
+            {
+                if (m.Info["Mode"] == "Create")
+                {
+                    var soc = new Socket(SocketType.Stream, ProtocolType.Tcp);
+                    soc.Connect(mainConnection.Remote.Address, int.Parse(m.Info["Port"]));
+
+                    var c = new TcpChannel(soc);
+
+                    client.ChannelOpened(c);
+                }
+                else if (m.Info["Mode"] == "Close")
+                {
+                    var c = client._channels.First(ch => ch is TcpChannel c && c.Local.Port.ToString() == m.Info["IdPort"]) as TcpChannel;
+                    c.Dispose();
+                    client._channels.Remove(c);
+                }
+            },
+            async (c) =>
+            {
+                await client.SendMessageAsync(new ChannelManagementMessage
+                {
+                    Type = typeof(TcpChannel).Name,
+                    Info = new Dictionary<string, string>
+                    {
+                        { "IdPort", c.Remote.Port.ToString() },
+                        { "Mode", "Close" }
+                    }
+                });
+                c.Dispose();
+                client._channels.Remove(c);
+            });
+    }
+
+    internal static void RegisterUdpChannel<T>(ObjectClient<T> client, TcpChannel mainConnection) where T : class, IChannel
+    {
+        client.RegisterChannelType<UdpChannel>(
+            async () =>
+            {
+                var remoteAddr = mainConnection.Remote.Address;
+                var localAddr = mainConnection.Local.Address;
+
+                var c = new UdpChannel(new IPEndPoint(localAddr, 0));
+
+                var info = new Dictionary<string, string>
+                {
+                    { "Port", c.Local.Port.ToString() },
+                    { "Mode", "Create" }
+                };
+
+                var m = new ChannelManagementMessage
+                {
+                    Info = info,
+                    Type = typeof(UdpChannel).Name
+                };
+
+                var u = (c, new TaskCompletionSource());
+
+                _wait.Add(u);
+
+                await client.SendMessageAsync(m);
+
+                await _wait.First(v => v == u).tcs.Task;
+
+                _wait.Remove(u);
+
+                return c;
+            },
+            async (m) =>
+            {
+                var remoteAddr = mainConnection.Remote.Address;
+                var localAddr = mainConnection.Local.Address;
+                if (m.Info["Mode"] == "Create")
+                {
+                    var remoteEndpoint = new IPEndPoint(remoteAddr, int.Parse(m.Info["Port"]));
+                    var c = new UdpChannel(new IPEndPoint(localAddr, 0));
+
+                    c.SetRemote(remoteEndpoint);
+
+                    var msg = new ChannelManagementMessage
+                    {
+                        Info = new Dictionary<string, string>
+                        {
+                            { "Port", c.Local.Port.ToString() },
+                            { "Mode", "Confirm" },
+                            { "IdPort", m.Info["Port"] },
+                        },
+                        Type = typeof(UdpChannel).Name
+                    };
+
+                    await client.SendMessageAsync(msg);
+
+                    client.ChannelOpened(c);
+                }
+                else if (m.Info["Mode"] == "Confirm")
+                {
+                    var c = _wait.Select(w => w.channel).First(c => c is UdpChannel ch && ch.Local.Port.ToString() == m.Info["IdPort"]) as UdpChannel;
+                    c.SetRemote(new IPEndPoint(localAddr, int.Parse(m.Info["Port"])));
+                    _wait.First(u => u.channel == c).tcs.SetResult();
+                }
+                else if (m.Info["Mode"] == "Close")
+                {
+                    var c = client._channels.First(ch => ch is UdpChannel c && c.Local.Port.ToString() == m.Info["IdPort"]) as UdpChannel;
+                    c.Dispose();
+                    client._channels.Remove(c);
+                }
+            },
+            async (c) =>
+            {
+                await client.SendMessageAsync(new ChannelManagementMessage
+                {
+                    Type = typeof(UdpChannel).Name,
+                    Info = new Dictionary<string, string>
+                    {
+                        { "IdPort", c.Remote.Port.ToString() },
+                        { "Mode", "Close" }
+                    }
+                });
+                c.Dispose();
+                client._channels.Remove(c);
+            });
+    }
+
+    internal static void RegisterEncryptedTcpChannel<T>(ObjectClient<T> client, TcpChannel mainConnection) where T : class, IChannel
+    {
+        client.RegisterChannelType<EncryptedTcpChannel>(
+            async () =>
+            {
+                var remoteAddr = mainConnection.Remote.Address;
+                var localAddr = mainConnection.Local.Address;
+
+                var servSoc = new Socket(SocketType.Stream, ProtocolType.Tcp);
+                servSoc.Bind(new IPEndPoint(mainConnection.Local.Address, 0));
+                servSoc.Listen();
+
+                var aesKey = CryptographyService.KeyFromHash(CryptographyService.CreateHash(Guid.NewGuid().ToByteArray()));
+                var info = new Dictionary<string, string>
+                {
+                    { "Port", (servSoc.LocalEndPoint as IPEndPoint).Port.ToString() },
+                    { "Mode", "Create" },
+                    { "AesKey", Convert.ToBase64String(aesKey) }
+                };
+
+                var m = new ChannelManagementMessage
+                {
+                    Info = info,
+                    Type = typeof(EncryptedTcpChannel).Name
+                };
+
+                await client.SendMessageAsync(m);
+
+                var c = new EncryptedTcpChannel(await servSoc.AcceptAsync(), aesKey);
+
+                servSoc.Close();
+
+                return c;
+            },
+            async (m) =>
+            {
+                if (m.Info["Mode"] == "Create")
+                {
+                    var soc = new Socket(SocketType.Stream, ProtocolType.Tcp);
+                    soc.Connect(mainConnection.Remote.Address, int.Parse(m.Info["Port"]));
+                    var aesKey = Convert.FromBase64String(m.Info["AesKey"]);
+                    var c = new EncryptedTcpChannel(soc, aesKey);
+
+                    client.ChannelOpened(c);
+                }
+                else if (m.Info["Mode"] == "Close")
+                {
+                    var c = client._channels.First(ch => ch is EncryptedTcpChannel c && c.Local.Port.ToString() == m.Info["IdPort"]) as EncryptedTcpChannel;
+                    c.Dispose();
+                    client._channels.Remove(c);
+                }
+            },
+            async (c) =>
+            {
+                await client.SendMessageAsync(new ChannelManagementMessage
+                {
+                    Type = typeof(TcpChannel).Name,
+                    Info = new Dictionary<string, string>
+                    {
+                        { "IdPort", c.Remote.Port.ToString() },
+                        { "Mode", "Close" }
+                    }
+                });
+                c.Dispose();
+                client._channels.Remove(c);
+            });
     }
 }

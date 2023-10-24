@@ -12,17 +12,15 @@ using System.Threading.Tasks;
 /// <typeparam name="TClient">Generic client type. This must inherrit base client, and is used to keep a consistent client implementation on the server.</typeparam>
 public abstract class BaseServer<TClient> where TClient : BaseClient
 {
-    public virtual List<TClient> Clients { get; protected set; } = new();
+    private GuardedList<TClient> _clientsBack;
+    protected List<TClient> _clients = new List<TClient>();
+
+    public GuardedList<TClient> Clients => _clientsBack ??= _clients;
 
     /// <summary>
     /// Starts listening for incoming connections
     /// </summary>
     public abstract void Start();
-
-    /// <summary>
-    /// Starts listening for incoming connections
-    /// </summary>
-    public abstract Task StartAsync();
 
     /// <summary>
     /// Sends a message to all clients

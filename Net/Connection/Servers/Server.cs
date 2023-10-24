@@ -1,16 +1,17 @@
 ﻿namespace Net.Connection.Servers;
 
 using Channels;
-using Messages;
 using Clients.Tcp;
+using Messages;
 using Servers.Generic;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Linq;
 
 /// <summary>
 /// Default server implementation
@@ -19,6 +20,9 @@ public class Server : BaseServer<ServerClient>
 {
     private List<Socket> _bindingSockets;
     private volatile SemaphoreSlim _semaphore = new(1);
+
+    private ConcurrentDictionary<Type, Func<object, ServerClient, Task>> asyncObjectEvents = new();
+    private ConcurrentDictionary<Type, Action<object, ServerClient>> objectEvents = new();
 
     /// <summary>
     /// If the server is active or not
@@ -31,39 +35,14 @@ public class Server : BaseServer<ServerClient>
     public bool Listening { get; private set; } = false;
 
     /// <summary>
-    /// Remove clients from the list after disconnection is invoked
-    /// </summary>
-    public bool RemoveAfterDisconnect { get; set; } = true;
-
-    /// <summary>
     /// Settings for this server that are set in the constructor
     /// </summary>
     public readonly ServerSettings Settings;
 
     /// <summary>
-    /// Max connections at one time
-    /// </summary>
-    public ushort? MaxClients;
-
-    /// <summary>
     /// Handlers for custom message types
     /// </summary>
     protected Dictionary<Type, Action<MessageBase, ServerClient>> _CustomMessageHandlers = new();
-
-    /// <summary>
-    /// Endpoints passed to the server as arguments
-    /// </summary>
-    public readonly List<IPEndPoint> Endpoints;
-
-    /// <summary>
-    /// Endpoints of all active binding sockets
-    /// </summary>
-    public List<IPEndPoint> ActiveEndpoints => _bindingSockets.Select(s => (IPEndPoint)s.LocalEndPoint).ToList();
-   
-    /// <summary>
-    /// Delay between client updates; highly reduces CPU usage
-    /// </summary>
-    public ushort LoopDelay = 1;
 
     /// <summary>
     /// Invoked when a channel is opened on a client
@@ -95,14 +74,25 @@ public class Server : BaseServer<ServerClient>
     protected Dictionary<Type, Func<IChannel, ServerClient, Task>> CloseChannelMethods = new();
 
     /// <summary>
+    /// Endpoints passed to the server as arguments
+    /// </summary>
+    public readonly List<IPEndPoint> Endpoints;
+
+    /// <summary>
+    /// Endpoints of all active binding sockets
+    /// </summary>
+    public List<IPEndPoint> ActiveEndpoints => _bindingSockets.Select(s => (IPEndPoint)s.LocalEndPoint).ToList();
+
+
+    /// <summary>
     /// New server object
     /// </summary>
     /// <param name="address">IP address for the server to bind to</param>
     /// <param name="port">Port for the server to bind to</param>
     /// <param name="maxClients">Max amount of clients</param>
     /// <param name="settings">Settings for connection</param>
-    public Server(IPAddress address, int port, ushort? maxClients = null, ServerSettings settings = null) : 
-        this(new IPEndPoint(address, port), maxClients, settings) { }
+    public Server(IPAddress address, int port, ServerSettings settings = null) : 
+        this(new IPEndPoint(address, port), settings) { }
 
     /// <summary>
     /// New server object
@@ -110,8 +100,8 @@ public class Server : BaseServer<ServerClient>
     /// <param name="endpoint">Endpoint for the server to bind to</param>
     /// <param name="maxClients">Max amount of clients</param>
     /// <param name="settings">Settings for connection</param>
-    public Server(IPEndPoint endpoint, ushort? maxClients = null, ServerSettings settings = null) : 
-        this(new List<IPEndPoint> { endpoint }, maxClients, settings) { }
+    public Server(IPEndPoint endpoint, ServerSettings settings = null) : 
+        this(new List<IPEndPoint> { endpoint }, settings) { }
 
     /// <summary>
     /// New server object
@@ -119,9 +109,8 @@ public class Server : BaseServer<ServerClient>
     /// <param name="endpoints">List of endpoints for the server to bind to</param>
     /// <param name="maxClients">Max amount of clients</param>
     /// <param name="settings">Settings for connection</param>
-    public Server(List<IPEndPoint> endpoints, ushort? maxClients = null, ServerSettings settings = null)
+    public Server(List<IPEndPoint> endpoints, ServerSettings settings = null)
     {
-        MaxClients = maxClients;
         Settings = settings ?? new ServerSettings();
         Endpoints = endpoints;
         _bindingSockets = new List<Socket>();
@@ -150,19 +139,10 @@ public class Server : BaseServer<ServerClient>
     /// </summary>
     public override void Start()
     {
-        _ = StartAsync();
-    }
-
-    /// <summary>
-    /// Causes the server to listen for incoming connections. Will accept connections until max clients is reached, but will continue after connections are removed.
-    /// </summary>
-    /// <returns>A task representing the runner. Doesn't complete until the server stops listening to incomming connections.</returns>
-    public override Task StartAsync()
-    {
-        Active = Listening = true;
-
         if (_bindingSockets.Count == 0)
             InitializeSockets(Endpoints);
+
+        StartListening();
 
         if (Settings.SingleThreadedServer)
             _ = Task.Run(async () =>
@@ -183,15 +163,16 @@ public class Server : BaseServer<ServerClient>
 
         var tcs = new TaskCompletionSource();
 
-        return Task.Run(async () =>
+        Active = Listening = true;
+
+        _ = Task.Run(async () =>
         {
-            StartListening();
             while (Listening)
             {
-                if (MaxClients != null && Clients.Count >= MaxClients)
+                if (Settings.MaxClientConnections > 0 && Clients.Count >= Settings.MaxClientConnections)
                 {
                     await tcs.Task;
-                    tcs = new TaskCompletionSource();
+                    Interlocked.Exchange(ref tcs, new TaskCompletionSource());
                 }
 
                 var c = new ServerClient(await GetNextConnection(), Settings);
@@ -200,19 +181,19 @@ public class Server : BaseServer<ServerClient>
                 c.OnReceiveObject += (obj) => OnClientObjectReceived?.Invoke(obj, c);
                 c.OnDisconnect += async (g) =>
                 {
-                    OnClientDisconnected?.Invoke(c, g);
-
-                    if (RemoveAfterDisconnect)
+                    if (Settings.RemoveClientAfterDisconnect)
                     {
                         await Utilities.ConcurrentAccessAsync((ct) =>
                         {
-                            if (MaxClients != null && Clients.Count == MaxClients)
+                            if (Settings.MaxClientConnections > 0 && Clients.Count == Settings.MaxClientConnections)
                                 tcs.SetResult();
 
-                            Clients.Remove(c);
+                            _clients.Remove(c);
                             return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
                         }, _semaphore);
                     }
+
+                    OnClientDisconnected?.Invoke(c, g);
                 };
 
                 c.OnUnregisteredMessage += (m) =>
@@ -220,12 +201,18 @@ public class Server : BaseServer<ServerClient>
                     OnUnregisteredMessage?.Invoke(m, c);
                 };
 
+                foreach (var v in objectEvents)
+                    c.RegisterReceiveObject(v.Key, (obj) => v.Value(obj, c));
+
+                foreach (var v in asyncObjectEvents)
+                    c.RegisterReceiveObjectAsync(v.Key, (obj) => v.Value(obj, c));
+
                 foreach (var v in _CustomMessageHandlers)
                     c.RegisterMessageHandler(mb => v.Value(mb, c), v.Key);
 
                 await Utilities.ConcurrentAccessAsync((ct) =>
                 {
-                    Clients.Add(c);
+                    _clients.Add(c);
                     return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
                 }, _semaphore);
 
@@ -255,7 +242,7 @@ public class Server : BaseServer<ServerClient>
         {
             foreach (var c in Clients)
                 c.Close();
-            Clients.Clear();
+            _clients.Clear();
         }, _semaphore);
     }
 
@@ -270,7 +257,7 @@ public class Server : BaseServer<ServerClient>
         {
             foreach (var c in Clients)
                 await c.CloseAsync();
-            Clients.Clear();
+            _clients.Clear();
         }, _semaphore);
     }
 
@@ -312,27 +299,23 @@ public class Server : BaseServer<ServerClient>
     /// Send a message to all clients
     /// </summary>
     /// <param name="msg">Message to be sent</param>
-    public override void SendMessageToAll(MessageBase msg)
-    {
+    public override void SendMessageToAll(MessageBase msg) =>
         Utilities.ConcurrentAccess(() =>
         {
             foreach (var c in Clients)
                 c.SendMessage(msg);
         }, _semaphore);
-    }
 
     /// <summary>
     /// Send a message to all clients
     /// </summary>
     /// <param name="msg">Message to be sent</param>
-    public override async Task SendMessageToAllAsync(MessageBase msg, CancellationToken token = default)
-    {
-        await Utilities.ConcurrentAccessAsync(async (ct) =>
+    public override Task SendMessageToAllAsync(MessageBase msg, CancellationToken token = default) =>
+        Utilities.ConcurrentAccessAsync(async (ct) =>
         {
             foreach (var c in Clients)
                 await c.SendMessageAsync(msg, token);
         }, _semaphore);
-    }
 
     /// <summary>
     /// Tells clients that connect after this method is called how to add a channel of type T.
@@ -365,6 +348,12 @@ public class Server : BaseServer<ServerClient>
 
     public void RegisterMessageHandler(Action<MessageBase, ServerClient> handler, Type messageType) =>
         _CustomMessageHandlers.Add(messageType, (mb, sc) => handler(mb, sc));
+
+    public bool RegisterReceiveObject<T>(Action<T, ServerClient> action) =>
+    objectEvents.TryAdd(typeof(T), (obj, sc) => action((T)obj, sc));
+
+    public bool RegisterReceiveObjectAsync<T>(Func<T, ServerClient, Task> func) =>
+        asyncObjectEvents.TryAdd(typeof(T), (obj, sc) => func((T)obj, sc));
 
     private void InitializeSockets(List<IPEndPoint> endpoints)
     {

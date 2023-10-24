@@ -3,6 +3,7 @@
 using Channels;
 using Messages;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,15 +13,33 @@ using System.Threading.Tasks;
 /// </summary>
 public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> where MainChannel : class, IChannel
 {
-    private Dictionary<Type, IInvokable> objectEvents = new();
-    private Dictionary<Type, IAsyncInvokable> asyncObjectEvents = new();
+    private ConcurrentDictionary<Type, Action<object>> objectEvents = new();
+    private ConcurrentDictionary<Type, Func<object, Task>> asyncObjectEvents = new();
     private GuardedList<IChannel> _channelsBack;
 
-    protected Dictionary<Type, Func<Task<IChannel>>> OpenChannelMethods = new();
-    protected Dictionary<Type, Func<ChannelManagementMessage, Task>> ChannelMessages = new();
-    protected Dictionary<Type, Func<IChannel, Task>> CloseChannelMethods = new();
-    protected List<IChannel> _channels = new();
+    protected ConcurrentDictionary<Type, Func<Task<IChannel>>> OpenChannelMethods = new();
+    protected ConcurrentDictionary<Type, Func<ChannelManagementMessage, Task>> ChannelMessages = new();
+    protected ConcurrentDictionary<Type, Func<IChannel, Task>> CloseChannelMethods = new();
+    protected internal List<IChannel> _channels = new();
 
+    protected ObjectClient()
+    {
+        _MessageHandlers.Add(typeof(ChannelManagementMessage), (mb) =>
+        {
+            var m = mb as ChannelManagementMessage;
+            if (m.Info is not null && m.Info.ContainsKey("Type"))
+            {
+                foreach (var name in ChannelMessages.Keys)
+                {
+                    if (name.Name == m.Info["Type"])
+                    {
+                        ChannelMessages[name](m);
+                        break;
+                    }
+                }
+            }
+        });
+    }
     /// <summary>
     /// List of active channels associated with this object
     /// </summary>
@@ -36,7 +55,7 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     /// </summary>
     public event Action<IChannel> OnChannelOpened;
 
-    protected void ChannelOpened(IChannel c) 
+    protected internal void ChannelOpened(IChannel c) 
     {
         _channels.Add(c);
         OnChannelOpened?.Invoke(c);
@@ -48,45 +67,51 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     /// <typeparam name="T">Type to return</typeparam>
     /// <param name="action"></param>
     /// <returns>False if there is already a handler for type T, otherwise true</returns>
-    public bool RegisterReceiveObject<T>(Action<T> action) => 
-        objectEvents.TryAdd(typeof(T), new Invokable<T>(action));
+    public bool RegisterReceiveObject<T>(Action<T> action) =>
+        RegisterReceiveObject(typeof(T), (obj) => action((T)obj));
 
     /// <summary>
     /// Registers a generic action to be invoked asynchronously when an object of specified type is received
     /// </summary>
     /// <typeparam name="T">Type to return</typeparam>
+    /// <param name="func"></param>
+    /// <returns>False if there is already a handler for type T, otherwise true</returns>
+    public bool RegisterReceiveObjectAsync<T>(Func<T, Task> func) =>
+        RegisterReceiveObjectAsync(typeof(T), (obj) => func((T)obj));
+
+    /// <summary>
+    /// Registers a generic action to be invoked when an object of specified type is received
+    /// </summary>
+    /// <typeparam name="T">Type to return</typeparam>
     /// <param name="action"></param>
     /// <returns>False if there is already a handler for type T, otherwise true</returns>
-    public bool RegisterReceiveObjectAsync<T>(Func<T, Task> action) => 
-        asyncObjectEvents.TryAdd(typeof(T), new AsyncInvokable<T>(action));
+    public bool RegisterReceiveObject(Type t, Action<object> action) =>
+        objectEvents.TryAdd(t, action);
+
+    /// <summary>
+    /// Registers a generic action to be invoked asynchronously when an object of specified type is received
+    /// </summary>
+    /// <typeparam name="T">Type to return</typeparam>
+    /// <param name="func"></param>
+    /// <returns>False if there is already a handler for type T, otherwise true</returns>
+    public bool RegisterReceiveObjectAsync(Type t, Func<object, Task> func) =>
+        asyncObjectEvents.TryAdd(t, func);
 
     /// <summary>
     /// Unregisters handlers for T
     /// </summary>
     /// <typeparam name="T">Type of the handler</typeparam>
     /// <returns>True if a handler existed, otherwise false</returns>
-    public bool UnregisterReceiveObject<T>()
-    {
-        var type = typeof(T);
-        if (!objectEvents.ContainsKey(type))
-            return false;
-        objectEvents.Remove(type);
-        return true;
-    }
+    public bool UnregisterReceiveObject<T>() =>
+        objectEvents.Remove(typeof(T), out _);
 
     /// <summary>
     /// Unregisters handlers for T
     /// </summary>
     /// <typeparam name="T">Type of the handler</typeparam>
     /// <returns>True if a handler existed, otherwise false</returns>
-    public bool UnregisterReceiveObjectAsync<T>()
-    {
-        var type = typeof(T);
-        if (!asyncObjectEvents.ContainsKey(type))
-            return false;
-        asyncObjectEvents.Remove(type);
-        return true;
-    }
+    public bool UnregisterReceiveObjectAsync<T>() =>
+        asyncObjectEvents.Remove(typeof(T), out _);
 
     /// <summary>
     /// Sends an object to the remote client
@@ -182,10 +207,10 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
         var type = obj.GetType();
 
         if (objectEvents.ContainsKey(type))
-            Task.Run(() => objectEvents[type].Invoke(obj));
+            Task.Run(() => objectEvents[type]?.Invoke(obj));
 
         if (asyncObjectEvents.ContainsKey(type))
-            Task.Run(async () => await asyncObjectEvents[type].InvokeAsync(obj));
+            Task.Run(async () => await asyncObjectEvents[type]?.Invoke(obj));
 
         if (OnReceiveObject is not null)
             Task.Run(() => OnReceiveObject(obj));

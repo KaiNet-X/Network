@@ -2,69 +2,71 @@
 
 using Channels;
 using Clients.Generic;
+using Clients.Tcp;
 using Messages;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
 /// Default server implementation
 /// </summary>
-public abstract class Server<ConnectionType> : BaseServer<ServerClient<ConnectionType>> where ConnectionType : class, IChannel
+public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType> where ConnectionType : class, IChannel where ClientType : ObjectClient<ConnectionType>, IServerClient
 {
-    private volatile SemaphoreSlim _semaphore = new(1);
+    protected volatile SemaphoreSlim _semaphore = new(1);
+    private ConcurrentDictionary<Type, Func<object, ClientType, Task>> asyncObjectEvents = new();
+    private ConcurrentDictionary<Type, Action<object, ClientType>> objectEvents = new();
 
     /// <summary>
     /// If the server is active or not
     /// </summary>
-    public bool Active { get; private set; } = false;
+    public bool Active { get; protected set; } = false;
     
     /// <summary>
     /// If the server is listening for connections
     /// </summary>
-    public bool Listening { get; private set; } = false;
+    public bool Listening { get; protected set; } = false;
 
     /// <summary>
-    /// Max connections at one time
+    /// Settings for this server
     /// </summary>
-    public ushort? MaxClients;
+    public ServerSettings Settings { get; protected set; }
 
     /// <summary>
     /// Handlers for custom message types
     /// </summary>
-    public Dictionary<Type, Action<MessageBase, ServerClient<ConnectionType>>> CustomMessageHandlers = new();
-
-    /// <summary>
-    /// Delay between client updates; highly reduces CPU usage
-    /// </summary>
-    public ushort LoopDelay = 1;
+    protected Dictionary<Type, Action<MessageBase, ClientType>> _CustomMessageHandlers = new();
 
     /// <summary>
     /// Invoked when a channel is opened on a client
     /// </summary>
-    public event Action<IChannel, ServerClient<ConnectionType>> OnClientChannelOpened;
+    public event Action<IChannel, ClientType> OnClientChannelOpened;
 
     /// <summary>
     /// Invoked when a client receives an object
     /// </summary>
-    public event Action<object, ServerClient<ConnectionType>> OnClientObjectReceived;
+    public event Action<object, ClientType> OnClientObjectReceived;
 
     /// <summary>
     /// Invoked when a client receives an unregistered custom message
     /// </summary>
-    public event Action<MessageBase, ServerClient<ConnectionType>> OnUnregisteredMessege;
+    public event Action<MessageBase, ClientType> OnUnregisteredMessege;
 
     /// <summary>
     /// Invoked when a client is connected
     /// </summary>
-    public event Action<ServerClient<ConnectionType>> OnClientConnected;
+    public event Action<ClientType> OnClientConnected;
 
     /// <summary>
     /// Invoked when a client disconnects
     /// </summary>
-    public event Action<ServerClient<ConnectionType>, DisconnectionInfo> OnClientDisconnected;
+    public event Action<ClientType, DisconnectionInfo> OnClientDisconnected;
+
+    protected Dictionary<Type, Func<ServerClient, Task<IChannel>>> OpenChannelMethods = new();
+    protected Dictionary<Type, Func<ChannelManagementMessage, ServerClient, Task>> ChannelMessages = new();
+    protected Dictionary<Type, Func<IChannel, ServerClient, Task>> CloseChannelMethods = new();
 
     /// <summary>
     /// Sends an object to all clients
@@ -82,19 +84,37 @@ public abstract class Server<ConnectionType> : BaseServer<ServerClient<Connectio
     public async Task SendObjectToAllAsync<T>(T obj, CancellationToken token = default) =>
         await SendMessageToAllAsync(new ObjectMessage(obj), token);
 
-
     public override void Start()
     {
+        if (Settings.SingleThreadedServer)
+            _ = Task.Run(async () =>
+            {
+                while (Active)
+                {
+                    await Utilities.ConcurrentAccessAsync(async (ct) =>
+                    {
+                        foreach (ClientType c in Clients)
+                        {
+                            if (ct.IsCancellationRequested || c.ConnectionState == ConnectionState.CLOSED)
+                                return;
+                            await c.ReceiveNextAsync();
+                        }
+                    }, _semaphore);
+                }
+            });
+
+        var tcs = new TaskCompletionSource();
+
         Active = Listening = true;
 
-        Task.Run(async () =>
+        _ = Task.Run(async () =>
         {
             while (Listening)
             {
-                if (MaxClients != null && Clients.Count >= MaxClients)
+                if (Settings.MaxClientConnections > 0 && Clients.Count >= Settings.MaxClientConnections)
                 {
-                    await Task.Delay(LoopDelay);
-                    continue;
+                    await tcs.Task;
+                    Interlocked.Exchange(ref tcs, new TaskCompletionSource());
                 }
 
                 var c = await InitializeClient();
@@ -103,11 +123,17 @@ public abstract class Server<ConnectionType> : BaseServer<ServerClient<Connectio
                 c.OnReceiveObject += (obj) => OnClientObjectReceived?.Invoke(obj, c);
                 c.OnDisconnect += async (g) =>
                 {
-                    await Utilities.ConcurrentAccessAsync((ct) =>
+                    if (Settings.RemoveClientAfterDisconnect)
                     {
-                        Clients.Remove(c);
-                        return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
-                    }, _semaphore);
+                        await Utilities.ConcurrentAccessAsync((ct) =>
+                        {
+                            if (Settings.MaxClientConnections > 0 && Clients.Count == Settings.MaxClientConnections)
+                                tcs.SetResult();
+
+                            _clients.Remove(c);
+                            return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
+                        }, _semaphore);
+                    }
 
                     OnClientDisconnected?.Invoke(c, g);
                 };
@@ -116,51 +142,56 @@ public abstract class Server<ConnectionType> : BaseServer<ServerClient<Connectio
                     OnUnregisteredMessege?.Invoke(m, c);
                 };
 
-                foreach (var v in CustomMessageHandlers)
+                foreach (var v in objectEvents)
+                    c.RegisterReceiveObject(v.Key, (obj) => v.Value(obj, c));
+
+                foreach (var v in asyncObjectEvents)
+                    c.RegisterReceiveObjectAsync(v.Key, (obj) => v.Value(obj, c));
+
+                foreach (var v in _CustomMessageHandlers)
                     c.RegisterMessageHandler(mb => v.Value(mb, c), v.Key);
 
                 await Utilities.ConcurrentAccessAsync((ct) =>
                 {
-                    Clients.Add(c);
+                    _clients.Add(c);
                     return ct.IsCancellationRequested ? Task.FromCanceled(ct) : Task.CompletedTask;
                 }, _semaphore);
 
-                _ = Task.Run(async () =>
-                {
-                    while (c.ConnectionState != ConnectionState.CLOSED && Active)
+                if (!Settings.SingleThreadedServer)
+                    _ = Task.Run(async () =>
                     {
-                        await c.GetNextMessageAsync();
-                    }
-                });
-                while (c.ConnectionState == ConnectionState.PENDING) ;
+                        while (c.ConnectionState != ConnectionState.CLOSED)
+                            await c.ReceiveNextAsync();
+                    });
+
+                await c.connectedTask;
 
                 OnClientConnected?.Invoke(c);
             }
         });
     }
 
-    public override async Task StartAsync()
-    {
-        await Task.Run(Start);
-    }
-
     public override void ShutDown()
     {
+        Active = false;
         Stop();
         Utilities.ConcurrentAccess(() =>
         {
             foreach (var c in Clients)
                 c.Close();
+            _clients.Clear();
         }, _semaphore);
     }
 
     public override async Task ShutDownAsync()
     {
+        Active = false;
         await StopAsync();
         await Utilities.ConcurrentAccessAsync(async (ct) =>
         {
             foreach (var c in Clients)
                 await c.CloseAsync();
+            _clients.Clear();
         }, _semaphore);
     }
 
@@ -183,60 +214,17 @@ public abstract class Server<ConnectionType> : BaseServer<ServerClient<Connectio
     }
 
     /// <summary>
-    /// Registers an object type. This is used as an optimization before the server sends or receives objects.
+    /// Registers an object type. This can be used as an optimization before the server sends or receives objects.
     /// </summary>
     /// <typeparam name="T"></typeparam>
     public void RegisterType<T>() =>
         Utilities.RegisterType(typeof(T));
 
-    protected abstract Task<ServerClient<ConnectionType>> InitializeClient();
-}
+    public bool RegisterReceiveObject<T>(Action<T, ClientType> action) =>
+        objectEvents.TryAdd(typeof(T), (obj, sc) => action((T)obj, sc));
 
-public class Server : Server<IChannel>
-{
-    private Func<ServerClient<IChannel>, IChannel> chan;
+    public bool RegisterReceiveObjectAsync<T>(Func<T, ClientType, Task> func) =>
+        asyncObjectEvents.TryAdd(typeof(T), (obj, sc) => func((T)obj, sc));
 
-    private Dictionary<Type, Func<Task<ServerClient<IChannel>>>> ListenMethods = new();
-
-    private List<Task<ServerClient<IChannel>>> WaitList = new();
-
-    public Server()
-    {
-        chan = typeof(ServerClient<IChannel>)
-            .GetProperty("Connection", BindingFlags.NonPublic | BindingFlags.Instance)
-            .GetMethod.CreateDelegate<Func<ServerClient<IChannel>, IChannel>>();
-    }
-
-    public override void Start()
-    {
-        foreach (var v in ListenMethods)
-            WaitList.Add(v.Value());
-        base.Start();
-    }
-
-    public override void Stop()
-    {
-        foreach (var client in Clients)
-            client.Close();
-    }
-
-    public override Task StopAsync()
-    {
-        throw new NotImplementedException();
-    }
-
-    public void RegisterConnectionMethod<TChannel>(Func<Task<ServerClient<IChannel>>> method) where TChannel : IChannel
-    {
-        ListenMethods[typeof(TChannel)] = method;
-    }
-
-    protected override async Task<ServerClient<IChannel>> InitializeClient()
-    {
-        var task = await Task.WhenAny(WaitList);
-        WaitList.Remove(task);
-        var result = task.GetAwaiter().GetResult();
-
-        WaitList.Add(ListenMethods[chan(result).GetType()]());
-        return result;
-    }
+    protected abstract Task<ClientType> InitializeClient();
 }

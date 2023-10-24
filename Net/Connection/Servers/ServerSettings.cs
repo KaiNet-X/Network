@@ -19,4 +19,14 @@ public class ServerSettings
     /// Timeout for connection checks
     /// </summary>
     public int ConnectionPollTimeout { get; init; } = 8000;
+
+    /// <summary>
+    /// Remove clients from the list after disconnection is invoked
+    /// </summary>
+    public bool RemoveClientAfterDisconnect { get; init; } = true;
+
+    /// <summary>
+    /// Max connections at one time. If less than one, considered to be unset
+    /// </summary>
+    public int MaxClientConnections { get; init; } = -1;
 }

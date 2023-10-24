@@ -95,10 +95,8 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     /// Sends a message to the remote client.
     /// </summary>
     /// <param name="message"></param>
-    public override void SendMessage(MessageBase message)
-    {
+    public override void SendMessage(MessageBase message) =>
         _SendMessage(message);
-    }
 
     private async Task _SendMessageAsync(MessageBase message, CancellationToken token = default)
     {
@@ -276,7 +274,6 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         CloseConnection();
 
         encryptionStage = EncryptionMessage.Stage.NONE;
-        Settings = null;
     }
 
     public override void Close() =>

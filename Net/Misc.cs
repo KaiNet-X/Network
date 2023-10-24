@@ -1,5 +1,7 @@
 ﻿namespace Net;
 
+using Net.Connection.Channels;
+using Net.Connection.Clients.Generic;
 using Serialization;
 using System;
 using System.Collections;
@@ -35,7 +37,13 @@ internal class Invokable<T> : IInvokable
     public void Invoke(object o) =>
         _action((T)o);
 }
-
+internal class Invokable : IInvokable
+{
+    public void Invoke(object o)
+    {
+        throw new NotImplementedException();
+    }
+}
 internal interface IAsyncInvokable
 {
     Task InvokeAsync(object o);

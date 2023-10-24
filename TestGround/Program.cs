@@ -5,6 +5,14 @@ using Net.Connection.Servers;
 using System.Net;
 using System.Text;
 
+var strs = new string[] { "hello", "world", "." };
+var lambdas = new List<Action>();
+
+foreach (var v in strs)
+    lambdas.Add(() => Console.WriteLine(v));
+
+foreach (var v in lambdas) v();
+
 IPAddress address = (await Dns.GetHostAddressesAsync(IPAddress.Loopback.ToString()))[0];
 IPEndPoint endpoint = new IPEndPoint(address, 15555);
 

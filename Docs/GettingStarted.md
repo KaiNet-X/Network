@@ -4,7 +4,7 @@ This page shows an example of how to use the most important features of this lib
 
 #### Note
 
-By default, the main connection uses encryption. However, TcpChannel and UdpChannel do not support encryption, and EncryptedTcpChannel is in progress.
+By default, the main connection uses encryption. However, TcpChannel and UdpChannel do not support encryption. You can use EncryptedTcpChannel, however there is currently no counterpart for UDP.
 
 ## Server
 
@@ -12,7 +12,7 @@ See [Server](https://github.com/KaiNet-X/Network/blob/master/Server.md)
 
 ```c#
 // Creates a new server that listens for connections on all network interfaces on port 5555
-// Accepts up to 10 clients
+// Accepts up to 10 clients at a time. 
 var server = new Server(IPAddress.Any, 5555, 10);
 
 server.OnClientObjectReceived += RecievedObject;
@@ -23,7 +23,6 @@ server.OnClientChannelOpened += OnChannelOpened;
 // Makes the server start listening for connections
 // Also has an async version
 server.Start();
-
 
 // After some time, send message to all clients
 SomeWaitFunction();
