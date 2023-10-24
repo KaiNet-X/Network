@@ -175,16 +175,16 @@ internal static class Utilities
             queue.Enqueue(r);
     }
 
-    internal static void RegisterTcpChannel<T>(ObjectClient<T> client, TcpChannel mainConnection) where T : class, IChannel
+    internal static void RegisterTcpChannel<T>(ObjectClient<T> client, Lazy<TcpChannel> mainConnection) where T : class, IChannel
     {
         client.RegisterChannelType<TcpChannel>(
             async () =>
             {
-                var remoteAddr = mainConnection.Remote.Address;
-                var localAddr = mainConnection.Local.Address;
+                var remoteAddr = mainConnection.Value.Remote.Address;
+                var localAddr = mainConnection.Value.Local.Address;
 
                 Socket servSoc = new Socket(SocketType.Stream, ProtocolType.Tcp);
-                servSoc.Bind(new IPEndPoint((mainConnection.Socket.LocalEndPoint as IPEndPoint).Address, 0));
+                servSoc.Bind(new IPEndPoint((mainConnection.Value.Socket.LocalEndPoint as IPEndPoint).Address, 0));
                 servSoc.Listen();
 
                 var info = new Dictionary<string, string>
@@ -212,7 +212,7 @@ internal static class Utilities
                 if (m.Info["Mode"] == "Create")
                 {
                     var soc = new Socket(SocketType.Stream, ProtocolType.Tcp);
-                    soc.Connect(mainConnection.Remote.Address, int.Parse(m.Info["Port"]));
+                    soc.Connect(mainConnection.Value.Remote.Address, int.Parse(m.Info["Port"]));
 
                     var c = new TcpChannel(soc);
 
@@ -241,13 +241,13 @@ internal static class Utilities
             });
     }
 
-    internal static void RegisterUdpChannel<T>(ObjectClient<T> client, TcpChannel mainConnection) where T : class, IChannel
+    internal static void RegisterUdpChannel<T>(ObjectClient<T> client, Lazy<TcpChannel> mainConnection) where T : class, IChannel
     {
         client.RegisterChannelType<UdpChannel>(
             async () =>
             {
-                var remoteAddr = mainConnection.Remote.Address;
-                var localAddr = mainConnection.Local.Address;
+                var remoteAddr = mainConnection.Value.Remote.Address;
+                var localAddr = mainConnection.Value.Local.Address;
 
                 var c = new UdpChannel(new IPEndPoint(localAddr, 0));
 
@@ -277,8 +277,8 @@ internal static class Utilities
             },
             async (m) =>
             {
-                var remoteAddr = mainConnection.Remote.Address;
-                var localAddr = mainConnection.Local.Address;
+                var remoteAddr = mainConnection.Value.Remote.Address;
+                var localAddr = mainConnection.Value.Local.Address;
                 if (m.Info["Mode"] == "Create")
                 {
                     var remoteEndpoint = new IPEndPoint(remoteAddr, int.Parse(m.Info["Port"]));
@@ -330,16 +330,16 @@ internal static class Utilities
             });
     }
 
-    internal static void RegisterEncryptedTcpChannel<T>(ObjectClient<T> client, TcpChannel mainConnection) where T : class, IChannel
+    internal static void RegisterEncryptedTcpChannel<T>(ObjectClient<T> client, Lazy<TcpChannel> mainConnection) where T : class, IChannel
     {
         client.RegisterChannelType<EncryptedTcpChannel>(
             async () =>
             {
-                var remoteAddr = mainConnection.Remote.Address;
-                var localAddr = mainConnection.Local.Address;
+                var remoteAddr = mainConnection.Value.Remote.Address;
+                var localAddr = mainConnection.Value.Local.Address;
 
                 var servSoc = new Socket(SocketType.Stream, ProtocolType.Tcp);
-                servSoc.Bind(new IPEndPoint(mainConnection.Local.Address, 0));
+                servSoc.Bind(new IPEndPoint(mainConnection.Value.Local.Address, 0));
                 servSoc.Listen();
 
                 var aesKey = CryptographyService.KeyFromHash(CryptographyService.CreateHash(Guid.NewGuid().ToByteArray()));
@@ -369,7 +369,7 @@ internal static class Utilities
                 if (m.Info["Mode"] == "Create")
                 {
                     var soc = new Socket(SocketType.Stream, ProtocolType.Tcp);
-                    soc.Connect(mainConnection.Remote.Address, int.Parse(m.Info["Port"]));
+                    soc.Connect(mainConnection.Value.Remote.Address, int.Parse(m.Info["Port"]));
                     var aesKey = Convert.FromBase64String(m.Info["AesKey"]);
                     var c = new EncryptedTcpChannel(soc, aesKey);
 

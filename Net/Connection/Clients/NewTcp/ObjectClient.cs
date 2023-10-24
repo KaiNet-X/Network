@@ -4,6 +4,7 @@ using Channels;
 using Net.Connection.Clients.Generic;
 using System.Collections.Generic;
 using System.Net;
+using System;
 using System.Threading.Tasks;
 
 /// <summary>
@@ -25,9 +26,9 @@ public class ObjectClient : ObjectClient<TcpChannel>
 
     protected ObjectClient() : base()
     {
-        Utilities.RegisterUdpChannel(this, Connection);
-        Utilities.RegisterTcpChannel(this, Connection);
-        Utilities.RegisterEncryptedTcpChannel(this, Connection);
+        Utilities.RegisterUdpChannel(this, new Lazy<TcpChannel>(() => Connection, true));
+        Utilities.RegisterTcpChannel(this, new Lazy<TcpChannel>(() => Connection, true));
+        Utilities.RegisterEncryptedTcpChannel(this, new Lazy<TcpChannel>(() => Connection, true));
     }
 
     private protected override void CloseConnection()

@@ -14,7 +14,7 @@ public class TcpClients
     {
         var settings = encrypted ? new ServerSettings() : new ServerSettings { UseEncryption = false };
 
-        return new Server(new IPEndPoint(IPAddress.Loopback, 0), 20, settings);
+        return new Server(new IPEndPoint(IPAddress.Loopback, 0), settings);
     }
 
     [Fact]
@@ -340,7 +340,8 @@ public class TcpClients
         IChannel ch = cType switch
         {
             _ when cType == typeof(UdpChannel) => await c.OpenChannelAsync<UdpChannel>(),
-            _ when cType == typeof(TcpChannel) => await c.OpenChannelAsync<TcpChannel>(),
+            _ when cType == typeof(TcpChannel) => 
+                await c.OpenChannelAsync<TcpChannel>(),
             _ when cType == typeof(EncryptedTcpChannel) => await c.OpenChannelAsync<EncryptedTcpChannel>(),
         };
         await ch.SendBytesAsync(Encoding.UTF8.GetBytes("Hello World"));

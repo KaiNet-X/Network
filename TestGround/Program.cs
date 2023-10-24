@@ -19,7 +19,7 @@ IPEndPoint endpoint = new IPEndPoint(address, 15555);
 DateTime last = DateTime.Now;
 
 //MessageParser.Serializer = new JSerializer();
-Server server = new Server(endpoint, 5, new ServerSettings { UseEncryption = true, ConnectionPollTimeout = 10000000 });
+Server server = new Server(endpoint, new ServerSettings { UseEncryption = true, ConnectionPollTimeout = 10000000, MaxClientConnections = 5 });
 server.OnClientConnected += ClientConnected;
 server.OnClientObjectReceived += Server_OnClientObjectReceived;
 server.OnClientChannelOpened += Server_OnClientChannelOpened;

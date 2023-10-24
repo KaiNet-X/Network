@@ -14,7 +14,7 @@ foreach (var address in addresses)
 
 endpoints.AddRange(new[] { new IPEndPoint(IPAddress.Any, 6969), new IPEndPoint(IPAddress.IPv6Any, 6969) });
 
-var server = new Server(endpoints, 5, new ServerSettings { UseEncryption = true, ConnectionPollTimeout = 600000 });
+var server = new Server(endpoints, new ServerSettings { UseEncryption = true, ConnectionPollTimeout = 600000, MaxClientConnections = 5 });
 
 var workingDirectory = @$"{Directory.GetCurrentDirectory()}\Files";
 if (!Directory.Exists(workingDirectory)) 
@@ -26,7 +26,7 @@ server.OnClientDisconnected += OnDisconnect;
 
 server.RegisterMessageHandler<FileRequestMessage>(HandleFileRequest);
 
-await server.StartAsync();
+server.Start();
 
 foreach (var endpoint in endpoints)
     Console.WriteLine($"Hosting on {endpoint}");
