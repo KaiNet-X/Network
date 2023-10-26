@@ -145,7 +145,7 @@ public class Server : BaseServer<ServerClient>
         StartListening();
 
         if (Settings.SingleThreadedServer)
-            _ = Task.Run(async () =>
+            _ = Task.Factory.StartNew(async () =>
             {
                 while (Active)
                 {
@@ -159,13 +159,13 @@ public class Server : BaseServer<ServerClient>
                         }
                     }, _semaphore);
                 }
-            });
+            }, TaskCreationOptions.LongRunning);
 
         var tcs = new TaskCompletionSource();
 
         Active = Listening = true;
 
-        _ = Task.Run(async () =>
+        _ = Task.Factory.StartNew(async () =>
         {
             while (Listening)
             {
@@ -217,18 +217,18 @@ public class Server : BaseServer<ServerClient>
                 }, _semaphore);
 
                 if (!Settings.SingleThreadedServer)
-                    _ = Task.Run(async () =>
+                    _ = Task.Factory.StartNew(async () =>
                     {
                         while (c.ConnectionState != ConnectionState.CLOSED && Active)
                             await c.GetNextMessageAsync();
-                    });
+                    }, TaskCreationOptions.LongRunning);
 
                 await c.connectedTask;
 
                 OnClientConnected?.Invoke(c);
             }
             _bindingSockets.ForEach(socket => socket.Close());
-        });
+        }, TaskCreationOptions.LongRunning);
     }
 
     /// <summary>

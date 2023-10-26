@@ -2,7 +2,6 @@
 using Net;
 using Net.Connection.Clients.Tcp;
 using Net.Connection.Servers;
-using System.IO;
 using System.Net;
 
 // NOTE: This doesn't work for large files. For that, you would have to send the file in multiple segments and reassemble it on the client
@@ -10,6 +9,7 @@ using System.Net;
 var authService = new AuthService();
 await authService.LoadUsersAsync();
 await authService.AddUser("Kai", "Kai");
+await authService.AddUser("Kai1", "Kai1");
 
 var workingDirectory = @$"{Directory.GetCurrentDirectory()}\Files";
 if (!Directory.Exists(workingDirectory))
@@ -101,7 +101,7 @@ async void HandleFileRequest (FileRequestMessage msg, ServerClient c)
                     await CryptoServices.EncryptFileAsync(path, key, key);
                     var tree = GetTree(workingDirectory);
                     tree.Value = "Root";
-                    await c.SendObjectAsync(tree);
+                    await server.SendObjectToAllAsync(tree);
                     Console.WriteLine($"{c.RemoteEndpoint} uploaded {msg.FileName}");
                 }
                 break;
