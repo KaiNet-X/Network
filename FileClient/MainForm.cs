@@ -4,15 +4,18 @@ using System.Net;
 using Microsoft.VisualBasic;
 using System.Diagnostics;
 using Net.Connection.Clients.Tcp;
+using System.Linq;
 using Net;
 
 public partial class MainForm : Form
 {
     private Client _client
-    { 
+    {
         get => Program.Client;
         set => Program.Client = value;
     }
+
+    private User _user = new User("Kai", "Kai");
 
     List<Guid> inProgress = new List<Guid>();
 
@@ -41,8 +44,8 @@ public partial class MainForm : Form
         {
             Invoke(() =>
             {
-                treeView.Nodes.Clear();
-                treeView.Nodes.Add(ToNode(t));
+                UpdateNodes(t, treeView.Nodes);
+                //treeView.Nodes.Add(ToNode(t));
             });
         });
         _client.RegisterMessageHandler<FileRequestMessage>(async msg =>
@@ -58,7 +61,7 @@ public partial class MainForm : Form
             if (msg.EndOfMessage)
                 inProgress.Remove(msg.RequestId);
 
-            if(!msg.EndOfMessage && !inProgress.Contains(msg.RequestId))
+            if (!msg.EndOfMessage && !inProgress.Contains(msg.RequestId))
             {
                 inProgress.Add(msg.RequestId);
                 current = File.Create($@"{_dir}\{msg.FileName}");
@@ -100,12 +103,12 @@ public partial class MainForm : Form
 
         Task.Run(async () =>
         {
-            while (_client.ConnectionState != ConnectionState.CONNECTED) 
+            while (_client.ConnectionState != ConnectionState.CONNECTED)
                 await Task.Delay(10);
 
             try
             {
-                _client.SendMessage(new FileRequestMessage { RequestType = FileRequestMessage.FileRequestType.Tree });
+                _client.SendMessage(new FileRequestMessage { RequestType = FileRequestType.Tree, User = _user });
             }
             catch
             {
@@ -114,11 +117,14 @@ public partial class MainForm : Form
         });
     }
 
-    private void downloadButton_Click(object sender, EventArgs e)
+    private async void downloadButton_Click(object sender, EventArgs e)
     {
-        var path = _path.Substring(5);
+        await _client.SendMessageAsync(new FileRequestMessage { RequestType = FileRequestType.Download, PathRequest = _path, User = _user });
+    }
 
-        _client.SendMessageAsync(new FileRequestMessage { RequestType=FileRequestMessage.FileRequestType.Download, PathRequest = path });
+    private async void deleteFileButton_Click(object sender, EventArgs e)
+    {
+        await _client.SendMessageAsync(new FileRequestMessage { RequestType = FileRequestType.Delete, PathRequest = _path, User = _user });
     }
 
     private async void uploadButton_Click(object sender, EventArgs e)
@@ -127,7 +133,7 @@ public partial class MainForm : Form
         if (ofd.ShowDialog() == DialogResult.OK)
         {
             using FileStream fs = File.OpenRead(ofd.FileName);
-            var newMsg = new FileRequestMessage() { RequestType = FileRequestMessage.FileRequestType.Upload, FileName = ofd.SafeFileName, PathRequest = "upload" };
+            var newMsg = new FileRequestMessage() { RequestType = FileRequestType.Upload, FileName = ofd.SafeFileName, PathRequest = "upload", User = _user };
             newMsg.FileData = new byte[fs.Length];
             await fs.ReadAsync(newMsg.FileData);
             await _client.SendMessageAsync(newMsg);
@@ -153,6 +159,36 @@ public partial class MainForm : Form
         foreach (var node in tree.Nodes)
             treeNode.Nodes.Add(ToNode(node));
         return treeNode;
+    }
+
+    private void UpdateNodes(Tree tree, TreeNodeCollection treeNodes)
+    {
+        for (int i = 0; i < treeNodes.Count; i++)
+        {
+            if (!tree.Nodes.Any(t => t.Value == treeNodes[i].Text))
+            {
+                treeNodes.RemoveAt(i);
+                i--;
+            }
+        }
+
+        foreach (TreeNode t in treeNodes)
+            UpdateNodes(tree.FirstOrDefault(x => x.Value == t.Text), t.Nodes);
+
+        foreach (Tree t in tree)
+        {
+            bool match = false;
+            foreach (TreeNode node in treeNodes)
+            {
+                if (t.Value == node.Text)
+                {
+                    match = true;
+                    continue;
+                }
+            }
+            if (!match)
+                treeNodes.Add(ToNode(t));
+        }
     }
 
     private void directoryButton_Click(object sender, EventArgs e) =>

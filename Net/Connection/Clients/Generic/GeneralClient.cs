@@ -21,7 +21,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     private CryptographyService _crypto = new();
     private bool _timedOut = false;
     private System.Timers.Timer _pollTimer;
-    private EncryptionMessage.Stage encryptionStage = EncryptionMessage.Stage.NONE;
+    private EncryptionStage encryptionStage = EncryptionStage.NONE;
     private IMessageParser _parser;
     private TaskCompletionSource connectedSource = new TaskCompletionSource();
 
@@ -67,7 +67,6 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     /// Invoked when disconnected from. Argument is graceful or ungraceful. 
     /// </summary>
     public event Action<DisconnectionInfo> OnDisconnect;
-
 
     private void _SendMessage(MessageBase message)
     {
@@ -144,10 +143,10 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
 
     private string GetEnc() => encryptionStage switch
     {
-        EncryptionMessage.Stage.SYN => "Rsa",
-        EncryptionMessage.Stage.ACK => "Aes",
-        EncryptionMessage.Stage.SYNACK => "Aes",
-        EncryptionMessage.Stage.NONE or _ => "None"
+        EncryptionStage.SYN => "Rsa",
+        EncryptionStage.ACK => "Aes",
+        EncryptionStage.SYNACK => "Aes",
+        EncryptionStage.NONE or _ => "None"
     };
 
     protected virtual async Task HandleMessageAsync(MessageBase message)
@@ -166,20 +165,22 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 else await SendMessageAsync(new ConfirmationMessage(ConfirmationMessage.Confirmation.ENCRYPTION));
                 break;
             case EncryptionMessage m:
-                encryptionStage = m.stage;
-                if (encryptionStage == EncryptionMessage.Stage.SYN)
+                encryptionStage = m.Stage;
+                if (encryptionStage == EncryptionStage.SYN)
                 {
-                    _crypto.PublicKey = m.RSA;
-                    _crypto.AesKey = CryptographyService.KeyFromHash(CryptographyService.CreateHash(Guid.NewGuid().ToByteArray()));
-                    await _SendMessageAsync(new EncryptionMessage(_crypto.AesKey));
+                    _crypto.PublicKey = m.RsaPair;
+                    //_crypto.SetAesKeys();
+                    //_crypto.AesKey = CryptographyService.KeyFromHash(CryptographyService.CreateHash(Guid.NewGuid().ToByteArray()));
+                    await _SendMessageAsync(new EncryptionMessage(_crypto.AesKey, _crypto.AesIv));
                 }
-                else if (encryptionStage == EncryptionMessage.Stage.ACK)
+                else if (encryptionStage == EncryptionStage.ACK)
                 {
-                    _crypto.AesKey = m.AES;
-                    await _SendMessageAsync(new EncryptionMessage(EncryptionMessage.Stage.SYNACK));
-                    encryptionStage = EncryptionMessage.Stage.SYNACK;
+                    _crypto.AesKey = m.AesKey;
+                    _crypto.AesIv = m.AesIv;
+                    await _SendMessageAsync(new EncryptionMessage(EncryptionStage.SYNACK));
+                    encryptionStage = EncryptionStage.SYNACK;
                 }
-                else if (encryptionStage == EncryptionMessage.Stage.SYNACK)
+                else if (encryptionStage == EncryptionStage.SYNACK)
                 {
                     await _SendMessageAsync(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));
                     ConnectionState = ConnectionState.CONNECTED;
@@ -247,9 +248,9 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
             if (Settings != null && Settings.UseEncryption)
                 encType = encryptionStage switch
                 {
-                    EncryptionMessage.Stage.SYN => "Aes",
-                    EncryptionMessage.Stage.ACK => "Rsa",
-                    EncryptionMessage.Stage.SYNACK => "Aes",
+                    EncryptionStage.SYN => "Aes",
+                    EncryptionStage.ACK => "Rsa",
+                    EncryptionStage.SYNACK => "Aes",
                     _ => _crypto.PrivateKey == null ? "None" : "Rsa"
                 };
 
@@ -273,7 +274,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         ConnectionState = ConnectionState.CLOSED;
         CloseConnection();
 
-        encryptionStage = EncryptionMessage.Stage.NONE;
+        encryptionStage = EncryptionStage.NONE;
     }
 
     public override void Close() =>

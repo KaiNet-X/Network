@@ -1,13 +1,21 @@
 ﻿namespace FileServer;
 
+using System;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Net.Mime.MediaTypeNames;
 
 internal static class CryptoServices
 {
     private static Aes _aes = GetAes();
+
+    public const ushort KeyLength = 256;
+    public const ushort IvLength = 128;
+
+    public static byte[] GenerateRandomKey(ushort keyLength) =>
+        RandomNumberGenerator.GetBytes(keyLength);
 
     public static byte[] CreateHash(byte[] input)
     {
@@ -18,11 +26,11 @@ internal static class CryptoServices
     public static byte[] CreateHash(string input) =>
         CreateHash(Encoding.UTF8.GetBytes(input));
 
-    public static byte[] KeyFromHash(byte[] hash)
+    public static byte[] KeyFromHash(byte[] hash, int length = 16)
     {
-        byte[] key = new byte[16];
+        byte[] key = new byte[length];
 
-        for (int i = 0; i < 16; i++)
+        for (int i = 0; i < length; i++)
             key[i] = hash[i % hash.Length];
 
         return key;
@@ -34,32 +42,6 @@ internal static class CryptoServices
         {
             PrivateKey = prov.ExportParameters(true);
             PublicKey = prov.ExportParameters(false);
-        }
-    }
-
-    public static byte[] EncryptRSA(byte[] bytes, RSAParameters PublicKey)
-    {
-        using (var provider = new RSACryptoServiceProvider())
-        {
-            provider.ImportParameters(PublicKey);
-            return provider.Encrypt(bytes, false);
-        }
-    }
-
-    public static byte[] DecryptRSA(byte[] bytes, RSAParameters PrivateKey)
-    {
-        using (var provider = new RSACryptoServiceProvider())
-        {
-            try
-            {
-                provider.ImportParameters(PrivateKey);
-                return provider.Decrypt(bytes, false);
-
-            }
-            catch (System.Exception ex)
-            {
-                throw;
-            }
         }
     }
 
@@ -127,13 +109,46 @@ internal static class CryptoServices
         }
     }
 
+    public static async Task EncryptFileAsync(string path, byte[] key, byte[] iv)
+    {
+        await using FileStream encFs = File.Create($"{path}.aes");
+        await using CryptoStream cryptoStream = new CryptoStream(encFs, _aes.CreateEncryptor(key, iv), CryptoStreamMode.Write);
+        await using (FileStream fs = File.OpenRead(path))
+        {
+            byte[] buffer = new byte[1048576];
+            int readBytes;
+
+            while ((readBytes = await fs.ReadAsync(buffer.AsMemory())) > 0)
+            {
+                await cryptoStream.WriteAsync(buffer.AsMemory().Slice(0, readBytes));
+            }
+        }
+
+        File.Delete(path);
+    }
+
+    public static async Task DecryptFileAsync(string path, byte[] key, byte[] iv)
+    {
+        using FileStream encFs = File.OpenRead($"{path}.aes");
+        using CryptoStream cryptoStream = new CryptoStream(encFs, _aes.CreateDecryptor(key, iv), CryptoStreamMode.Read);
+        using FileStream fs = File.Create(path.Replace(".aes", ""));
+
+        byte[] buffer = new byte[1048576];
+        int readBytes;
+
+        while ((readBytes = await cryptoStream.ReadAsync(buffer.AsMemory())) > 0)
+        {
+            await fs.WriteAsync(buffer.AsMemory().Slice(0, readBytes));
+        }
+    }
+
     private static Aes GetAes()
     {
         var a = Aes.Create();
         a.Padding = PaddingMode.PKCS7;
         a.Mode = CipherMode.CBC;
-        a.KeySize = 128;
-        a.BlockSize = 128;
+        a.KeySize = KeyLength;
+        a.BlockSize = IvLength;
         return a;
     }
 }

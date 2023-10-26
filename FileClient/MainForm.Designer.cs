@@ -28,232 +28,250 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.treeView = new System.Windows.Forms.TreeView();
-            this.label1 = new System.Windows.Forms.Label();
-            this.downloadButton = new System.Windows.Forms.Button();
-            this.uploadButton = new System.Windows.Forms.Button();
-            this.panel1 = new System.Windows.Forms.Panel();
-            this.cPort = new System.Windows.Forms.Label();
-            this.cAddr = new System.Windows.Forms.Label();
-            this.label10 = new System.Windows.Forms.Label();
-            this.label11 = new System.Windows.Forms.Label();
-            this.label12 = new System.Windows.Forms.Label();
-            this.sPort = new System.Windows.Forms.Label();
-            this.sAddr = new System.Windows.Forms.Label();
-            this.label6 = new System.Windows.Forms.Label();
-            this.label5 = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
-            this.label2 = new System.Windows.Forms.Label();
-            this.directoryButton = new System.Windows.Forms.Button();
-            this.panel1.SuspendLayout();
-            this.SuspendLayout();
+            treeView = new TreeView();
+            label1 = new Label();
+            downloadButton = new Button();
+            uploadButton = new Button();
+            panel1 = new Panel();
+            cPort = new Label();
+            cAddr = new Label();
+            label10 = new Label();
+            label11 = new Label();
+            label12 = new Label();
+            sPort = new Label();
+            sAddr = new Label();
+            label6 = new Label();
+            label5 = new Label();
+            label3 = new Label();
+            label2 = new Label();
+            directoryButton = new Button();
+            deleteFileButton = new Button();
+            panel1.SuspendLayout();
+            SuspendLayout();
             // 
             // treeView
             // 
-            this.treeView.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.treeView.Location = new System.Drawing.Point(17, 69);
-            this.treeView.Name = "treeView";
-            this.treeView.Size = new System.Drawing.Size(199, 337);
-            this.treeView.TabIndex = 0;
-            this.treeView.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.treeView_AfterSelect);
+            treeView.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            treeView.Location = new Point(15, 52);
+            treeView.Margin = new Padding(3, 2, 3, 2);
+            treeView.Name = "treeView";
+            treeView.Size = new Size(175, 254);
+            treeView.TabIndex = 0;
+            treeView.AfterSelect += treeView_AfterSelect;
             // 
             // label1
             // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(17, 31);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(92, 20);
-            this.label1.TabIndex = 1;
-            this.label1.Text = "Remote files";
+            label1.AutoSize = true;
+            label1.Location = new Point(15, 23);
+            label1.Name = "label1";
+            label1.Size = new Size(72, 15);
+            label1.TabIndex = 1;
+            label1.Text = "Remote files";
             // 
             // downloadButton
             // 
-            this.downloadButton.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.downloadButton.Location = new System.Drawing.Point(17, 421);
-            this.downloadButton.Name = "downloadButton";
-            this.downloadButton.Size = new System.Drawing.Size(199, 29);
-            this.downloadButton.TabIndex = 2;
-            this.downloadButton.Text = "Download file";
-            this.downloadButton.UseVisualStyleBackColor = true;
-            this.downloadButton.Click += new System.EventHandler(this.downloadButton_Click);
+            downloadButton.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            downloadButton.Location = new Point(15, 316);
+            downloadButton.Margin = new Padding(3, 2, 3, 2);
+            downloadButton.Name = "downloadButton";
+            downloadButton.Size = new Size(174, 22);
+            downloadButton.TabIndex = 2;
+            downloadButton.Text = "Download file";
+            downloadButton.UseVisualStyleBackColor = true;
+            downloadButton.Click += downloadButton_Click;
             // 
             // uploadButton
             // 
-            this.uploadButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.uploadButton.Location = new System.Drawing.Point(247, 421);
-            this.uploadButton.Name = "uploadButton";
-            this.uploadButton.Size = new System.Drawing.Size(207, 29);
-            this.uploadButton.TabIndex = 3;
-            this.uploadButton.Text = "Upload file";
-            this.uploadButton.UseVisualStyleBackColor = true;
-            this.uploadButton.Click += new System.EventHandler(this.uploadButton_Click);
+            uploadButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            uploadButton.Location = new Point(216, 316);
+            uploadButton.Margin = new Padding(3, 2, 3, 2);
+            uploadButton.Name = "uploadButton";
+            uploadButton.Size = new Size(181, 22);
+            uploadButton.TabIndex = 3;
+            uploadButton.Text = "Upload file";
+            uploadButton.UseVisualStyleBackColor = true;
+            uploadButton.Click += uploadButton_Click;
             // 
             // panel1
             // 
-            this.panel1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.panel1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.panel1.Controls.Add(this.cPort);
-            this.panel1.Controls.Add(this.cAddr);
-            this.panel1.Controls.Add(this.label10);
-            this.panel1.Controls.Add(this.label11);
-            this.panel1.Controls.Add(this.label12);
-            this.panel1.Controls.Add(this.sPort);
-            this.panel1.Controls.Add(this.sAddr);
-            this.panel1.Controls.Add(this.label6);
-            this.panel1.Controls.Add(this.label5);
-            this.panel1.Controls.Add(this.label3);
-            this.panel1.Location = new System.Drawing.Point(247, 69);
-            this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(207, 337);
-            this.panel1.TabIndex = 4;
+            panel1.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            panel1.BorderStyle = BorderStyle.FixedSingle;
+            panel1.Controls.Add(cPort);
+            panel1.Controls.Add(cAddr);
+            panel1.Controls.Add(label10);
+            panel1.Controls.Add(label11);
+            panel1.Controls.Add(label12);
+            panel1.Controls.Add(sPort);
+            panel1.Controls.Add(sAddr);
+            panel1.Controls.Add(label6);
+            panel1.Controls.Add(label5);
+            panel1.Controls.Add(label3);
+            panel1.Location = new Point(216, 52);
+            panel1.Margin = new Padding(3, 2, 3, 2);
+            panel1.Name = "panel1";
+            panel1.Size = new Size(181, 253);
+            panel1.TabIndex = 4;
             // 
             // cPort
             // 
-            this.cPort.Anchor = System.Windows.Forms.AnchorStyles.Right;
-            this.cPort.AutoSize = true;
-            this.cPort.Location = new System.Drawing.Point(169, 128);
-            this.cPort.Name = "cPort";
-            this.cPort.Size = new System.Drawing.Size(35, 20);
-            this.cPort.TabIndex = 15;
-            this.cPort.Text = "Port";
-            this.cPort.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            cPort.Anchor = AnchorStyles.Right;
+            cPort.AutoSize = true;
+            cPort.Location = new Point(138, 96);
+            cPort.Name = "cPort";
+            cPort.Size = new Size(29, 15);
+            cPort.TabIndex = 15;
+            cPort.Text = "Port";
+            cPort.TextAlign = ContentAlignment.MiddleRight;
             // 
             // cAddr
             // 
-            this.cAddr.Anchor = System.Windows.Forms.AnchorStyles.Right;
-            this.cAddr.AutoSize = true;
-            this.cAddr.Location = new System.Drawing.Point(142, 108);
-            this.cAddr.Name = "cAddr";
-            this.cAddr.Size = new System.Drawing.Size(62, 20);
-            this.cAddr.TabIndex = 14;
-            this.cAddr.Text = "Address";
-            this.cAddr.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            cAddr.Anchor = AnchorStyles.Right;
+            cAddr.AutoSize = true;
+            cAddr.Location = new Point(124, 81);
+            cAddr.Name = "cAddr";
+            cAddr.Size = new Size(49, 15);
+            cAddr.TabIndex = 14;
+            cAddr.Text = "Address";
+            cAddr.TextAlign = ContentAlignment.MiddleRight;
             // 
             // label10
             // 
-            this.label10.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.label10.AutoSize = true;
-            this.label10.Location = new System.Drawing.Point(19, 108);
-            this.label10.Name = "label10";
-            this.label10.Size = new System.Drawing.Size(65, 20);
-            this.label10.TabIndex = 13;
-            this.label10.Text = "Address:";
+            label10.Anchor = AnchorStyles.Left;
+            label10.AutoSize = true;
+            label10.Location = new Point(17, 81);
+            label10.Name = "label10";
+            label10.Size = new Size(52, 15);
+            label10.TabIndex = 13;
+            label10.Text = "Address:";
             // 
             // label11
             // 
-            this.label11.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.label11.AutoSize = true;
-            this.label11.Location = new System.Drawing.Point(19, 128);
-            this.label11.Name = "label11";
-            this.label11.Size = new System.Drawing.Size(38, 20);
-            this.label11.TabIndex = 12;
-            this.label11.Text = "Port:";
+            label11.Anchor = AnchorStyles.Left;
+            label11.AutoSize = true;
+            label11.Location = new Point(17, 96);
+            label11.Name = "label11";
+            label11.Size = new Size(32, 15);
+            label11.TabIndex = 12;
+            label11.Text = "Port:";
             // 
             // label12
             // 
-            this.label12.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.label12.AutoSize = true;
-            this.label12.Location = new System.Drawing.Point(3, 88);
-            this.label12.Name = "label12";
-            this.label12.Size = new System.Drawing.Size(50, 20);
-            this.label12.TabIndex = 11;
-            this.label12.Text = "Client:";
+            label12.Anchor = AnchorStyles.Left;
+            label12.AutoSize = true;
+            label12.Location = new Point(3, 66);
+            label12.Name = "label12";
+            label12.Size = new Size(41, 15);
+            label12.TabIndex = 11;
+            label12.Text = "Client:";
             // 
             // sPort
             // 
-            this.sPort.Anchor = System.Windows.Forms.AnchorStyles.Right;
-            this.sPort.AutoSize = true;
-            this.sPort.Location = new System.Drawing.Point(165, 40);
-            this.sPort.Name = "sPort";
-            this.sPort.Size = new System.Drawing.Size(35, 20);
-            this.sPort.TabIndex = 10;
-            this.sPort.Text = "Port";
-            this.sPort.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            sPort.Anchor = AnchorStyles.Right;
+            sPort.AutoSize = true;
+            sPort.Location = new Point(138, 30);
+            sPort.Name = "sPort";
+            sPort.Size = new Size(29, 15);
+            sPort.TabIndex = 10;
+            sPort.Text = "Port";
+            sPort.TextAlign = ContentAlignment.MiddleRight;
             // 
             // sAddr
             // 
-            this.sAddr.Anchor = System.Windows.Forms.AnchorStyles.Right;
-            this.sAddr.AutoSize = true;
-            this.sAddr.Location = new System.Drawing.Point(140, 20);
-            this.sAddr.Name = "sAddr";
-            this.sAddr.Size = new System.Drawing.Size(62, 20);
-            this.sAddr.TabIndex = 9;
-            this.sAddr.Text = "Address";
-            this.sAddr.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            sAddr.Anchor = AnchorStyles.Right;
+            sAddr.AutoSize = true;
+            sAddr.Location = new Point(122, 15);
+            sAddr.Name = "sAddr";
+            sAddr.Size = new Size(49, 15);
+            sAddr.TabIndex = 9;
+            sAddr.Text = "Address";
+            sAddr.TextAlign = ContentAlignment.MiddleRight;
             // 
             // label6
             // 
-            this.label6.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(15, 20);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(65, 20);
-            this.label6.TabIndex = 8;
-            this.label6.Text = "Address:";
+            label6.Anchor = AnchorStyles.Left;
+            label6.AutoSize = true;
+            label6.Location = new Point(13, 15);
+            label6.Name = "label6";
+            label6.Size = new Size(52, 15);
+            label6.TabIndex = 8;
+            label6.Text = "Address:";
             // 
             // label5
             // 
-            this.label5.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(15, 40);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(38, 20);
-            this.label5.TabIndex = 7;
-            this.label5.Text = "Port:";
+            label5.Anchor = AnchorStyles.Left;
+            label5.AutoSize = true;
+            label5.Location = new Point(13, 30);
+            label5.Name = "label5";
+            label5.Size = new Size(32, 15);
+            label5.TabIndex = 7;
+            label5.Text = "Port:";
             // 
             // label3
             // 
-            this.label3.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(-1, 0);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(53, 20);
-            this.label3.TabIndex = 5;
-            this.label3.Text = "Server:";
+            label3.Anchor = AnchorStyles.Left;
+            label3.AutoSize = true;
+            label3.Location = new Point(-1, 0);
+            label3.Name = "label3";
+            label3.Size = new Size(42, 15);
+            label3.TabIndex = 5;
+            label3.Text = "Server:";
             // 
             // label2
             // 
-            this.label2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(251, 31);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(118, 20);
-            this.label2.TabIndex = 0;
-            this.label2.Text = "Connection stats";
+            label2.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            label2.AutoSize = true;
+            label2.Location = new Point(220, 23);
+            label2.Name = "label2";
+            label2.Size = new Size(96, 15);
+            label2.TabIndex = 0;
+            label2.Text = "Connection stats";
             // 
             // directoryButton
             // 
-            this.directoryButton.Image = global::FileClient.Properties.Resources.icons8_folder_48;
-            this.directoryButton.Location = new System.Drawing.Point(406, 12);
-            this.directoryButton.Name = "directoryButton";
-            this.directoryButton.Size = new System.Drawing.Size(48, 48);
-            this.directoryButton.TabIndex = 5;
-            this.directoryButton.UseVisualStyleBackColor = true;
-            this.directoryButton.Click += new System.EventHandler(this.directoryButton_Click);
+            directoryButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            directoryButton.Image = Properties.Resources.icons8_folder_48;
+            directoryButton.Location = new Point(355, 9);
+            directoryButton.Margin = new Padding(3, 2, 3, 2);
+            directoryButton.Name = "directoryButton";
+            directoryButton.Size = new Size(42, 36);
+            directoryButton.TabIndex = 5;
+            directoryButton.UseVisualStyleBackColor = true;
+            directoryButton.Click += directoryButton_Click;
+            // 
+            // deleteFileButton
+            // 
+            deleteFileButton.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            deleteFileButton.Location = new Point(16, 349);
+            deleteFileButton.Margin = new Padding(3, 2, 3, 2);
+            deleteFileButton.Name = "deleteFileButton";
+            deleteFileButton.Size = new Size(174, 22);
+            deleteFileButton.TabIndex = 6;
+            deleteFileButton.Text = "Delete file";
+            deleteFileButton.UseVisualStyleBackColor = true;
+            deleteFileButton.Click += deleteFileButton_Click;
             // 
             // MainForm
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(466, 510);
-            this.Controls.Add(this.directoryButton);
-            this.Controls.Add(this.label2);
-            this.Controls.Add(this.panel1);
-            this.Controls.Add(this.uploadButton);
-            this.Controls.Add(this.downloadButton);
-            this.Controls.Add(this.label1);
-            this.Controls.Add(this.treeView);
-            this.MinimumSize = new System.Drawing.Size(410, 500);
-            this.Name = "MainForm";
-            this.Text = "File client v1";
-            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.MainForm_FormClosing);
-            this.panel1.ResumeLayout(false);
-            this.panel1.PerformLayout();
-            this.ResumeLayout(false);
-            this.PerformLayout();
-
+            AutoScaleDimensions = new SizeF(7F, 15F);
+            AutoScaleMode = AutoScaleMode.Font;
+            ClientSize = new Size(408, 382);
+            Controls.Add(deleteFileButton);
+            Controls.Add(directoryButton);
+            Controls.Add(label2);
+            Controls.Add(panel1);
+            Controls.Add(uploadButton);
+            Controls.Add(downloadButton);
+            Controls.Add(label1);
+            Controls.Add(treeView);
+            Margin = new Padding(3, 2, 3, 2);
+            MinimumSize = new Size(361, 385);
+            Name = "MainForm";
+            Text = "File client v1";
+            FormClosing += MainForm_FormClosing;
+            panel1.ResumeLayout(false);
+            panel1.PerformLayout();
+            ResumeLayout(false);
+            PerformLayout();
         }
 
         #endregion
@@ -275,5 +293,6 @@
         private Label label6;
         private Label label5;
         private Button directoryButton;
+        private Button deleteFileButton;
     }
 }

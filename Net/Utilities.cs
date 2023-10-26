@@ -342,7 +342,8 @@ internal static class Utilities
                 servSoc.Bind(new IPEndPoint(mainConnection.Value.Local.Address, 0));
                 servSoc.Listen();
 
-                var aesKey = CryptographyService.KeyFromHash(CryptographyService.CreateHash(Guid.NewGuid().ToByteArray()));
+                var aesKey = CryptographyService.CreateRandomKey(256 / 8);
+
                 var info = new Dictionary<string, string>
                 {
                     { "Port", (servSoc.LocalEndPoint as IPEndPoint).Port.ToString() },

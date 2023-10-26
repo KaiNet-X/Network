@@ -37,7 +37,7 @@ public class NewMessageParser : IMessageParser
                 serialized = _cryptographyService.EncryptRSA(serialized);
                 break;
             case "Aes":
-                serialized = _cryptographyService.EncryptAES(serialized, _cryptographyService.AesKey);
+                serialized = _cryptographyService.EncryptAES(serialized);
                 break;
         }
 
@@ -67,7 +67,7 @@ public class NewMessageParser : IMessageParser
                 serialized = _cryptographyService.EncryptRSA(serialized);
                 break;
             case "Aes":
-                serialized = _cryptographyService.EncryptAES(serialized, _cryptographyService.AesKey);
+                serialized = _cryptographyService.EncryptAES(serialized);
                 break;
         }
 
@@ -103,7 +103,7 @@ public class NewMessageParser : IMessageParser
                 msg = _cryptographyService.DecryptRSA(msg);
                 break;
             case "Aes":
-                msg = _cryptographyService.DecryptAES(msg, _cryptographyService.AesKey);
+                msg = _cryptographyService.DecryptAES(msg);
                 break;
         }
 

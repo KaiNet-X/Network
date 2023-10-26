@@ -6,34 +6,36 @@ using Attributes;
 [RegisterMessage]
 public sealed class EncryptionMessage : MessageBase
 {
-    public Stage stage { get; set; }
-    public RSAParameters RSA { get; set; }
-    public byte[] AES { get; set; }
+    public EncryptionStage Stage { get; set; }
+    public RSAParameters RsaPair { get; set; }
+    public byte[] AesKey { get; set; }
+    public byte[] AesIv { get; set; }
 
     public EncryptionMessage(RSAParameters param)
     {
-        stage = Stage.SYN;
-        RSA = param;
+        Stage = EncryptionStage.SYN;
+        RsaPair = param;
     }
 
-    public EncryptionMessage(byte[] param)
+    public EncryptionMessage(byte[] aesKey, byte[] aesIv)
     {
-        stage = Stage.ACK;
-        AES = param;
+        Stage = EncryptionStage.ACK;
+        AesKey = aesKey;
+        AesIv = aesIv;
     }
 
-    public EncryptionMessage(Stage stage)
+    public EncryptionMessage(EncryptionStage stage)
     {
-        this.stage = stage;
+        this.Stage = stage;
     }
 
     public EncryptionMessage() { }
+}
 
-    public enum Stage
-    {
-        NONE,
-        SYN,
-        ACK,
-        SYNACK
-    }
+public enum EncryptionStage
+{
+    NONE,
+    SYN,
+    ACK,
+    SYNACK
 }

@@ -2,32 +2,43 @@
 
 using System;
 using System.Security.Cryptography;
-using System.Text;
 
 public class CryptographyService
 {
     private Aes _aes = GetAes();
-    private byte[] _aesKey;
+
+    private const ushort KeySize = 256;
+    private const ushort BlockSize = 128;
 
     public byte[] AesKey 
     {
-        get => _aesKey;
+        get => _aes.Key;
         set
         {
-            _aesKey = value;
-            _aes.Key = _aesKey;
+            _aes.Key = value;
+        }
+    }
+
+    public byte[] AesIv
+    {
+        get => _aes.IV;
+        set
+        {
+            _aes.IV = value;
         }
     }
 
     public RSAParameters? PublicKey { get; set; }
     public RSAParameters? PrivateKey { get; set; }
 
+    public static byte[] CreateRandomKey(ushort length) => 
+        RandomNumberGenerator.GetBytes(length);
+
     public static byte[] CreateHash(byte[] input)
     {
         using (HashAlgorithm algorithm = SHA256.Create())
             return algorithm.ComputeHash(input);
     }
-
 
     public static byte[] KeyFromHash(byte[] hash)
     {
@@ -84,28 +95,28 @@ public class CryptographyService
         }
     }
 
-    public ReadOnlySpan<byte> EncryptAES(ReadOnlySpan<byte> input, ReadOnlySpan<byte> iv) =>
-        _aes.EncryptCbc(input, iv);
+    public ReadOnlySpan<byte> EncryptAES(ReadOnlySpan<byte> input) =>
+        _aes.EncryptCbc(input, AesIv);
 
-    public ReadOnlyMemory<byte> EncryptAES(ReadOnlyMemory<byte> input, ReadOnlyMemory<byte> iv) =>
-        _aes.EncryptCbc(input.Span, iv.Span);
+    public ReadOnlyMemory<byte> EncryptAES(ReadOnlyMemory<byte> input) =>
+        _aes.EncryptCbc(input.Span, AesIv);
 
-    public byte[] DecryptAES(byte[] input, byte[] iv) =>
-        _aes.DecryptCbc(input, iv);
+    public byte[] DecryptAES(byte[] input) =>
+        _aes.DecryptCbc(input.AsSpan(), AesIv);
 
-    public ReadOnlyMemory<byte> DecryptAES(ReadOnlyMemory<byte> input, ReadOnlyMemory<byte> iv) =>
-        _aes.DecryptCbc(input.Span, iv.Span);
+    public ReadOnlyMemory<byte> DecryptAES(ReadOnlyMemory<byte> input) =>
+        _aes.DecryptCbc(input.Span, AesIv);
 
-    public ReadOnlySpan<byte> DecryptAES(ReadOnlySpan<byte> input, ReadOnlySpan<byte> iv) =>
-        _aes.DecryptCbc(input, iv);
+    public ReadOnlySpan<byte> DecryptAES(ReadOnlySpan<byte> input) =>
+        _aes.DecryptCbc(input, AesIv);
 
     private static Aes GetAes()
     {
         var a = Aes.Create();
         a.Padding = PaddingMode.PKCS7;
         a.Mode = CipherMode.CBC;
-        a.KeySize = 128;
-        a.BlockSize = 128;
+        a.KeySize = KeySize;
+        a.BlockSize = BlockSize;
         return a;
     }
 }

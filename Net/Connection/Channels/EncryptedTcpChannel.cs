@@ -60,7 +60,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     {
         if (!Connected || cancellationTokenSource.IsCancellationRequested) return;
 
-        ReadOnlySpan<byte> encrypted = _crypto.EncryptAES(data, _crypto.AesKey);
+        ReadOnlySpan<byte> encrypted = _crypto.EncryptAES(data);
         ReadOnlySpan<byte> head = BitConverter.GetBytes(encrypted.Length);
         Span<byte> buffer = new byte[head.Length + encrypted.Length];
 
@@ -86,7 +86,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
         if (!Connected || cancellationTokenSource.IsCancellationRequested)
             return;
 
-        ReadOnlyMemory<byte> encrypted = _crypto.EncryptAES(data, _crypto.AesKey);
+        ReadOnlyMemory<byte> encrypted = _crypto.EncryptAES(data);
         ReadOnlyMemory<byte> head = BitConverter.GetBytes(encrypted.Length);
         Memory<byte> buffer = new byte[head.Length + encrypted.Length];
 
@@ -107,7 +107,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
             ReadOnlySpan<byte> back = CollectionsMarshal.AsSpan(_received);
             byte[] data = back.Slice(4, length).ToArray();
             _received.RemoveRange(0, length + 4);
-            return _crypto.DecryptAES(data.AsSpan(), _crypto.AesKey);
+            return _crypto.DecryptAES(data.AsSpan());
         }
 
         if (!Connected || cancellationTokenSource.IsCancellationRequested) 
@@ -148,7 +148,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
             ReadOnlySpan<byte> back = CollectionsMarshal.AsSpan(_received);
             byte[] data = back.Slice(4, length).ToArray();
             _received.RemoveRange(0, length + 4);
-            return _crypto.DecryptAES(data, _crypto.AesKey);
+            return _crypto.DecryptAES(data);
         }
 
         if (!Connected || cancellationTokenSource.IsCancellationRequested) return Array.Empty<byte>();
