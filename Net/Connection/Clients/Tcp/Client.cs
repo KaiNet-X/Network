@@ -146,13 +146,13 @@ public class Client : ObjectClient
 
     private void StartLoop()
     {
-        _listener = Task.Run(async () =>
+        _listener = Task.Factory.StartNew(async () =>
         {
             await foreach (var msg in ReceiveMessagesAsync())
             {
                 if (msg != null)
                     await HandleMessageAsync(msg);
             }
-        });
+        }, TaskCreationOptions.LongRunning);
     }
 }

@@ -57,6 +57,12 @@ public class AuthService
         await file.DisposeAsync();
     }
 
+    public async Task SaveUsersAsync()
+    {
+        using FileStream file = File.Create(PasswordPath);
+        await JsonSerializer.SerializeAsync(file, users);
+    }
+
     public async Task AddUser(string username, string password)
     {
         if (users.ContainsKey(username)) return;

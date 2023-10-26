@@ -350,7 +350,7 @@ public class Server : BaseServer<ServerClient>
         _CustomMessageHandlers.Add(messageType, (mb, sc) => handler(mb, sc));
 
     public bool RegisterReceiveObject<T>(Action<T, ServerClient> action) =>
-    objectEvents.TryAdd(typeof(T), (obj, sc) => action((T)obj, sc));
+        objectEvents.TryAdd(typeof(T), (obj, sc) => action((T)obj, sc));
 
     public bool RegisterReceiveObjectAsync<T>(Func<T, ServerClient, Task> func) =>
         asyncObjectEvents.TryAdd(typeof(T), (obj, sc) => func((T)obj, sc));

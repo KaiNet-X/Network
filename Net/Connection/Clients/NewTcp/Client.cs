@@ -86,7 +86,7 @@ public class Client : ObjectClient
         }
 
         LocalEndpoint = Connection.Socket.LocalEndPoint as IPEndPoint;
-        LocalEndpoint = Connection.Socket.RemoteEndPoint as IPEndPoint;
+        RemoteEndpoint = Connection.Socket.RemoteEndPoint as IPEndPoint;
 
         while (ConnectionState == ConnectionState.PENDING) ;
         return true;
@@ -147,13 +147,13 @@ public class Client : ObjectClient
 
     private void StartLoop()
     {
-        _listener = Task.Run(async () =>
+        _listener = Task.Factory.StartNew(async () =>
         {
             await foreach (var msg in ReceiveMessagesAsync())
             {
                 if (msg != null)
                     await HandleMessageAsync(msg);
             }
-        });
+        }, TaskCreationOptions.LongRunning);
     }
 }

@@ -56,8 +56,6 @@ public class TcpServer : Server<ServerClient, TcpChannel>
         Settings = settings ?? new ServerSettings();
         Endpoints = endpoints;
         _bindingSockets = new List<Socket>();
-
-        InitializeSockets(Endpoints);
     }
 
     public override void Stop()
@@ -88,8 +86,27 @@ public class TcpServer : Server<ServerClient, TcpChannel>
         }, _semaphore);
     }
 
-    protected override async Task<ServerClient> InitializeClient() =>
-        new ServerClient(await GetNextConnection(), Settings);
+    public override void Start()
+    {
+        InitializeSockets(Endpoints);
+        StartListening();
+        base.Start();
+    }
+
+    protected override async Task<ServerClient> InitializeClient()
+    {
+        CancellationTokenSource cts = new CancellationTokenSource();
+        List<Task<Socket>> tasks = new List<Task<Socket>>();
+
+        foreach (Socket s in _bindingSockets)
+        {
+            tasks.Add(s.AcceptAsync(cts.Token).AsTask());
+        }
+        var connection = await await Task.WhenAny(tasks);
+        cts.Cancel();
+
+        return new ServerClient(connection, Settings);
+    }
 
     private void InitializeSockets(List<IPEndPoint> endpoints)
     {
@@ -102,18 +119,9 @@ public class TcpServer : Server<ServerClient, TcpChannel>
         }
     }
 
-    private async Task<Socket> GetNextConnection()
+    private void StartListening()
     {
-        CancellationTokenSource cts = new CancellationTokenSource();
-        List<Task<Socket>> tasks = new List<Task<Socket>>();
-
         foreach (Socket s in _bindingSockets)
-        {
-            tasks.Add(s.AcceptAsync(cts.Token).AsTask());
-        }
-        var connection = await await Task.WhenAny(tasks);
-        cts.Cancel();
-
-        return connection;
+            s.Listen();
     }
 }

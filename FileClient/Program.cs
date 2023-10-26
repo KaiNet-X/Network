@@ -1,4 +1,4 @@
-using Net.Connection.Clients.Tcp;
+using Net.Connection.Clients.NewTcp;
 using System.Net;
 
 namespace FileClient

@@ -87,7 +87,7 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
     public override void Start()
     {
         if (Settings.SingleThreadedServer)
-            _ = Task.Run(async () =>
+            _ = Task.Factory.StartNew(async () =>
             {
                 while (Active)
                 {
@@ -101,13 +101,13 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
                         }
                     }, _semaphore);
                 }
-            });
+            }, TaskCreationOptions.LongRunning);
 
         var tcs = new TaskCompletionSource();
 
         Active = Listening = true;
 
-        _ = Task.Run(async () =>
+        _ = Task.Factory.StartNew(async () =>
         {
             while (Listening)
             {
@@ -158,17 +158,17 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
                 }, _semaphore);
 
                 if (!Settings.SingleThreadedServer)
-                    _ = Task.Run(async () =>
+                    _ = Task.Factory.StartNew(async () =>
                     {
                         while (c.ConnectionState != ConnectionState.CLOSED)
                             await c.ReceiveNextAsync();
-                    });
+                    }, TaskCreationOptions.LongRunning);
 
                 await c.connectedTask;
 
                 OnClientConnected?.Invoke(c);
             }
-        });
+        }, TaskCreationOptions.LongRunning);
     }
 
     public override void ShutDown()
@@ -219,6 +219,12 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
     /// <typeparam name="T"></typeparam>
     public void RegisterType<T>() =>
         Utilities.RegisterType(typeof(T));
+
+    public void RegisterMessageHandler<T>(Action<T, ClientType> handler) where T : MessageBase =>
+        _CustomMessageHandlers.Add(typeof(T), (mb, sc) => handler((T)mb, sc));
+
+    public void RegisterMessageHandler(Action<MessageBase, ClientType> handler, Type messageType) =>
+        _CustomMessageHandlers.Add(messageType, (mb, sc) => handler(mb, sc));
 
     public bool RegisterReceiveObject<T>(Action<T, ClientType> action) =>
         objectEvents.TryAdd(typeof(T), (obj, sc) => action((T)obj, sc));
