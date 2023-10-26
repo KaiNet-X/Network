@@ -4,7 +4,6 @@ using Net.Connection.Servers;
 using System;
 using System.Collections.Generic;
 using System.Net;
-using System.Text;
 using System.Threading.Tasks;
 
 var endpoints = new List<IPEndPoint>
@@ -16,7 +15,7 @@ var endpoints = new List<IPEndPoint>
 };
 
 // Initialize server to listen on all available addresses with a maximum of 5 clients
-Server s = new Server(endpoints, new ServerSettings { UseEncryption = true, ConnectionPollTimeout = 40000, MaxClientConnections = 5 });
+LegacyServer s = new LegacyServer(endpoints, new ServerSettings { UseEncryption = true, ConnectionPollTimeout = 40000, MaxClientConnections = 5 });
 
 s.OnClientConnected += Connected;
 s.OnClientDisconnected += Disconnected;
@@ -49,15 +48,15 @@ Console.WriteLine();
 
 await Task.Delay(10000000);
 
-void Disconnected(ServerClient sc, DisconnectionInfo info) =>
+void Disconnected(LegacyServerClient sc, DisconnectionInfo info) =>
     Console.WriteLine($"{info.Reason}");
 
-void Connected(ServerClient c) =>
+void Connected(LegacyServerClient c) =>
     Console.WriteLine($"Connected: {c.RemoteEndpoint}");
 
-async void Recieved(object obj, ServerClient c)
+async void Recieved(object obj, LegacyServerClient c)
 {
-    foreach (ObjectClient b in s.Clients)
+    foreach (LegacyObjectClient b in s.Clients)
         if (b != c)
             await b.SendObjectAsync(obj);
 }

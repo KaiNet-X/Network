@@ -1,6 +1,6 @@
 ﻿using FileServer;
 using Net;
-using Net.Connection.Clients.NewTcp;
+using Net.Connection.Clients.Tcp;
 using Net.Connection.Servers;
 using System.Net;
 

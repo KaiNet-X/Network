@@ -40,7 +40,15 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     /// </summary>
     protected readonly Dictionary<Type, Action<MessageBase>> _MessageHandlers = new()
     {
-        {typeof(Object), (mb) => { } }
+
+    };
+
+    /// <summary>
+    /// Register asynchronous message handlers for custom message types with message type name
+    /// </summary>
+    protected readonly Dictionary<Type, Func<MessageBase, Task>> _AsyncMessageHandlers = new()
+    {
+
     };
 
     /// <summary>
@@ -134,12 +142,28 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         RegisterMessageHandler(mb => handler(mb as T), typeof(T));
 
     /// <summary>
+    /// Generic method to register an action to handle the specified method type.
+    /// </summary>
+    /// <typeparam name="T">Type of the message</typeparam>
+    /// <param name="handler">Action that is called whenever the message is received.</param>
+    public void RegisterAsyncMessageHandler<T>(Func<T, Task> handler) where T : MessageBase =>
+        RegisterAsyncMessageHandler(mb => handler(mb as T), typeof(T));
+
+    /// <summary>
     /// Non-generic method to register an action to handle the specified method type.
     /// </summary>
     /// <param name="handler">Action that is called whenever the message is received.</param>
     /// <param name="messageType">Type of the message to register.</param>
     public void RegisterMessageHandler(Action<MessageBase> handler, Type messageType) =>
-        _MessageHandlers.Add(messageType, mb => handler(mb));
+        _MessageHandlers.Add(messageType, handler);
+
+    /// <summary>
+    /// Non-generic method to register an action to handle the specified method type.
+    /// </summary>
+    /// <param name="handler">Action that is called whenever the message is received.</param>
+    /// <param name="messageType">Type of the message to register.</param>
+    public void RegisterAsyncMessageHandler(Func<MessageBase, Task> handler, Type messageType) =>
+        _AsyncMessageHandlers.Add(messageType, handler);
 
     private string GetEnc() => encryptionStage switch
     {
@@ -207,9 +231,14 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 _timedOut = false;
                 break;
             default:
+                var asyncMsgHandler = _AsyncMessageHandlers.FirstOrDefault(kv => kv.Key.Name.Equals(message.MessageType)).Value;
                 var msgHandler = _MessageHandlers.FirstOrDefault(kv => kv.Key.Name.Equals(message.MessageType)).Value;
-                if (msgHandler != null) msgHandler(message);
-                else OnUnregisteredMessage?.Invoke(message);
+                if (asyncMsgHandler == null && msgHandler == null) OnUnregisteredMessage?.Invoke(message);
+                else
+                {
+                    if (asyncMsgHandler != null) await asyncMsgHandler(message);
+                    if (msgHandler != null) msgHandler(message);
+                }
                 break;
         }
     }

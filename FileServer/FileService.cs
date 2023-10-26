@@ -1,6 +1,6 @@
 ﻿namespace FileServer;
 
-using Net.Connection.Clients.NewTcp;
+using Net.Connection.Clients.Tcp;
 using Net.Connection.Servers;
 using System.Threading.Tasks;
 

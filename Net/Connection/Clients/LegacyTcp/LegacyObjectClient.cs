@@ -1,30 +1,40 @@
-﻿namespace Net.Connection.Clients.NewTcp;
+﻿namespace Net.Connection.Clients.LegacyTcp;
 
 using Channels;
 using Net.Connection.Clients.Generic;
+using System;
 using System.Collections.Generic;
 using System.Net;
-using System;
 using System.Threading.Tasks;
 
 /// <summary>
 /// Base client for Client and ServerClient that adds functionality for sending/receiving objects.
 /// </summary>
-public class ObjectClient : ObjectClient<TcpChannel>
+public class LegacyObjectClient : ObjectClient<TcpChannel>
 {
     /// <summary>
     /// Gets the local endpoint
     /// </summary>
-    public IPEndPoint LocalEndpoint { get; protected set; }
+    public IPEndPoint LocalEndpoint => localEndPoint;
 
     /// <summary>
     /// Gets the remote endpoint
     /// </summary>
-    public IPEndPoint RemoteEndpoint { get; protected set; }
+    public IPEndPoint RemoteEndpoint => remoteEndPoint;
+
+    /// <summary>
+    /// Local endpoint
+    /// </summary>
+    protected IPEndPoint localEndPoint;
+
+    /// <summary>
+    /// Remote endpoint
+    /// </summary>
+    protected IPEndPoint remoteEndPoint;
 
     protected internal volatile List<(IChannel channel, TaskCompletionSource tcs)> _wait = new();
 
-    protected ObjectClient() : base()
+    protected LegacyObjectClient() : base()
     {
         Utilities.RegisterUdpChannel(this, new Lazy<TcpChannel>(() => Connection, true));
         Utilities.RegisterTcpChannel(this, new Lazy<TcpChannel>(() => Connection, true));

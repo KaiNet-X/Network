@@ -1,41 +1,45 @@
-﻿namespace Net.Connection.Clients.NewTcp;
+﻿namespace Net.Connection.Clients.LegacyTcp;
 
 using Channels;
-using Servers;
-using Generic;
 using Messages;
+using Net.Connection.Clients.Generic;
+using Net.Connection.Servers;
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
-using System.Collections.Generic;
 
-public class ServerClient : ObjectClient, IServerClient
+/// <summary>
+/// The out-of-the-box ServerClient is similar to the Client class, but it is designed to work on the server-side.
+/// </summary>
+public class LegacyServerClient : LegacyObjectClient
 {
-    Task IServerClient.connectedTask => Connected.Task;
     private IAsyncEnumerator<MessageBase> _receiver;
+
+    protected internal Task connectedTask => Connected.Task;
 
     /// <summary>
     /// If the control loop fails, get the exception
     /// </summary>
     public Exception ControlLoopException { get; protected set; }
 
-    internal ServerClient(Socket soc, ServerSettings settings = null) : base()
+    internal LegacyServerClient(Socket soc, ServerSettings settings = null) : base()
     {
         ConnectionState = ConnectionState.PENDING;
 
         Settings = settings ?? new ServerSettings();
         Connection = new TcpChannel(soc);
 
-        LocalEndpoint = Connection.Socket.LocalEndPoint as IPEndPoint;
-        RemoteEndpoint = Connection.Socket.RemoteEndPoint as IPEndPoint;
+        localEndPoint = Connection.Socket.LocalEndPoint as IPEndPoint;
+        remoteEndPoint = Connection.Socket.RemoteEndPoint as IPEndPoint;
 
         _receiver = ReceiveMessagesAsync().GetAsyncEnumerator();
 
         (this as GeneralClient<TcpChannel>).SendMessage(new SettingsMessage(Settings));
     }
 
-    async Task IServerClient.ReceiveNextAsync()
+    internal async Task GetNextMessageAsync()
     {
         try
         {

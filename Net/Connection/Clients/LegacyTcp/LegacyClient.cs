@@ -1,4 +1,4 @@
-﻿namespace Net.Connection.Clients.NewTcp;
+﻿namespace Net.Connection.Clients.LegacyTcp;
 
 using Channels;
 using System;
@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 /// <summary>
 /// The out-of-the-box Client implementation allows sending objects to the server, managing UDP channels, and follows an event based approach to receiving data.
 /// </summary>
-public class Client : ObjectClient
+public class LegacyClient : LegacyObjectClient
 {
     private readonly IPEndPoint _targetEndpoint;
 
@@ -27,20 +27,20 @@ public class Client : ObjectClient
     /// </summary>
     /// <param name="address">IP address of server</param>
     /// <param name="port">Server port the client will connect to</param>
-    public Client(IPAddress address, int port) : this(new IPEndPoint(address, port)) { }
+    public LegacyClient(IPAddress address, int port) : this(new IPEndPoint(address, port)) { }
 
     /// <summary>
     /// Initializes a new client
     /// </summary>
     /// <param name="address">IP address of server</param>
     /// <param name="port">Server port the client will connect to</param>
-    public Client(string address, int port) : this(IPAddress.Parse(address), port) { }
+    public LegacyClient(string address, int port) : this(IPAddress.Parse(address), port) { }
 
     /// <summary>
     /// Initializes a new client
     /// </summary>
     /// <param name="ep">IPEndpoint of the server</param>
-    public Client(IPEndPoint ep) : base()
+    public LegacyClient(IPEndPoint ep) : base()
     {
         ConnectionState = ConnectionState.PENDING;
         _targetEndpoint = ep;
@@ -85,8 +85,8 @@ public class Client : ObjectClient
             }
         }
 
-        LocalEndpoint = Connection.Socket.LocalEndPoint as IPEndPoint;
-        RemoteEndpoint = Connection.Socket.RemoteEndPoint as IPEndPoint;
+        localEndPoint = Connection.Socket.LocalEndPoint as IPEndPoint;
+        remoteEndPoint = Connection.Socket.RemoteEndPoint as IPEndPoint;
 
         while (ConnectionState == ConnectionState.PENDING) ;
         return true;
@@ -128,9 +128,8 @@ public class Client : ObjectClient
                         return false;
             }
         }
-
-        LocalEndpoint = Connection.Socket.LocalEndPoint as IPEndPoint;
-        RemoteEndpoint = Connection.Socket.RemoteEndPoint as IPEndPoint;
+        localEndPoint = Connection.Socket.LocalEndPoint as IPEndPoint;
+        remoteEndPoint = Connection.Socket.RemoteEndPoint as IPEndPoint;
 
         await Connected.Task;
 

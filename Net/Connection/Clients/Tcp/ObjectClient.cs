@@ -2,9 +2,9 @@
 
 using Channels;
 using Net.Connection.Clients.Generic;
-using System;
 using System.Collections.Generic;
 using System.Net;
+using System;
 using System.Threading.Tasks;
 
 /// <summary>
@@ -15,22 +15,12 @@ public class ObjectClient : ObjectClient<TcpChannel>
     /// <summary>
     /// Gets the local endpoint
     /// </summary>
-    public IPEndPoint LocalEndpoint => localEndPoint;
+    public IPEndPoint LocalEndpoint { get; protected set; }
 
     /// <summary>
     /// Gets the remote endpoint
     /// </summary>
-    public IPEndPoint RemoteEndpoint => remoteEndPoint;
-
-    /// <summary>
-    /// Local endpoint
-    /// </summary>
-    protected IPEndPoint localEndPoint;
-
-    /// <summary>
-    /// Remote endpoint
-    /// </summary>
-    protected IPEndPoint remoteEndPoint;
+    public IPEndPoint RemoteEndpoint { get; protected set; }
 
     protected internal volatile List<(IChannel channel, TaskCompletionSource tcs)> _wait = new();
 

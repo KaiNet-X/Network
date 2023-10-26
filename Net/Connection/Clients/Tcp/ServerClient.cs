@@ -1,23 +1,19 @@
 ﻿namespace Net.Connection.Clients.Tcp;
 
 using Channels;
+using Servers;
+using Generic;
 using Messages;
-using Net.Connection.Clients.Generic;
-using Net.Connection.Servers;
 using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
-/// <summary>
-/// The out-of-the-box ServerClient is similar to the Client class, but it is designed to work on the server-side.
-/// </summary>
-public class ServerClient : ObjectClient
+public class ServerClient : ObjectClient, IServerClient
 {
+    Task IServerClient.connectedTask => Connected.Task;
     private IAsyncEnumerator<MessageBase> _receiver;
-
-    protected internal Task connectedTask => Connected.Task;
 
     /// <summary>
     /// If the control loop fails, get the exception
@@ -31,15 +27,15 @@ public class ServerClient : ObjectClient
         Settings = settings ?? new ServerSettings();
         Connection = new TcpChannel(soc);
 
-        localEndPoint = Connection.Socket.LocalEndPoint as IPEndPoint;
-        remoteEndPoint = Connection.Socket.RemoteEndPoint as IPEndPoint;
+        LocalEndpoint = Connection.Socket.LocalEndPoint as IPEndPoint;
+        RemoteEndpoint = Connection.Socket.RemoteEndPoint as IPEndPoint;
 
         _receiver = ReceiveMessagesAsync().GetAsyncEnumerator();
 
         (this as GeneralClient<TcpChannel>).SendMessage(new SettingsMessage(Settings));
     }
 
-    internal async Task GetNextMessageAsync()
+    async Task IServerClient.ReceiveNextAsync()
     {
         try
         {

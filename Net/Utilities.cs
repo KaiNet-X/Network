@@ -137,7 +137,21 @@ internal static class Utilities
 
         try
         {
-            var t1 = a(cts.Token);
+            await a(cts.Token);
+        }
+        finally
+        {
+            s?.Release();
+        }
+    }
+
+    public static async Task ConcurrentAccessAsync(Func<Task> a, SemaphoreSlim s)
+    {
+        await s.WaitAsync();
+
+        try
+        {
+            await a();
         }
         finally
         {

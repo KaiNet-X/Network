@@ -1,20 +1,20 @@
-﻿namespace UnitTests;
+namespace UnitTests;
 
 using Net;
 using Net.Connection.Channels;
-using Net.Connection.Clients.Tcp;
+using Net.Connection.Clients.LegacyTcp;
 using Net.Connection.Servers;
 using Net.Messages;
 using System.Net;
 using System.Text;
 
-public class TcpClientTests
-{
-    private TcpServer NewServer(bool encrypted)
+public class LegacyTcpClients
+{    
+    private LegacyServer NewServer(bool encrypted)
     {
         var settings = encrypted ? new ServerSettings() : new ServerSettings { UseEncryption = false };
 
-        return new TcpServer(new IPEndPoint(IPAddress.Loopback, 0), settings);
+        return new LegacyServer(new IPEndPoint(IPAddress.Loopback, 0), settings);
     }
 
     [Fact]
@@ -23,7 +23,7 @@ public class TcpClientTests
         var server = NewServer(true);
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new LegacyClient(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         var connected = c.Connect();
         Assert.True(connected);
 
@@ -35,7 +35,7 @@ public class TcpClientTests
     {
         var server = NewServer(true);
         server.Start();
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new LegacyClient(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         var connected = await c.ConnectAsync();
         Assert.True(connected);
 
@@ -47,7 +47,7 @@ public class TcpClientTests
     {
         var server = NewServer(true);
 
-        Action<ServerClient, DisconnectionInfo> del = async (ServerClient client, DisconnectionInfo info) =>
+        Action<LegacyServerClient, DisconnectionInfo> del = async (LegacyServerClient client, DisconnectionInfo info) =>
         {
             Assert.Equal("Remote host disconnected.", info.Reason);
             Assert.Null(info.Exception);
@@ -56,7 +56,7 @@ public class TcpClientTests
         server.OnClientDisconnected += del;
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new LegacyClient(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         await c.ConnectAsync();
 
         server.ShutDown();
@@ -71,7 +71,7 @@ public class TcpClientTests
 
         var str = "hello world";
 
-        Action<object, ServerClient> rec = async (obj, client) =>
+        Action<object, LegacyServerClient> rec = async (obj, client) =>
         {
             Assert.Equal(str, obj as string);
         };
@@ -80,7 +80,7 @@ public class TcpClientTests
 
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new LegacyClient(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         await c.ConnectAsync();
         await c.SendObjectAsync(str);
         await Task.Delay(500);
@@ -97,7 +97,7 @@ public class TcpClientTests
 
         var settings = new ServerSettings() { ConnectionPollTimeout = int.MaxValue, UseEncryption = false };
 
-        Action<object, ServerClient> rec = async (obj, client) =>
+        Action<object, LegacyServerClient> rec = async (obj, client) =>
         {
             Assert.True(Helpers.AreEqual(settings, obj));
         };
@@ -105,7 +105,7 @@ public class TcpClientTests
 
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new LegacyClient(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         await c.ConnectAsync();
         await c.SendObjectAsync(settings);
         await Task.Delay(500);
@@ -127,7 +127,7 @@ public class TcpClientTests
             {3, 2, 1}
         };
 
-        Action<object, ServerClient> rec = async (obj, client) =>
+        Action<object, LegacyServerClient> rec = async (obj, client) =>
         {
             Assert.True(Helpers.AreEqual(arr, obj as int[,]));
         };
@@ -135,7 +135,7 @@ public class TcpClientTests
 
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new LegacyClient(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         await c.ConnectAsync();
         await c.SendObjectAsync(arr);
         await Task.Delay(500);
@@ -159,7 +159,7 @@ public class TcpClientTests
             new int[] {3, 2, 1}
         };
 
-        Action<object, ServerClient> rec = async (obj, client) =>
+        Action<object, LegacyServerClient> rec = async (obj, client) =>
         {
             Assert.True(Helpers.AreEqual(arr, obj as int[][]));
         };
@@ -167,7 +167,7 @@ public class TcpClientTests
 
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new LegacyClient(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         await c.ConnectAsync();
         await c.SendObjectAsync(arr);
         await Task.Delay(500);
@@ -183,7 +183,7 @@ public class TcpClientTests
         var server = NewServer(encrypt);
         var settings = new ServerSettings() { ConnectionPollTimeout = int.MaxValue, UseEncryption = false };
 
-        Action<ServerClient> conn = async (sc) =>
+        Action<LegacyServerClient> conn = async (sc) =>
         {
             await sc.SendObjectAsync(settings);
         };
@@ -191,10 +191,10 @@ public class TcpClientTests
 
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new LegacyClient(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         c.OnReceiveObject += async (obj) =>
         {
-            Assert.True(Helpers.AreEqual(settings, obj));
+            Assert.True(Helpers.AreEqual(settings,obj));
         };
 
         await c.ConnectAsync();
@@ -217,7 +217,7 @@ public class TcpClientTests
             new int[] {3, 2, 1}
         };
 
-        Action<ServerClient> conn = async (sc) =>
+        Action<LegacyServerClient> conn = async (sc) =>
         {
             await sc.SendObjectAsync(arr);
         };
@@ -225,7 +225,7 @@ public class TcpClientTests
 
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new LegacyClient(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         await c.ConnectAsync();
         c.OnReceiveObject += async (obj) =>
         {
@@ -247,7 +247,7 @@ public class TcpClientTests
 
         bool s = false;
 
-        Action<IChannel, ServerClient> opened = (ch, sc) =>
+        Action<IChannel, LegacyServerClient> opened = (ch, sc) =>
         {
             s = true;
             ch.SendBytes(Encoding.UTF8.GetBytes("Hello World"));
@@ -255,7 +255,7 @@ public class TcpClientTests
         server.OnClientChannelOpened += opened;
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new LegacyClient(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
         await c.ConnectAsync();
 
@@ -288,7 +288,7 @@ public class TcpClientTests
 
         bool s = false;
 
-        Action<IChannel, ServerClient> opened = (ch, sc) =>
+        Action<IChannel, LegacyServerClient> opened = (ch, sc) =>
         {
             s = true;
         };
@@ -296,7 +296,7 @@ public class TcpClientTests
         server.OnClientChannelOpened += opened;
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new LegacyClient(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
         await c.ConnectAsync();
 
@@ -326,7 +326,7 @@ public class TcpClientTests
 
         TaskCompletionSource tcs = new TaskCompletionSource();
 
-        Action<IChannel, ServerClient> opened = async (ch, sc) =>
+        Action<IChannel, LegacyServerClient> opened = async (ch, sc) =>
         {
             if (Encoding.UTF8.GetString(await ch.ReceiveBytesAsync()) == "Hello World")
                 s = true;
@@ -334,13 +334,13 @@ public class TcpClientTests
         server.OnClientChannelOpened += opened;
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new LegacyClient(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
         await c.ConnectAsync();
         IChannel ch = cType switch
         {
             _ when cType == typeof(UdpChannel) => await c.OpenChannelAsync<UdpChannel>(),
-            _ when cType == typeof(TcpChannel) =>
+            _ when cType == typeof(TcpChannel) => 
                 await c.OpenChannelAsync<TcpChannel>(),
             _ when cType == typeof(EncryptedTcpChannel) => await c.OpenChannelAsync<EncryptedTcpChannel>(),
         };
@@ -363,7 +363,7 @@ public class TcpClientTests
             Name = "name"
         };
 
-        Action<MessageBase, ServerClient> msgB = async (m, sc) =>
+        Action<MessageBase, LegacyServerClient> msgB = async (m, sc) =>
         {
             Assert.True(Helpers.AreEqual(msg, m));
         };
@@ -371,7 +371,7 @@ public class TcpClientTests
 
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new LegacyClient(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
         await c.ConnectAsync();
         c.SendMessage(msg);
@@ -394,7 +394,7 @@ public class TcpClientTests
 
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new LegacyClient(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
         c.OnUnregisteredMessage += async (m) =>
         {
@@ -417,8 +417,8 @@ public class TcpClientTests
         var managed = 0;
         var closed = 0;
 
-        ObjectClient cl = null;
-        ServerClient sc = null;
+        LegacyObjectClient cl = null;
+        LegacyServerClient sc = null;
         Func<Task<DummyChannel>> open = () =>
         {
             opened++;
@@ -438,7 +438,7 @@ public class TcpClientTests
 
         var server = NewServer(encrypt);
 
-        Action<ServerClient> con = (c) =>
+        Action<LegacyServerClient> con = (c) =>
         {
             c.RegisterChannelType<DummyChannel>(open, management, close);
             sc = c;
@@ -446,7 +446,7 @@ public class TcpClientTests
         server.OnClientConnected += con;
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new LegacyClient(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         c.RegisterChannelType<DummyChannel>(open, management, close);
 
         cl = c;
@@ -476,7 +476,7 @@ public class TcpClientTests
 
         var settings = new ServerSettings() { ConnectionPollTimeout = int.MaxValue, UseEncryption = false };
 
-        Action<ServerClient> conn = async (sc) =>
+        Action<LegacyServerClient> conn = async (sc) =>
         {
             await sc.SendObjectAsync(settings);
         };
@@ -484,7 +484,7 @@ public class TcpClientTests
 
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new LegacyClient(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         c.RegisterReceiveObject<ServerSettings>(obj =>
         {
             Assert.True(Helpers.AreEqual(settings, obj));
@@ -503,7 +503,7 @@ public class TcpClientTests
 
         var settings = new ServerSettings() { ConnectionPollTimeout = int.MaxValue, UseEncryption = false };
 
-        Action<ServerClient> conn = async (sc) =>
+        Action<LegacyServerClient> conn = async (sc) =>
         {
             await sc.SendObjectAsync(settings);
         };
@@ -511,7 +511,7 @@ public class TcpClientTests
 
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new LegacyClient(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         c.RegisterReceiveObjectAsync<ServerSettings>(obj =>
         {
             Assert.True(Helpers.AreEqual(settings, obj));

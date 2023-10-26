@@ -3,7 +3,7 @@ namespace FileClient;
 using System.Net;
 using Microsoft.VisualBasic;
 using System.Diagnostics;
-using Net.Connection.Clients.NewTcp;
+using Net.Connection.Clients.Tcp;
 using System.Linq;
 using Net;
 

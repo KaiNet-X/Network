@@ -1,7 +1,7 @@
 ﻿namespace Net.Connection.Servers;
 
 using Channels;
-using Clients.NewTcp;
+using Clients.Tcp;
 using Servers.Generic;
 using System.Collections.Generic;
 using System.Linq;
