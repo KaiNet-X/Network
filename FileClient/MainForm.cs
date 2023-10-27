@@ -95,10 +95,11 @@ public partial class MainForm : Form
                 await fs.WriteAsync(bytes);
             }
         };
+
         _client.OnDisconnect += (obj) =>
         {
             MessageBox.Show("Server disconnected");
-            Application.Exit();
+            Task.Run(() => Invoke(this.Close));
         };
 
         Task.Run(async () =>
