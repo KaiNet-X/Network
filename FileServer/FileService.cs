@@ -110,7 +110,7 @@ internal class FileService
                         File.Delete(@$"{workingDirectory}\{msg.PathRequest}.aes");
                         var tree = GetTree(workingDirectory);
                         tree.Value = "Root";
-                        await c.SendObjectAsync(tree);
+                        await server.SendObjectToAllAsync(tree);
                         Console.WriteLine($"{c.RemoteEndpoint} deleted {msg.PathRequest}");
                     }
                     break;

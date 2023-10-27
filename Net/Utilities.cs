@@ -356,13 +356,16 @@ internal static class Utilities
                 servSoc.Bind(new IPEndPoint(mainConnection.Value.Local.Address, 0));
                 servSoc.Listen();
 
+                var crypto = new CryptographyService();
+
                 var aesKey = CryptographyService.CreateRandomKey(256 / 8);
 
                 var info = new Dictionary<string, string>
                 {
                     { "Port", (servSoc.LocalEndPoint as IPEndPoint).Port.ToString() },
                     { "Mode", "Create" },
-                    { "AesKey", Convert.ToBase64String(aesKey) }
+                    { "AesKey", Convert.ToBase64String(crypto.AesKey) },
+                    { "AesIv", Convert.ToBase64String(crypto.AesIv) }
                 };
 
                 var m = new ChannelManagementMessage
@@ -373,7 +376,7 @@ internal static class Utilities
 
                 await client.SendMessageAsync(m);
 
-                var c = new EncryptedTcpChannel(await servSoc.AcceptAsync(), aesKey);
+                var c = new EncryptedTcpChannel(await servSoc.AcceptAsync(), crypto);
 
                 servSoc.Close();
 
@@ -385,8 +388,10 @@ internal static class Utilities
                 {
                     var soc = new Socket(SocketType.Stream, ProtocolType.Tcp);
                     soc.Connect(mainConnection.Value.Remote.Address, int.Parse(m.Info["Port"]));
-                    var aesKey = Convert.FromBase64String(m.Info["AesKey"]);
-                    var c = new EncryptedTcpChannel(soc, aesKey);
+                    var crypto = new CryptographyService();
+                    crypto.AesKey = Convert.FromBase64String(m.Info["AesKey"]);
+                    crypto.AesIv = Convert.FromBase64String(m.Info["AesIv"]);
+                    var c = new EncryptedTcpChannel(soc, crypto);
 
                     client.ChannelOpened(c);
                 }

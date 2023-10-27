@@ -6,7 +6,7 @@ using Net;
 using Net.Connection.Channels;
 using Net.Connection.Clients.Tcp;
 
-LegacyClient client;
+Client client;
 IPAddress Addr;
 
 while (true)
@@ -60,7 +60,7 @@ void rec(object obj)
 void InitializeClient()
 {
     //Target the client to the chosen address and port 5555
-    client = new LegacyClient(Addr, 5555);
+    client = new Client(Addr, 5555);
     client.OnReceiveObject += rec;
     client.OnDisconnect += C1_OnDisconnect;
     client.OnChannelOpened += C1_OnChannelOpened;

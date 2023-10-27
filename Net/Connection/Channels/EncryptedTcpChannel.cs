@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 /// </summary>
 public class EncryptedTcpChannel : IChannel, IDisposable
 {
-    private CryptographyService _crypto = new CryptographyService();
+    private readonly CryptographyService _crypto;
     private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
     private List<byte> _received = new List<byte>();
 
@@ -38,9 +38,9 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// Opens a tcp channel on an already connected socket
     /// </summary>
     /// <param name="socket"></param>
-    public EncryptedTcpChannel(Socket socket, byte[] aesKey)
+    public EncryptedTcpChannel(Socket socket, CryptographyService crypto)
     {
-        _crypto.AesKey = aesKey;
+        _crypto = crypto;
         Socket = socket;
         Connected = true;
     }
