@@ -69,6 +69,7 @@ public class TcpChannel : IChannel, IDisposable
     /// Send bytes to remote host
     /// </summary>
     /// <param name="data"></param>
+    /// <param name="token"></param>
     public Task SendBytesAsync(byte[] data, CancellationToken token = default) =>
         SendBytesAsync(data.AsMemory(), token);
 
@@ -76,6 +77,7 @@ public class TcpChannel : IChannel, IDisposable
     /// Send bytes to remote host
     /// </summary>
     /// <param name="data"></param>
+    /// <param name="token"></param>
     public async Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
     {
         using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? new[] { token, cancellationTokenSource.Token } : new[] { token });
@@ -163,19 +165,7 @@ public class TcpChannel : IChannel, IDisposable
     /// </summary>
     /// <param name="buffer">Buffer to receive to</param>
     /// <returns></returns>
-    public int ReceiveToBuffer(byte[] buffer)
-    {
-        if (!Connected || cancellationTokenSource.IsCancellationRequested) return 0;
-
-        try
-        {
-            return Socket.Receive(buffer, SocketFlags.None);
-        }
-        catch (ObjectDisposedException)
-        {
-            return 0;
-        }
-    }
+    public int ReceiveToBuffer(byte[] buffer) => ReceiveToBuffer(buffer.AsSpan());
 
     /// <summary>
     /// Recieves to a buffer, calling the underlying socket method.
@@ -200,6 +190,7 @@ public class TcpChannel : IChannel, IDisposable
     /// Recieves to a buffer, calling the underlying socket method.
     /// </summary>
     /// <param name="buffer">Buffer to receive to</param>
+    /// <param name="token"></param>
     /// <returns></returns>
     public async Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default)
     {
@@ -221,6 +212,7 @@ public class TcpChannel : IChannel, IDisposable
     /// Recieves to a buffer, calling the underlying socket method.
     /// </summary>
     /// <param name="buffer">Buffer to receive to</param>
+    /// <param name="token"></param>
     /// <returns></returns>
     public async Task<int> ReceiveToBufferAsync(Memory<byte> buffer, CancellationToken token = default)
     {

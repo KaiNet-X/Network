@@ -49,6 +49,7 @@ public class UdpChannel : IChannel, IDisposable
     public void SendBytes(byte[] data) => 
         SendBytes(data.AsSpan());
 
+    /// <summary>
     /// Send bytes to remote host
     /// </summary>
     /// <param name="data"></param>
@@ -70,17 +71,19 @@ public class UdpChannel : IChannel, IDisposable
     }
 
     /// <summary>
-    /// Recieves to a buffer, calling the underlying socket method.
+    /// Sends data to the remote channel
     /// </summary>
-    /// <param name="buffer">Buffer to receive to</param>
+    /// <param name="data"></param>
+    /// <param name="token"></param>
     /// <returns></returns>
     public Task SendBytesAsync(byte[] data, CancellationToken token = default) =>
         SendBytesAsync(data.AsMemory(), token);
 
     /// <summary>
-    /// Recieves to a buffer, calling the underlying socket method.
+    /// Sends data to the remote channel
     /// </summary>
-    /// <param name="buffer">Buffer to receive to</param>
+    /// <param name="data"></param>
+    /// <param name="token"></param>
     /// <returns></returns>
     public async Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
     {
@@ -180,6 +183,7 @@ public class UdpChannel : IChannel, IDisposable
     /// Recieves to a buffer from the socket
     /// </summary>
     /// <param name="buffer">Buffer to receive to</param>
+    /// <param name="token"></param>
     /// <returns>bytes received</returns>
     public async Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default)
     {
@@ -200,6 +204,7 @@ public class UdpChannel : IChannel, IDisposable
     /// Recieves to a buffer from the socket
     /// </summary>
     /// <param name="buffer">Buffer to receive to</param>
+    /// <param name="token"></param>
     /// <returns>bytes received</returns>
     public async Task<int> ReceiveToBufferAsync(Memory<byte> buffer, CancellationToken token = default)
     {

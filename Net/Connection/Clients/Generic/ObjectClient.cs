@@ -40,6 +40,7 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
             }
         });
     }
+
     /// <summary>
     /// List of active channels associated with this object
     /// </summary>
@@ -53,12 +54,18 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     /// <summary>
     /// Invoked when a channel is opened
     /// </summary>
-    public event Action<IChannel> OnChannelOpened;
+    public Action<IChannel> OnChannelOpened;
 
-    protected internal void ChannelOpened(IChannel c) 
+    /// <summary>
+    /// Invoked when a channel is opened
+    /// </summary>
+    public Func<IChannel, Task> OnChannelOpenedAsync;
+
+    protected internal async Task ChannelOpenedAsync(IChannel c) 
     {
         _channels.Add(c);
         OnChannelOpened?.Invoke(c);
+        await OnChannelOpenedAsync?.Invoke(c);
     }
 
     /// <summary>
@@ -67,8 +74,8 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     /// <typeparam name="T">Type to return</typeparam>
     /// <param name="action"></param>
     /// <returns>False if there is already a handler for type T, otherwise true</returns>
-    public bool RegisterReceiveObject<T>(Action<T> action) =>
-        RegisterReceiveObject(typeof(T), (obj) => action((T)obj));
+    public bool RegisterReceive<T>(Action<T> action) =>
+        RegisterReceive(typeof(T), (obj) => action((T)obj));
 
     /// <summary>
     /// Registers a generic action to be invoked asynchronously when an object of specified type is received
@@ -76,25 +83,25 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     /// <typeparam name="T">Type to return</typeparam>
     /// <param name="func"></param>
     /// <returns>False if there is already a handler for type T, otherwise true</returns>
-    public bool RegisterReceiveObjectAsync<T>(Func<T, Task> func) =>
-        RegisterReceiveObjectAsync(typeof(T), (obj) => func((T)obj));
+    public bool RegisterReceiveAsync<T>(Func<T, Task> func) =>
+        RegisterReceiveAsync(typeof(T), (obj) => func((T)obj));
 
     /// <summary>
     /// Registers a generic action to be invoked when an object of specified type is received
     /// </summary>
-    /// <typeparam name="T">Type to return</typeparam>
+    /// <param name="t"></param>
     /// <param name="action"></param>
     /// <returns>False if there is already a handler for type T, otherwise true</returns>
-    public bool RegisterReceiveObject(Type t, Action<object> action) =>
+    public bool RegisterReceive(Type t, Action<object> action) =>
         objectEvents.TryAdd(t, action);
 
     /// <summary>
     /// Registers a generic action to be invoked asynchronously when an object of specified type is received
     /// </summary>
-    /// <typeparam name="T">Type to return</typeparam>
+    /// <param name="t"></param>
     /// <param name="func"></param>
     /// <returns>False if there is already a handler for type T, otherwise true</returns>
-    public bool RegisterReceiveObjectAsync(Type t, Func<object, Task> func) =>
+    public bool RegisterReceiveAsync(Type t, Func<object, Task> func) =>
         asyncObjectEvents.TryAdd(t, func);
 
     /// <summary>
@@ -102,7 +109,7 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     /// </summary>
     /// <typeparam name="T">Type of the handler</typeparam>
     /// <returns>True if a handler existed, otherwise false</returns>
-    public bool UnregisterReceiveObject<T>() =>
+    public bool UnregisterReceive<T>() =>
         objectEvents.Remove(typeof(T), out _);
 
     /// <summary>
@@ -110,7 +117,7 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     /// </summary>
     /// <typeparam name="T">Type of the handler</typeparam>
     /// <returns>True if a handler existed, otherwise false</returns>
-    public bool UnregisterReceiveObjectAsync<T>() =>
+    public bool UnregisterReceiveAsync<T>() =>
         asyncObjectEvents.Remove(typeof(T), out _);
 
     /// <summary>
@@ -126,6 +133,7 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     /// </summary>
     /// <typeparam name="T">Type of the object to be sent</typeparam>
     /// <param name="obj">Object</param>
+    /// <param name="token"></param>
     public virtual async Task SendObjectAsync<T>(T obj, CancellationToken token = default) =>
         await SendMessageAsync(new ObjectMessage(obj), token);
 
@@ -206,13 +214,16 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
         var obj = m.GetValue();
         var type = obj.GetType();
 
-        if (objectEvents.ContainsKey(type))
+        var oe = objectEvents.ContainsKey(type);
+        var oea = asyncObjectEvents.ContainsKey(type);
+
+        if (oe)
             Task.Run(() => objectEvents[type]?.Invoke(obj));
 
-        if (asyncObjectEvents.ContainsKey(type))
+        if (oea)
             Task.Run(async () => await asyncObjectEvents[type]?.Invoke(obj));
 
-        if (OnReceiveObject is not null)
+        if (OnReceiveObject is not null && !oe && !oea)
             Task.Run(() => OnReceiveObject(obj));
     }
 

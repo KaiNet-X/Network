@@ -38,7 +38,7 @@ server.Start();
 Client client = new Client(endpoint);
 //client.OnReceiveObject += Client_OnReceiveObject;
 
-client.RegisterReceiveObject<string>(str =>
+client.RegisterReceive<string>(str =>
 {
     Console.WriteLine($"Down: {(DateTime.Now - last).Milliseconds}");
     last = DateTime.Now;

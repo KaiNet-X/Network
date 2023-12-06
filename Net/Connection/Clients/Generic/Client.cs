@@ -16,7 +16,7 @@ public abstract class Client<MainConnection> : ObjectClient<MainConnection> wher
     public ushort LoopDelay = 1;
     private readonly IPEndPoint _targetEndpoint;
 
-    public Task _listener { get; private set; }
+    protected Task Listener { get; set; }
 
     /// <summary>
     /// Connect to the server this client is bound to
@@ -27,14 +27,12 @@ public abstract class Client<MainConnection> : ObjectClient<MainConnection> wher
     /// <summary>
     /// Connect to the server this client is bound to
     /// </summary>
-    /// <param name="maxAttempts">Max amount of connection attempts</param>
-    /// <param name="throwWhenExausted">Throw exception if connection didn't work</param>
     /// <returns>true if connected, otherwise false</returns>
     public abstract Task<bool> ConnectAsync();
 
     private void StartLoop()
     {
-        _listener = Task.Run(async () =>
+        Listener = Task.Run(async () =>
         {
             await foreach (var msg in ReceiveMessagesAsync())
             {
@@ -52,15 +50,13 @@ public class Client : Client<IChannel>
     public Action CloseMethod;
     public Func<Task> CloseMethodAsync;
 
-    private Task _listener { get; set; }
-
-    public IChannel Connection 
+    new public IChannel Connection 
     {
         get => base.Connection; 
-        set
+        protected set
         {
             base.Connection = value;
-            _listener = Task.Run(async () =>
+            Listener = Task.Run(async () =>
             {
                 await foreach (var msg in ReceiveMessagesAsync())
                 {

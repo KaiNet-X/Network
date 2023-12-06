@@ -40,7 +40,7 @@ public partial class MainForm : Form
         sAddr.Text = _client.RemoteEndpoint.Address.ToString();
         sPort.Text = _client.RemoteEndpoint.Port.ToString();
 
-        _client.RegisterReceiveObject<Tree>(t =>
+        _client.RegisterReceive<Tree>(t =>
         {
             Invoke(() =>
             {

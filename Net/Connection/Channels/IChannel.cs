@@ -30,12 +30,14 @@ public interface IChannel
     /// Send bytes to remote host
     /// </summary>
     /// <param name="data"></param>
+    /// <param name="token"></param>
     public Task SendBytesAsync(byte[] data, CancellationToken token = default);
 
     /// <summary>
     /// Send bytes to remote host
     /// </summary>
     /// <param name="data"></param>
+    /// <param name="token"></param>
     public Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default);
 
     /// <summary>
@@ -61,6 +63,7 @@ public interface IChannel
     /// Recieves to a buffer instead of the usual method. This can be used as an optimimization or to mimic the way sockets receive bytes.
     /// </summary>
     /// <param name="buffer">Buffer to receive to</param>
+    /// <param name="token"></param>
     /// <returns>bytes received</returns>
     public Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default);
 
@@ -75,6 +78,7 @@ public interface IChannel
     /// Recieves to a buffer instead of the usual method. This can be used as an optimimization or to mimic the way sockets receive bytes.
     /// </summary>
     /// <param name="buffer">Buffer to receive to</param>
+    /// <param name="token"></param>
     /// <returns>bytes received</returns>
     public Task<int> ReceiveToBufferAsync(Memory<byte> buffer, CancellationToken token = default);
 }

@@ -20,6 +20,7 @@ public abstract class BaseClient
     /// Sends a message to the remote client.
     /// </summary>
     /// <param name="message"></param>
+    /// <param name="token"></param>
     public abstract Task SendMessageAsync(MessageBase message, CancellationToken token = default);
 
     /// <summary>

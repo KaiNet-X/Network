@@ -38,6 +38,7 @@ public interface ISerializer
     /// </summary>
     /// <param name="obj"></param>
     /// <param name="type"></param>
+    /// <param name="token"></param>
     /// <returns></returns>
     public Task<byte[]> SerializeAsync(object obj, Type type, CancellationToken token = default);
 
@@ -46,6 +47,7 @@ public interface ISerializer
     /// </summary>
     /// <param name="bytes"></param>
     /// <param name="type"></param>
+    /// <param name="token"></param>
     /// <returns></returns>
     public Task<object> DeserializeAsync(byte[] bytes, Type type, CancellationToken token = default);
 
@@ -54,6 +56,7 @@ public interface ISerializer
     /// </summary>
     /// <param name="bytes"></param>
     /// <param name="type"></param>
+    /// <param name="token"></param>
     /// <returns></returns>
     public Task<object> DeserializeAsync(ReadOnlyMemory<byte> bytes, Type type, CancellationToken token = default);
 }

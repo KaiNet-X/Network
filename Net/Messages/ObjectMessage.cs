@@ -3,6 +3,7 @@
 using Attributes;
 using Net.Serialization;
 using System;
+using System.Reflection;
 
 [RegisterMessage]
 public sealed class ObjectMessage : MessageBase
@@ -14,7 +15,8 @@ public sealed class ObjectMessage : MessageBase
     public ObjectMessage(object obj)
     {
         Type t = obj.GetType();
-        TypeName = t.Name;
+        var alias = t.GetCustomAttribute<NetAliasAttribute>();
+        TypeName = alias?.TypeAlias ?? t.Name;
         Data = DefaultSerializer.Serialize(obj, t);
     }
 

@@ -130,6 +130,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     /// Sends a message to the remote client.
     /// </summary>
     /// <param name="message"></param>
+    /// <param name="token"></param>
     public override async Task SendMessageAsync(MessageBase message, CancellationToken token = default) =>
         await _SendMessageAsync(message, token);
 
@@ -186,15 +187,14 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                     connectedSource.SetResult();
                     StartPoll();
                 }
-                else await SendMessageAsync(new ConfirmationMessage(ConfirmationMessage.Confirmation.ENCRYPTION));
+                else 
+                    await SendMessageAsync(new ConfirmationMessage(ConfirmationMessage.Confirmation.ENCRYPTION));
                 break;
             case EncryptionMessage m:
                 encryptionStage = m.Stage;
                 if (encryptionStage == EncryptionStage.SYN)
                 {
                     _crypto.PublicKey = m.RsaPair;
-                    //_crypto.SetAesKeys();
-                    //_crypto.AesKey = CryptographyService.KeyFromHash(CryptographyService.CreateHash(Guid.NewGuid().ToByteArray()));
                     await _SendMessageAsync(new EncryptionMessage(_crypto.AesKey, _crypto.AesIv));
                 }
                 else if (encryptionStage == EncryptionStage.ACK)

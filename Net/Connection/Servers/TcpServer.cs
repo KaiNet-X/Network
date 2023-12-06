@@ -29,7 +29,6 @@ public class TcpServer : Server<ServerClient, TcpChannel>
     /// </summary>
     /// <param name="address">IP address for the server to bind to</param>
     /// <param name="port">Port for the server to bind to</param>
-    /// <param name="maxClients">Max amount of clients</param>
     /// <param name="settings">Settings for connection</param>
     public TcpServer(IPAddress address, int port, ServerSettings settings = null) :
         this(new IPEndPoint(address, port), settings)
@@ -39,7 +38,6 @@ public class TcpServer : Server<ServerClient, TcpChannel>
     /// New server object
     /// </summary>
     /// <param name="endpoint">Endpoint for the server to bind to</param>
-    /// <param name="maxClients">Max amount of clients</param>
     /// <param name="settings">Settings for connection</param>
     public TcpServer(IPEndPoint endpoint, ServerSettings settings = null) :
         this(new List<IPEndPoint> { endpoint }, settings)
@@ -49,7 +47,6 @@ public class TcpServer : Server<ServerClient, TcpChannel>
     /// New server object
     /// </summary>
     /// <param name="endpoints">List of endpoints for the server to bind to</param>
-    /// <param name="maxClients">Max amount of clients</param>
     /// <param name="settings">Settings for connection</param>
     public TcpServer(List<IPEndPoint> endpoints, ServerSettings settings = null)
     {

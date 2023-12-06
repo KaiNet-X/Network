@@ -89,7 +89,6 @@ public class LegacyServer : BaseServer<LegacyServerClient>
     /// </summary>
     /// <param name="address">IP address for the server to bind to</param>
     /// <param name="port">Port for the server to bind to</param>
-    /// <param name="maxClients">Max amount of clients</param>
     /// <param name="settings">Settings for connection</param>
     public LegacyServer(IPAddress address, int port, ServerSettings settings = null) : 
         this(new IPEndPoint(address, port), settings) { }
@@ -98,7 +97,6 @@ public class LegacyServer : BaseServer<LegacyServerClient>
     /// New server object
     /// </summary>
     /// <param name="endpoint">Endpoint for the server to bind to</param>
-    /// <param name="maxClients">Max amount of clients</param>
     /// <param name="settings">Settings for connection</param>
     public LegacyServer(IPEndPoint endpoint, ServerSettings settings = null) : 
         this(new List<IPEndPoint> { endpoint }, settings) { }
@@ -107,7 +105,6 @@ public class LegacyServer : BaseServer<LegacyServerClient>
     /// New server object
     /// </summary>
     /// <param name="endpoints">List of endpoints for the server to bind to</param>
-    /// <param name="maxClients">Max amount of clients</param>
     /// <param name="settings">Settings for connection</param>
     public LegacyServer(List<IPEndPoint> endpoints, ServerSettings settings = null)
     {
@@ -131,6 +128,7 @@ public class LegacyServer : BaseServer<LegacyServerClient>
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <param name="obj"></param>
+    /// <param name="token"></param>
     public async Task SendObjectToAllAsync<T>(T obj, CancellationToken token = default) =>
         await SendMessageToAllAsync(new ObjectMessage(obj), token);
 
@@ -202,10 +200,10 @@ public class LegacyServer : BaseServer<LegacyServerClient>
                 };
 
                 foreach (var v in objectEvents)
-                    c.RegisterReceiveObject(v.Key, (obj) => v.Value(obj, c));
+                    c.RegisterReceive(v.Key, (obj) => v.Value(obj, c));
 
                 foreach (var v in asyncObjectEvents)
-                    c.RegisterReceiveObjectAsync(v.Key, (obj) => v.Value(obj, c));
+                    c.RegisterReceiveAsync(v.Key, (obj) => v.Value(obj, c));
 
                 foreach (var v in _CustomMessageHandlers)
                     c.RegisterMessageHandler(mb => v.Value(mb, c), v.Key);
@@ -310,6 +308,7 @@ public class LegacyServer : BaseServer<LegacyServerClient>
     /// Send a message to all clients
     /// </summary>
     /// <param name="msg">Message to be sent</param>
+    /// <param name="token"></param>
     public override Task SendMessageToAllAsync(MessageBase msg, CancellationToken token = default) =>
         Utilities.ConcurrentAccessAsync(async (ct) =>
         {

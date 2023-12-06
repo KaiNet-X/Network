@@ -38,6 +38,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// Opens a tcp channel on an already connected socket
     /// </summary>
     /// <param name="socket"></param>
+    /// <param name="crypto"></param>
     public EncryptedTcpChannel(Socket socket, CryptographyService crypto)
     {
         _crypto = crypto;
@@ -74,6 +75,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// Send bytes to remote host
     /// </summary>
     /// <param name="data"></param>
+    /// <param name="token"></param>
     public Task SendBytesAsync(byte[] data, CancellationToken token = default) =>
         SendBytesAsync(data.AsMemory(), token);
 
@@ -81,6 +83,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// Send bytes to remote host
     /// </summary>
     /// <param name="data"></param>
+    /// <param name="token"></param>
     public async Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
     {
         if (!Connected || cancellationTokenSource.IsCancellationRequested)

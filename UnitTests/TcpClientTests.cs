@@ -485,7 +485,7 @@ public class TcpClientTests
         server.Start();
 
         var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
-        c.RegisterReceiveObject<ServerSettings>(obj =>
+        c.RegisterReceive<ServerSettings>(obj =>
         {
             Assert.True(Helpers.AreEqual(settings, obj));
         });
@@ -512,7 +512,7 @@ public class TcpClientTests
         server.Start();
 
         var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
-        c.RegisterReceiveObjectAsync<ServerSettings>(obj =>
+        c.RegisterReceiveAsync<ServerSettings>(obj =>
         {
             Assert.True(Helpers.AreEqual(settings, obj));
             return Task.CompletedTask;

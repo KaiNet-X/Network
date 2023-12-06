@@ -32,6 +32,7 @@ public abstract class BaseServer<TClient> where TClient : BaseClient
     /// Sends a message to all clients
     /// </summary>
     /// <param name="msg"></param>
+    /// <param name="token"></param>
     public abstract Task SendMessageToAllAsync(MessageBase msg, CancellationToken token = default);
 
     /// <summary>

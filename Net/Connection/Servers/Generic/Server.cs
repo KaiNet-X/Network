@@ -86,6 +86,7 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <param name="obj"></param>
+    /// <param name="token"></param>
     public async Task SendObjectToAllAsync<T>(T obj, CancellationToken token = default) =>
         await SendMessageToAllAsync(new ObjectMessage(obj), token);
 
@@ -148,10 +149,10 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
                 };
 
                 foreach (var v in objectEvents)
-                    c.RegisterReceiveObject(v.Key, (obj) => v.Value(obj, c));
+                    c.RegisterReceive(v.Key, (obj) => v.Value(obj, c));
 
                 foreach (var v in asyncObjectEvents)
-                    c.RegisterReceiveObjectAsync(v.Key, (obj) => v.Value(obj, c));
+                    c.RegisterReceiveAsync(v.Key, (obj) => v.Value(obj, c));
 
                 foreach (var v in _CustomMessageHandlers)
                     c.RegisterMessageHandler(mb => v.Value(mb, c), v.Key);
@@ -275,7 +276,7 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
         Utilities.ConcurrentAccess(() =>
         {
             foreach (var client in Clients)
-                client.RegisterReceiveObject(typeof(T), obj => del(obj, client));
+                client.RegisterReceive(typeof(T), obj => del(obj, client));
         }, _semaphore);
         return objectEvents.TryAdd(typeof(T), del);
     }
@@ -286,7 +287,7 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
         Utilities.ConcurrentAccess(() =>
         {
             foreach (var client in Clients)
-                client.RegisterReceiveObjectAsync(typeof(T), obj => del(obj, client));
+                client.RegisterReceiveAsync(typeof(T), obj => del(obj, client));
         }, _semaphore);
         return asyncObjectEvents.TryAdd(typeof(T), del);
     }

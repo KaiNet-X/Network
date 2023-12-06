@@ -1,5 +1,6 @@
 ﻿namespace Net;
 
+using Net.Attributes;
 using Net.Connection.Channels;
 using Net.Connection.Clients.Generic;
 using Net.Messages;
@@ -8,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -17,6 +19,19 @@ internal static class Utilities
     private static List<(IChannel channel, TaskCompletionSource tcs)> _wait = new();
 
     public static Dictionary<string, Type> NameTypeAssociations = new Dictionary<string, Type>();
+
+    static Utilities()
+    {
+        var aliasedTypes = allTypes
+            .Where(type => type.IsDefined(typeof(NetAliasAttribute), false))
+            .ToDictionary(
+                type => type.GetCustomAttribute<NetAliasAttribute>().TypeAlias,
+                type => type
+            );
+
+        foreach (var pair in aliasedTypes)
+            NameTypeAssociations.Add(pair.Key, pair.Value);
+    }
 
     public static int IndexInByteArray(byte[] Bytes, byte[] SearchBytes, int offset = 0)
     {
@@ -230,7 +245,7 @@ internal static class Utilities
 
                     var c = new TcpChannel(soc);
 
-                    client.ChannelOpened(c);
+                    await client.ChannelOpenedAsync(c);
                 }
                 else if (m.Info["Mode"] == "Close")
                 {
@@ -313,7 +328,7 @@ internal static class Utilities
 
                     await client.SendMessageAsync(msg);
 
-                    client.ChannelOpened(c);
+                    await client.ChannelOpenedAsync(c);
                 }
                 else if (m.Info["Mode"] == "Confirm")
                 {
@@ -393,7 +408,7 @@ internal static class Utilities
                     crypto.AesIv = Convert.FromBase64String(m.Info["AesIv"]);
                     var c = new EncryptedTcpChannel(soc, crypto);
 
-                    client.ChannelOpened(c);
+                    await client.ChannelOpenedAsync(c);
                 }
                 else if (m.Info["Mode"] == "Close")
                 {
