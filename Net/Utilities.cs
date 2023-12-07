@@ -237,9 +237,20 @@ internal static class Utilities
 
                 await client.SendMessageAsync(m);
 
-                var c = new TcpChannel(await servSoc.AcceptAsync());
+                Socket s = null;
+                do
+                {
+                    s = await servSoc.AcceptAsync();
+                    if ((s.RemoteEndPoint as IPEndPoint).Address != remoteAddr)
+                    {
+                        s.Close();
+                        s = null;
+                    }
+                } while (s == null);
 
                 servSoc.Close();
+
+                var c = new TcpChannel(s);
 
                 return c;
             },

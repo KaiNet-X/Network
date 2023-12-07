@@ -14,7 +14,6 @@ public class UdpChannel : IChannel, IDisposable
 {
     private SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
     private UdpClient _udp;
-    private ConcurrentQueue<byte> _byteQueue = new();
     private CancellationTokenSource _cts = new CancellationTokenSource();
 
     /// <summary>
@@ -55,7 +54,7 @@ public class UdpChannel : IChannel, IDisposable
     /// <param name="data"></param>
     public void SendBytes(ReadOnlySpan<byte> data)
     {
-        if (!Connected || _cts.IsCancellationRequested)
+        if (!Connected)
             return;
 
         _semaphore.Wait();
@@ -87,10 +86,9 @@ public class UdpChannel : IChannel, IDisposable
     /// <returns></returns>
     public async Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
     {
-        using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? new[] { token, _cts.Token } : new[] { token });
+        using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? [token, _cts.Token] : [token]);
 
-        if (!Connected || t.IsCancellationRequested)
-            return;
+        if (!Connected) return;
 
         await Utilities.ConcurrentAccessAsync(async (ct) => await _udp.SendAsync(data, t.Token), _semaphore);
     }
@@ -101,8 +99,7 @@ public class UdpChannel : IChannel, IDisposable
     /// <returns></returns>
     public byte[] ReceiveBytes()
     {
-        if (!Connected || _cts.IsCancellationRequested)
-            return null;
+        if (!Connected) return Array.Empty<byte>();
 
         var endpoint = Remote;
 
@@ -112,7 +109,7 @@ public class UdpChannel : IChannel, IDisposable
         }
         catch (ObjectDisposedException)
         {
-            return null;
+            return Array.Empty<byte>();
         }
     }
 
@@ -122,10 +119,9 @@ public class UdpChannel : IChannel, IDisposable
     /// <returns></returns>
     public async Task<byte[]> ReceiveBytesAsync(CancellationToken token = default)
     {
-        using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? new[] { token, _cts.Token } : new[] { token });
-
-        if (!Connected || t.IsCancellationRequested)
-            return null;
+        if (!Connected) return Array.Empty<byte>();
+        
+        using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? [token, _cts.Token] : [token]);
 
         try
         {
@@ -134,7 +130,7 @@ public class UdpChannel : IChannel, IDisposable
         }
         catch (ObjectDisposedException)
         {
-            return null;
+            return Array.Empty<byte>();
         }
     }
 
@@ -165,8 +161,7 @@ public class UdpChannel : IChannel, IDisposable
     /// <returns>bytes received</returns>
     public int ReceiveToBuffer(Span<byte> buffer)
     {
-        if (!Connected || _cts.IsCancellationRequested)
-            return 0;
+        if (!Connected) return 0;
 
         try
         {
@@ -187,12 +182,13 @@ public class UdpChannel : IChannel, IDisposable
     /// <returns>bytes received</returns>
     public async Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default)
     {
-        if (!Connected || _cts.IsCancellationRequested)
-            return 0;
+        if (!Connected) return 0;
+
+        using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? [token, _cts.Token] : [token]);
 
         try
         {
-            return await _udp.Client.ReceiveAsync(buffer, SocketFlags.None, token);
+            return await _udp.Client.ReceiveAsync(buffer, SocketFlags.None, t.Token);
         }
         catch (ObjectDisposedException)
         {
@@ -208,12 +204,13 @@ public class UdpChannel : IChannel, IDisposable
     /// <returns>bytes received</returns>
     public async Task<int> ReceiveToBufferAsync(Memory<byte> buffer, CancellationToken token = default)
     {
-        if (!Connected || _cts.IsCancellationRequested)
-            return 0;
+        if (!Connected) return 0;
+
+        using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? [token, _cts.Token] : [token]);
 
         try
         {
-            return await _udp.Client.ReceiveAsync(buffer, token);
+            return await _udp.Client.ReceiveAsync(buffer, t.Token);
         }
         catch (ObjectDisposedException)
         {
@@ -237,8 +234,6 @@ public class UdpChannel : IChannel, IDisposable
     public void Dispose()
     {
         Connected = false;
-        _byteQueue.Clear();
-        _byteQueue = null;
         _cts.Cancel();
         _cts.Dispose();
         _cts = null;

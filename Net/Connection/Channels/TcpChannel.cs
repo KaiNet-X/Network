@@ -53,13 +53,13 @@ public class TcpChannel : IChannel, IDisposable
     /// <param name="data"></param>
     public void SendBytes(ReadOnlySpan<byte> data)
     {
-        if (!Connected || cancellationTokenSource.IsCancellationRequested) return;
+        if (!Connected) return;
 
         try
         {
             Socket.Send(data);
         }
-        catch (ObjectDisposedException)
+        catch (SocketException)
         {
 
         }
@@ -80,15 +80,15 @@ public class TcpChannel : IChannel, IDisposable
     /// <param name="token"></param>
     public async Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
     {
-        using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? [token, cancellationTokenSource.Token] : new[] { token });
+        if (!Connected || token.IsCancellationRequested) return;
 
-        if (!Connected || source.IsCancellationRequested) return;
-
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? [token, cancellationTokenSource.Token] : [token]);
+        
         try
         {
             await Socket.SendAsync(data, SocketFlags.None, source.Token);
         }
-        catch (ObjectDisposedException)
+        catch (SocketException)
         {
 
         }
@@ -100,28 +100,26 @@ public class TcpChannel : IChannel, IDisposable
     /// <returns>bytes</returns>
     public byte[] ReceiveBytes()
     {
-        if (!Connected || cancellationTokenSource.IsCancellationRequested) return null;
+        if (!Connected) return Array.Empty<byte>();
 
         List<byte> allBytes = new List<byte>();
         const int buffer_length = 1024;
         byte[] buffer = new byte[buffer_length];
 
-        int received = 0;
+        int received;
         do
         {
-            if (cancellationTokenSource.Token.IsCancellationRequested) return null;
-
             try
             {
                 received = Socket.Receive(buffer, SocketFlags.None);
                 allBytes.AddRange(buffer[..received]);
             }
-            catch (ObjectDisposedException)
+            catch (SocketException)
             {
-                return null;
+                return Array.Empty<byte>();
             }
         }
-        while (received == buffer_length && !cancellationTokenSource.IsCancellationRequested);
+        while (received == buffer_length && Connected);
         
         return allBytes.ToArray();
     }
@@ -132,9 +130,9 @@ public class TcpChannel : IChannel, IDisposable
     /// <returns>bytes</returns>
     public async Task<byte[]> ReceiveBytesAsync(CancellationToken token = default)
     {
-        using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? new [] { token, cancellationTokenSource.Token } : new [] { token });
+        if (!Connected || token.IsCancellationRequested) return Array.Empty<byte>();
 
-        if (!Connected || source.IsCancellationRequested) return null;
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? [token, cancellationTokenSource.Token] : [token]);
 
         List<byte> allBytes = new List<byte>();
         const int buffer_length = 1024;
@@ -143,19 +141,17 @@ public class TcpChannel : IChannel, IDisposable
         int received = 0;
         do
         {
-            if (source.IsCancellationRequested) return null;
-
             try
             {
                 received = await Socket.ReceiveAsync(buffer, SocketFlags.None, source.Token);
                 allBytes.AddRange(buffer[..received]);
             }
-            catch (ObjectDisposedException)
+            catch (SocketException)
             {
-                return null;
+                return Array.Empty<byte>();
             }
         }
-        while (received == buffer_length && !source.IsCancellationRequested);
+        while (received == buffer_length && !token.IsCancellationRequested && Connected);
 
         return allBytes.ToArray();
     }
@@ -174,13 +170,13 @@ public class TcpChannel : IChannel, IDisposable
     /// <returns></returns>
     public int ReceiveToBuffer(Span<byte> buffer)
     {
-        if (!Connected || cancellationTokenSource.IsCancellationRequested) return 0;
+        if (!Connected) return 0;
 
         try
         {
             return Socket.Receive(buffer, SocketFlags.None);
         }
-        catch (ObjectDisposedException)
+        catch (SocketException)
         {
             return 0;
         }
@@ -192,21 +188,8 @@ public class TcpChannel : IChannel, IDisposable
     /// <param name="buffer">Buffer to receive to</param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default)
-    {
-        using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? new[] { token, cancellationTokenSource.Token } : new[] { token });
-
-        if (!Connected || source.IsCancellationRequested) return 0;
-
-        try
-        {
-            return await Socket.ReceiveAsync(buffer, SocketFlags.None, token);
-        }
-        catch (ObjectDisposedException)
-        {
-            return 0;
-        }
-    }
+    public async Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default) =>
+        await ReceiveToBufferAsync(buffer.AsMemory(), token);
 
     /// <summary>
     /// Recieves to a buffer, calling the underlying socket method.
@@ -216,18 +199,25 @@ public class TcpChannel : IChannel, IDisposable
     /// <returns></returns>
     public async Task<int> ReceiveToBufferAsync(Memory<byte> buffer, CancellationToken token = default)
     {
-        using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? new[] { token, cancellationTokenSource.Token } : new[] { token });
-
-        if (!Connected || source.IsCancellationRequested) return 0;
+        if (!Connected || token.IsCancellationRequested) return 0;
+        
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? [token, cancellationTokenSource.Token] : [token]);
 
         try
         {
             return await Socket.ReceiveAsync(buffer, token);
         }
-        catch (ObjectDisposedException)
+        catch (SocketException)
         {
             return 0;
         }
+    }
+
+    internal void Close()
+    {
+        Connected = false;
+        cancellationTokenSource.Cancel();
+        Socket.Close();
     }
 
     /// <summary>
@@ -235,9 +225,7 @@ public class TcpChannel : IChannel, IDisposable
     /// </summary>
     public void Dispose()
     {
-        Connected = false;
-        Socket.Close();
-        cancellationTokenSource.Cancel();
+        Close();
         cancellationTokenSource.Dispose();
         cancellationTokenSource = null;
     }

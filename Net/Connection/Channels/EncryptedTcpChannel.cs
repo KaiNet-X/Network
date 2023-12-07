@@ -59,7 +59,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// <param name="data"></param>
     public void SendBytes(ReadOnlySpan<byte> data)
     {
-        if (!Connected || cancellationTokenSource.IsCancellationRequested) return;
+        if (!Connected) return;
 
         ReadOnlySpan<byte> encrypted = _crypto.EncryptAES(data);
         ReadOnlySpan<byte> head = BitConverter.GetBytes(encrypted.Length);
@@ -86,8 +86,9 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// <param name="token"></param>
     public async Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
     {
-        if (!Connected || cancellationTokenSource.IsCancellationRequested)
-            return;
+        if (!Connected) return;
+
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? [token, cancellationTokenSource.Token] : [token]);
 
         ReadOnlyMemory<byte> encrypted = _crypto.EncryptAES(data);
         ReadOnlyMemory<byte> head = BitConverter.GetBytes(encrypted.Length);
@@ -96,7 +97,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
         head.CopyTo(buffer);
         encrypted.CopyTo(buffer.Slice(4));
 
-        await Socket.SendAsync(buffer, SocketFlags.None, token);
+        await Socket.SendAsync(buffer, SocketFlags.None, source.Token);
     }
 
     /// <summary>
@@ -113,8 +114,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
             return _crypto.DecryptAES(data.AsSpan());
         }
 
-        if (!Connected || cancellationTokenSource.IsCancellationRequested) 
-            return Array.Empty<byte>();
+        if (!Connected) return Array.Empty<byte>();
 
         byte[] buffer = new byte[1024];
 
@@ -135,7 +135,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
             if (length == -1 && _received.Count >= 4)
                 length = BitConverter.ToInt32(_received.GetRange(0, 4).ToArray());
         }
-        while (length == -1 || _received.Count < length + 4 && !cancellationTokenSource.IsCancellationRequested);
+        while (length == -1 || _received.Count < length + 4 && Connected);
 
         return Process(length).ToArray();
     }
@@ -154,7 +154,9 @@ public class EncryptedTcpChannel : IChannel, IDisposable
             return _crypto.DecryptAES(data);
         }
 
-        if (!Connected || cancellationTokenSource.IsCancellationRequested) return Array.Empty<byte>();
+        if (!Connected) return Array.Empty<byte>();
+
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? [token, cancellationTokenSource.Token] : [token]);
 
         byte[] buffer = new byte[1024];
 
@@ -170,12 +172,12 @@ public class EncryptedTcpChannel : IChannel, IDisposable
 
         do
         {
-            await Socket.ReceiveAsync(buffer, SocketFlags.None);
+            await Socket.ReceiveAsync(buffer, SocketFlags.None, source.Token);
             _received.AddRange(buffer);
             if (length == -1 && _received.Count >= 4)
                 length = BitConverter.ToInt32(_received.GetRange(0, 4).ToArray());
         }
-        while (length == -1 || _received.Count < length + 4 && !cancellationTokenSource.IsCancellationRequested);
+        while (length == -1 || _received.Count < length + 4 && Connected);
 
         return Process(length);
     }
@@ -231,10 +233,9 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// </summary>
     public void Close()
     {
-        Socket.Close();
         Connected = false;
+        Socket.Close();
         cancellationTokenSource.Cancel();
-        cancellationTokenSource.Dispose();
     }
 
     /// <summary>
