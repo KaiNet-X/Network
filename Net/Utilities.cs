@@ -219,8 +219,8 @@ internal static class Utilities
                 var remoteAddr = mainConnection.Value.Remote.Address;
                 var localAddr = mainConnection.Value.Local.Address;
 
-                Socket servSoc = new Socket(SocketType.Stream, ProtocolType.Tcp);
-                servSoc.Bind(new IPEndPoint((mainConnection.Value.Socket.LocalEndPoint as IPEndPoint).Address, 0));
+                Socket servSoc = new Socket(localAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                servSoc.Bind(new IPEndPoint(localAddr, 0));
                 servSoc.Listen();
 
                 var info = new Dictionary<string, string>
@@ -241,7 +241,7 @@ internal static class Utilities
                 do
                 {
                     s = await servSoc.AcceptAsync();
-                    if ((s.RemoteEndPoint as IPEndPoint).Address != remoteAddr)
+                    if (!(s.RemoteEndPoint as IPEndPoint).Address.Equals(remoteAddr))
                     {
                         s.Close();
                         s = null;
@@ -258,8 +258,9 @@ internal static class Utilities
             {
                 if (m.Info["Mode"] == "Create")
                 {
-                    var soc = new Socket(SocketType.Stream, ProtocolType.Tcp);
-                    soc.Connect(mainConnection.Value.Remote.Address, int.Parse(m.Info["Port"]));
+                    var remoteAddr = mainConnection.Value.Remote.Address;
+                    var soc = new Socket(remoteAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                    soc.Connect(remoteAddr, int.Parse(m.Info["Port"]));
 
                     var c = new TcpChannel(soc);
 
@@ -385,8 +386,8 @@ internal static class Utilities
                 var remoteAddr = mainConnection.Value.Remote.Address;
                 var localAddr = mainConnection.Value.Local.Address;
 
-                var servSoc = new Socket(SocketType.Stream, ProtocolType.Tcp);
-                servSoc.Bind(new IPEndPoint(mainConnection.Value.Local.Address, 0));
+                var servSoc = new Socket(localAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                servSoc.Bind(new IPEndPoint(localAddr, 0));
                 servSoc.Listen();
 
                 var crypto = new CryptographyService();
@@ -409,7 +410,18 @@ internal static class Utilities
 
                 await client.SendMessageAsync(m);
 
-                var c = new EncryptedTcpChannel(await servSoc.AcceptAsync(), crypto);
+                Socket s = null;
+                do
+                {
+                    s = await servSoc.AcceptAsync();
+                    if (!(s.RemoteEndPoint as IPEndPoint).Address.Equals(remoteAddr))
+                    {
+                        s.Close();
+                        s = null;
+                    }
+                } while (s == null);
+
+                var c = new EncryptedTcpChannel(s, crypto);
 
                 servSoc.Close();
 
