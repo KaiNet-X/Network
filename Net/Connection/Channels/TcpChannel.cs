@@ -235,8 +235,8 @@ public class TcpChannel : IChannel, IDisposable
     /// </summary>
     public void Dispose()
     {
-        Socket.Close();
         Connected = false;
+        Socket.Close();
         cancellationTokenSource.Cancel();
         cancellationTokenSource.Dispose();
         cancellationTokenSource = null;
