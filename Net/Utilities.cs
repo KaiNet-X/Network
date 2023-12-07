@@ -15,17 +15,6 @@ using System.Threading.Tasks;
 
 internal static class Utilities
 {
-    static Utilities()
-    {
-        var aliasedTypes = allTypes.Where(type => type.IsDefined(typeof(RegisterObjectAttribute)))
-            .ToDictionary(type => 
-                type.GetCustomAttribute<RegisterObjectAttribute>().Name,
-                type => type);
-
-        foreach (var pair in aliasedTypes) 
-            NameTypeAssociations.Add(pair.Key, pair.Value);
-    }
-
     private static Type[] allTypes = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes()).ToArray();
 
     private static List<(IChannel channel, TaskCompletionSource tcs)> _wait = new();
@@ -83,11 +72,11 @@ internal static class Utilities
 
     public static void RegisterType(Type t)
     {
-        var objectAttribute = t.GetCustomAttribute<RegisterObjectAttribute>();
+        var objectAttribute = t.GetCustomAttribute<NetAliasAttribute>();
         if (objectAttribute is null)
             NameTypeAssociations[t.Name] = t;
         else
-            NameTypeAssociations[objectAttribute.Name] = t;
+            NameTypeAssociations[objectAttribute.TypeAlias] = t;
     }
 
     public static Type GetTypeFromName(string name)
