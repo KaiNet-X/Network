@@ -49,7 +49,7 @@ public class TcpClientTests
 
         Action<ServerClient, DisconnectionInfo> del = async (ServerClient client, DisconnectionInfo info) =>
         {
-            Assert.Equal("Remote host disconnected.", info.Reason);
+            Assert.Equal(DisconnectionReason.Closed, info.Reason);
             Assert.Null(info.Exception);
         };
 

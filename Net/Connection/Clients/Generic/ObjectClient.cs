@@ -65,7 +65,8 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     {
         _channels.Add(c);
         OnChannelOpened?.Invoke(c);
-        await OnChannelOpenedAsync?.Invoke(c);
+        if (OnChannelOpenedAsync != null)
+            await OnChannelOpenedAsync(c);
     }
 
     /// <summary>
@@ -227,8 +228,14 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
             Task.Run(() => OnReceiveObject(obj));
     }
 
-    private void HandleDisconnect(MessageBase _)
+    private void HandleDisconnect(DisconnectMessage m)
     {
-        DisconnectedEvent(new DisconnectionInfo { Reason = "Remote host disconnected." });
+        DisconnectedEvent(new DisconnectionInfo { Reason = DisconnectionReason.Closed });
+    }
+
+    private protected override void CloseConnection()
+    {
+        for (int i = 0; i < Channels.Count;)
+            CloseChannel(Channels[i]);
     }
 }

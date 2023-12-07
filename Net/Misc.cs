@@ -1,7 +1,5 @@
 ﻿namespace Net;
 
-using Net.Connection.Channels;
-using Net.Connection.Clients.Generic;
 using Serialization;
 using System;
 using System.Collections;
@@ -74,10 +72,39 @@ public static class Consts
     public static ISerializer DefaultSerializer = MpSerializer.Instance;
 }
 
+/// <summary>
+/// Information about the disconnection
+/// </summary>
 public class DisconnectionInfo
 {
+    /// <summary>
+    /// The exception that was thrown, if applicable
+    /// </summary>
     public Exception Exception { get; set; }
-    public string Reason { get; set; }
+
+    /// <summary>
+    /// The reason the connection closed
+    /// </summary>
+    public DisconnectionReason Reason { get; set; }
+}
+
+/// <summary>
+/// Represents the reason the connection was closed
+/// </summary>
+public enum DisconnectionReason
+{
+    /// <summary>
+    /// The connection was closed by the remote host
+    /// </summary>
+    Closed,
+    /// <summary>
+    /// The connection was forced to close due to an error
+    /// </summary>
+    Aborted,
+    /// <summary>
+    /// The connection timed out
+    /// </summary>
+    TimedOut
 }
 
 /// <summary>

@@ -49,7 +49,7 @@ public class LegacyTcpClients
 
         Action<LegacyServerClient, DisconnectionInfo> del = async (LegacyServerClient client, DisconnectionInfo info) =>
         {
-            Assert.Equal("Remote host disconnected.", info.Reason);
+            Assert.Equal(DisconnectionReason.Closed, info.Reason);
             Assert.Null(info.Exception);
         };
 

@@ -33,6 +33,7 @@ public class ObjectClient : ObjectClient<TcpChannel>
 
     private protected override void CloseConnection()
     {
+        base.CloseConnection();
         Connection.Dispose();
         Connection = null;
     }

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <PackageId>KaiNet.Net</PackageId>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
     <Description>Net is an extensible networking library that is easy to get running. It is ideal for hobbiest programmers and rapid development as all of the networking features are highly configurable, yet work straight out of the box.</Description>

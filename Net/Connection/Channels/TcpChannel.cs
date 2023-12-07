@@ -80,7 +80,7 @@ public class TcpChannel : IChannel, IDisposable
     /// <param name="token"></param>
     public async Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
     {
-        using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? new[] { token, cancellationTokenSource.Token } : new[] { token });
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? [token, cancellationTokenSource.Token] : new[] { token });
 
         if (!Connected || source.IsCancellationRequested) return;
 

@@ -176,6 +176,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
 
     protected virtual async Task HandleMessageAsync(MessageBase message)
     {
+        _timedOut = false;
         switch (message)
         {
             case SettingsMessage m:
@@ -228,7 +229,6 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 }
                 break;
             case ConnectionPollMessage:
-                _timedOut = false;
                 break;
             default:
                 var asyncMsgHandler = _AsyncMessageHandlers.FirstOrDefault(kv => kv.Key.Name.Equals(message.MessageType)).Value;
@@ -243,6 +243,10 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         }
     }
 
+    /// <summary>
+    /// Streams messages as they are parsed from the connection
+    /// </summary>
+    /// <returns></returns>
     protected override async IAsyncEnumerable<MessageBase> ReceiveMessagesAsync()
     {
         const int buffer_length = 4096;
@@ -266,6 +270,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 if (ConnectionState != ConnectionState.CLOSED)
                     await DisconnectedEventAsync(new DisconnectionInfo 
                     {
+                        Reason = DisconnectionReason.Aborted,
                         Exception = ex
                     });
                 yield break;
@@ -299,6 +304,8 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     protected void Disconnected()
     {
         TokenSource.Cancel();
+        TokenSource.Dispose();
+        TokenSource = new CancellationTokenSource();
         _pollTimer?.Dispose();
         ConnectionState = ConnectionState.CLOSED;
         CloseConnection();
@@ -327,21 +334,23 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     protected async Task DisconnectedEventAsync(DisconnectionInfo info) =>
         await Utilities.ConcurrentAccessAsync((c) =>
         {
-            if (ConnectionState == ConnectionState.CLOSED) return Task.CompletedTask;
-
-            Disconnected();
-            OnDisconnect?.Invoke(info);
+            DisconnectedEventLogic(info);
             return Task.CompletedTask;
         }, _semaphore);
 
     protected void DisconnectedEvent(DisconnectionInfo info) =>
         Utilities.ConcurrentAccess(() =>
         {
-            if (ConnectionState == ConnectionState.CLOSED) return;
-
-            Disconnected();
-            OnDisconnect?.Invoke(info);
+            DisconnectedEventLogic(info);
         }, _semaphore);
+
+    private void DisconnectedEventLogic(DisconnectionInfo info)
+    {
+        if (ConnectionState == ConnectionState.CLOSED) return;
+        if (info.Reason == DisconnectionReason.TimedOut)
+        Disconnected();
+        OnDisconnect?.Invoke(info);
+    }
 
     private void StartPoll()
     {
@@ -357,7 +366,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 {
                     DisconnectedEvent(new DisconnectionInfo
                     {
-                        Reason = "Connection timed out."
+                        Reason = DisconnectionReason.TimedOut
                     });
                     return;
                 }
