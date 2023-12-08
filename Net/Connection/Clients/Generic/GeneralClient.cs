@@ -228,7 +228,8 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                         break;
                 }
                 break;
-            case ConnectionPollMessage:
+            case ConnectionPollMessage m:
+                if (!m.IsResponse) await _SendMessageAsync(new ConnectionPollMessage(true));
                 break;
             default:
                 var asyncMsgHandler = _AsyncMessageHandlers.FirstOrDefault(kv => kv.Key.Name.Equals(message.MessageType)).Value;
@@ -363,7 +364,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
             if (ConnectionState == ConnectionState.CONNECTED)
             {
                 if (_timedOut)
-                {
+                { 
                     DisconnectedEvent(new DisconnectionInfo
                     {
                         Reason = DisconnectionReason.TimedOut
