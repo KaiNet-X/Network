@@ -78,6 +78,15 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
 
     private void _SendMessage(MessageBase message)
     {
+        if (ConnectionState == ConnectionState.CLOSED) return;
+        else if (!Connection.ConnectionInfo.Connected)
+        {
+            DisconnectedEvent(new DisconnectionInfo
+            {
+                Exception = Connection.ConnectionInfo.Exception
+            });
+        }
+
         try
         {
             var bytes = MessageParser.EncapsulateMessageAsSpan(message, new Dictionary<string, string>() { { "Encryption", GetEnc() } });
@@ -349,7 +358,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     {
         if (ConnectionState == ConnectionState.CLOSED) return;
         if (info.Reason == DisconnectionReason.TimedOut)
-        Disconnected();
+            Disconnected();
         OnDisconnect?.Invoke(info);
     }
 

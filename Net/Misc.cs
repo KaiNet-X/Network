@@ -1,5 +1,6 @@
 ﻿namespace Net;
 
+using Net.Connection.Channels;
 using Serialization;
 using System;
 using System.Collections;
@@ -16,6 +17,19 @@ public enum ConnectionState
     CONNECTED,
     CLOSED
 }
+
+public class ChannelConnectionInfo
+{
+    public bool Connected { get; }
+    public Exception Exception { get; }
+
+    public ChannelConnectionInfo(bool connected, Exception e)
+    {
+        Connected = connected;
+        Exception = e;
+    }
+}
+
 
 internal interface IInvokable
 { 
@@ -113,11 +127,11 @@ public enum DisconnectionReason
 /// <typeparam name="T">List type</typeparam>
 public class GuardedList<T> : IEnumerable<T>
 {
-    private readonly List<T> _list;
+    protected readonly List<T> _list;
 
-    public T this[int index] => _list[index];
+    public virtual T this[int index] => _list[index];
 
-    public int Count => _list.Count;
+    public virtual int Count => _list.Count;
 
     /// <summary>
     /// Creates a guarded list over a list
@@ -128,7 +142,7 @@ public class GuardedList<T> : IEnumerable<T>
         _list = list;
     }
 
-    public bool Contains(T item) => 
+    public virtual bool Contains(T item) => 
         _list.Contains(item);
 
     public IEnumerator<T> GetEnumerator() =>
@@ -138,4 +152,45 @@ public class GuardedList<T> : IEnumerable<T>
         ((IEnumerable)_list).GetEnumerator();
     
     public static implicit operator GuardedList<T>(List<T> obj) => new GuardedList<T>(obj);
+}
+
+public class GuardedChannelList : GuardedList<IChannel>
+{
+    public GuardedChannelList(List<IChannel> list) : base(list)
+    {
+
+    }
+
+    public override IChannel this[int index]
+    {
+        get
+        {
+            return GetIndex(index);
+        }
+    }
+
+    public override int Count
+    {
+        get
+        {
+            _list.RemoveAll(c => !c.ConnectionInfo.Connected);
+            return _list.Count;
+        }
+    }
+
+    public override bool Contains(IChannel item)
+    {
+        _ = Count;
+        return base.Contains(item);
+    }
+
+    private IChannel GetIndex(int index)
+    {
+        var c = _list[index];
+        if (!c.ConnectionInfo.Connected)
+            _list.RemoveAt(index);
+        return _list[index];
+    }
+
+    public static implicit operator GuardedChannelList(List<IChannel> obj) => new GuardedChannelList(obj);
 }

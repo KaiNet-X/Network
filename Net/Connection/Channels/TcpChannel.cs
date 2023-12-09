@@ -18,17 +18,19 @@ public class TcpChannel : IChannel, IDisposable
     /// <summary>
     /// Check if channel is connected
     /// </summary>
-    public bool Connected { get; private set; }
+    public ChannelConnectionInfo ConnectionInfo { get; private set; }
+
+    protected bool Connected => ConnectionInfo.Connected;
 
     /// <summary>
     /// Remote endpoint
     /// </summary>
-    public IPEndPoint Remote => Socket.RemoteEndPoint as IPEndPoint;
+    public IPEndPoint Remote { get; private set; }
 
     /// <summary>
     /// Local endpoint
     /// </summary>
-    public IPEndPoint Local => Socket.LocalEndPoint as IPEndPoint;
+    public IPEndPoint Local { get; private set; }
 
     /// <summary>
     /// Opens a tcp channel on an already connected socket
@@ -37,7 +39,9 @@ public class TcpChannel : IChannel, IDisposable
     public TcpChannel(Socket socket)
     {
         Socket = socket;
-        Connected = true;
+        Remote = Socket.RemoteEndPoint as IPEndPoint;
+        Local = Socket.LocalEndPoint as IPEndPoint;
+        ConnectionInfo = new(true, null);
     }
 
     /// <summary>
@@ -59,9 +63,9 @@ public class TcpChannel : IChannel, IDisposable
         {
             Socket.Send(data);
         }
-        catch (SocketException)
+        catch (SocketException e)
         {
-
+            ChannelError(e);
         }
     }
 
@@ -88,9 +92,9 @@ public class TcpChannel : IChannel, IDisposable
         {
             await Socket.SendAsync(data, SocketFlags.None, source.Token);
         }
-        catch (SocketException)
+        catch (SocketException e)
         {
-
+            ChannelError(e);
         }
     }
 
@@ -114,8 +118,9 @@ public class TcpChannel : IChannel, IDisposable
                 received = Socket.Receive(buffer, SocketFlags.None);
                 allBytes.AddRange(buffer[..received]);
             }
-            catch (SocketException)
+            catch (SocketException e)
             {
+                ChannelError(e);
                 return Array.Empty<byte>();
             }
         }
@@ -146,8 +151,9 @@ public class TcpChannel : IChannel, IDisposable
                 received = await Socket.ReceiveAsync(buffer, SocketFlags.None, source.Token);
                 allBytes.AddRange(buffer[..received]);
             }
-            catch (SocketException)
+            catch (SocketException e)
             {
+                ChannelError(e);
                 return Array.Empty<byte>();
             }
         }
@@ -176,8 +182,9 @@ public class TcpChannel : IChannel, IDisposable
         {
             return Socket.Receive(buffer, SocketFlags.None);
         }
-        catch (SocketException)
+        catch (SocketException e)
         {
+            ChannelError(e);
             return 0;
         }
     }
@@ -207,17 +214,26 @@ public class TcpChannel : IChannel, IDisposable
         {
             return await Socket.ReceiveAsync(buffer, token);
         }
-        catch (SocketException)
+        catch (SocketException e)
         {
+            ChannelError(e);
             return 0;
         }
     }
 
+    private void ChannelError(Exception e)
+    {
+        ConnectionInfo = new(false, e);
+        Close();
+    }
+
     internal void Close()
     {
-        Connected = false;
-        cancellationTokenSource.Cancel();
-        Socket.Close();
+        if (Connected)
+            ConnectionInfo = new(false, null);
+        cancellationTokenSource?.Cancel();
+        Socket?.Close();
+        Socket = null;
     }
 
     /// <summary>

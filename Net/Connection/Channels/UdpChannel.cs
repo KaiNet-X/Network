@@ -1,7 +1,6 @@
 ﻿namespace Net.Connection.Channels;
 
 using System;
-using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -19,7 +18,9 @@ public class UdpChannel : IChannel, IDisposable
     /// <summary>
     /// Check if channel is connected
     /// </summary>
-    public bool Connected { get; private set; }
+    protected bool Connected => ConnectionInfo.Connected;
+
+    public ChannelConnectionInfo ConnectionInfo { get; private set; }
 
     /// <summary>
     /// Remote endpoint
@@ -63,6 +64,10 @@ public class UdpChannel : IChannel, IDisposable
         {
             _udp.Send(data);
         }
+        catch (SocketException e) 
+        {
+            ChannelError(e);
+        }
         finally
         {
             _semaphore?.Release();
@@ -86,11 +91,18 @@ public class UdpChannel : IChannel, IDisposable
     /// <returns></returns>
     public async Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
     {
-        using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? [token, _cts.Token] : [token]);
-
         if (!Connected) return;
 
-        await Utilities.ConcurrentAccessAsync(async (ct) => await _udp.SendAsync(data, t.Token), _semaphore);
+        using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? [token, _cts.Token] : [token]);
+
+        try
+        {
+            await Utilities.ConcurrentAccessAsync(async (ct) => await _udp.SendAsync(data, t.Token), _semaphore);
+        }
+        catch (SocketException e)
+        {
+            ChannelError(e);
+        }
     }
 
     /// <summary>
@@ -107,8 +119,9 @@ public class UdpChannel : IChannel, IDisposable
         {
             return _udp.Receive(ref endpoint);
         }
-        catch (ObjectDisposedException)
+        catch (SocketException e)
         {
+            ChannelError(e);
             return Array.Empty<byte>();
         }
     }
@@ -128,8 +141,9 @@ public class UdpChannel : IChannel, IDisposable
             var result = await _udp.ReceiveAsync(t.Token);
             return result.Buffer;
         }
-        catch (ObjectDisposedException)
+        catch (SocketException e)
         {
+            ChannelError(e);
             return Array.Empty<byte>();
         }
     }
@@ -148,8 +162,9 @@ public class UdpChannel : IChannel, IDisposable
         {
             return _udp.Client.Receive(buffer, SocketFlags.None);
         }
-        catch (ObjectDisposedException)
+        catch (SocketException e)
         {
+            ChannelError(e);
             return 0;
         }
     }
@@ -167,8 +182,9 @@ public class UdpChannel : IChannel, IDisposable
         {
             return _udp.Client.Receive(buffer, SocketFlags.None);
         }
-        catch (ObjectDisposedException)
+        catch (SocketException e)
         {
+            ChannelError(e);
             return 0;
         }
     }
@@ -190,8 +206,9 @@ public class UdpChannel : IChannel, IDisposable
         {
             return await _udp.Client.ReceiveAsync(buffer, SocketFlags.None, t.Token);
         }
-        catch (ObjectDisposedException)
+        catch (SocketException e)
         {
+            ChannelError(e);
             return 0;
         }
     }
@@ -212,8 +229,9 @@ public class UdpChannel : IChannel, IDisposable
         {
             return await _udp.Client.ReceiveAsync(buffer, t.Token);
         }
-        catch (ObjectDisposedException)
+        catch (SocketException e)
         {
+            ChannelError(e);
             return 0;
         }
     }
@@ -225,7 +243,7 @@ public class UdpChannel : IChannel, IDisposable
     public void SetRemote(IPEndPoint endpoint)
     {
         _udp.Connect(Remote = endpoint);
-        Connected = true;
+        ConnectionInfo = new(true, null);
     }
 
     /// <summary>
@@ -233,11 +251,24 @@ public class UdpChannel : IChannel, IDisposable
     /// </summary>
     public void Dispose()
     {
-        Connected = false;
-        _cts.Cancel();
+        Close();
         _cts.Dispose();
         _cts = null;
+    }
+
+    private void Close()
+    {
+        if (Connected)
+            ConnectionInfo = new(false, null);
+        _cts.Cancel();
         _semaphore.Dispose();
+        _semaphore = null;
         _udp.Close();
+    }
+
+    private void ChannelError(Exception e)
+    {
+        ConnectionInfo = new(false, e);
+        Close();
     }
 }

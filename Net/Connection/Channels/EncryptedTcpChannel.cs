@@ -19,10 +19,9 @@ public class EncryptedTcpChannel : IChannel, IDisposable
 
     internal Socket Socket;
 
-    /// <summary>
-    /// Check if channel is connected
-    /// </summary>
-    public bool Connected { get; private set; }
+    public ChannelConnectionInfo ConnectionInfo { get; private set; }
+
+    protected bool Connected => ConnectionInfo.Connected;
 
     /// <summary>
     /// Remote endpoint
@@ -43,7 +42,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     {
         _crypto = crypto;
         Socket = socket;
-        Connected = true;
+        ConnectionInfo = new(true, null);
     }
 
     /// <summary>
@@ -228,12 +227,19 @@ public class EncryptedTcpChannel : IChannel, IDisposable
         throw new NotImplementedException();
     }
 
+    private void ChannelError(Exception e)
+    {
+        ConnectionInfo = new(false, e);
+        Close();
+    }
+
     /// <summary>
     /// Closes the channel. Handled by the client it is associated with
     /// </summary>
     public void Close()
     {
-        Connected = false;
+        if (Connected)
+            ConnectionInfo = new(false, null);
         Socket.Close();
         cancellationTokenSource.Cancel();
     }
@@ -252,9 +258,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// </summary>
     public void Dispose()
     {
-        Socket.Close();
-        Connected = false;
-        cancellationTokenSource.Cancel();
+        Close();
         cancellationTokenSource.Dispose();
         cancellationTokenSource = null;
     }

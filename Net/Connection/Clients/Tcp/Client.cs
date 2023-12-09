@@ -58,7 +58,10 @@ public class Client : ObjectClient
     {
         List<Exception> exceptions = null;
 
-        if (Connection == null) Initialize();
+        var soc = new Socket(_targetEndpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+
+        ConnectionState = ConnectionState.PENDING;
+        TokenSource ??= new CancellationTokenSource();
 
         for (ulong i = 0; i <= maxAttempts; i++)
         {
@@ -66,7 +69,8 @@ public class Client : ObjectClient
                 i--;
             try
             {
-                Connection.Socket.Connect(_targetEndpoint);
+                soc.Connect(_targetEndpoint);
+                Connection = new TcpChannel(soc);
                 StartLoop();
                 break;
             }
@@ -102,7 +106,10 @@ public class Client : ObjectClient
     {
         List<Exception> exceptions = null;
 
-        if (Connection == null) Initialize();
+        var soc = new Socket(_targetEndpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+
+        ConnectionState = ConnectionState.PENDING;
+        TokenSource ??= new CancellationTokenSource();
 
         for (ulong i = 0; i <= maxAttempts; i++)
         {
@@ -110,7 +117,8 @@ public class Client : ObjectClient
                 i--;
             try
             {
-                await Connection.Socket.ConnectAsync(_targetEndpoint);
+                await soc.ConnectAsync(_targetEndpoint);
+                Connection = new TcpChannel(soc);
                 StartLoop();
                 break;
             }

@@ -15,7 +15,7 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
 {
     private ConcurrentDictionary<Type, Action<object>> objectEvents = new();
     private ConcurrentDictionary<Type, Func<object, Task>> asyncObjectEvents = new();
-    private GuardedList<IChannel> _channelsBack;
+    private GuardedChannelList _channelsBack;
 
     protected ConcurrentDictionary<Type, Func<Task<IChannel>>> OpenChannelMethods = new();
     protected ConcurrentDictionary<Type, Func<ChannelManagementMessage, Task>> ChannelMessages = new();
@@ -44,7 +44,7 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     /// <summary>
     /// List of active channels associated with this object
     /// </summary>
-    public GuardedList<IChannel> Channels => _channelsBack ??= _channels;
+    public GuardedChannelList Channels => _channelsBack ??= _channels;
 
     /// <summary>
     /// Invoked when the client receives an object

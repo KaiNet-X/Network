@@ -10,9 +10,10 @@ using System.Threading.Tasks;
 public interface IChannel
 {
     /// <summary>
-    /// Check if channel is connected
+    /// Channel connection state
     /// </summary>
-    public bool Connected { get; }
+
+    public ChannelConnectionInfo ConnectionInfo { get; }
 
     /// <summary>
     /// Send bytes to remote host
