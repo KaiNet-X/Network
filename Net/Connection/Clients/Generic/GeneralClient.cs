@@ -313,14 +313,13 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
 
     protected void Disconnected()
     {
+        ConnectionState = ConnectionState.CLOSED;
+        encryptionStage = EncryptionStage.NONE;
         TokenSource.Cancel();
         TokenSource.Dispose();
         TokenSource = new CancellationTokenSource();
         _pollTimer?.Dispose();
-        ConnectionState = ConnectionState.CLOSED;
         CloseConnection();
-
-        encryptionStage = EncryptionStage.NONE;
     }
 
     public override void Close() =>

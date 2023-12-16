@@ -1,6 +1,7 @@
 ﻿namespace Net.Connection.Channels;
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
@@ -16,6 +17,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     private readonly CryptographyService _crypto;
     private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
     private List<byte> _received = new List<byte>();
+    private List<byte> _queued = new List<byte>();
 
     internal Socket Socket;
 
@@ -186,21 +188,37 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// </summary>
     /// <param name="buffer"></param>
     /// <returns></returns>
-    /// <exception cref="NotImplementedException"></exception>
-    public int ReceiveToBuffer(byte[] buffer)
-    {
-        throw new NotImplementedException();
-    }
+    public int ReceiveToBuffer(byte[] buffer) =>
+        ReceiveToBuffer(buffer.AsSpan());
 
     /// <summary>
     /// This method is not implemented
     /// </summary>
     /// <param name="buffer"></param>
     /// <returns></returns>
-    /// <exception cref="NotImplementedException"></exception>
     public int ReceiveToBuffer(Span<byte> buffer)
     {
-        throw new NotImplementedException();
+        if (buffer.Length == 0)
+            return 0;
+
+        ReadOnlySpan<byte> queueSpan = CollectionsMarshal.AsSpan(_queued);
+
+        var written1 = WriteToSpan(queueSpan, buffer);
+
+        _queued.RemoveRange(0, written1);
+        if (written1 == buffer.Length)
+            return written1;
+
+        var remaining = buffer.Slice(written1);
+
+        var v = ReceiveBytes();
+
+        var written2 = WriteToSpan(v, remaining);
+
+        if (written2 < v.Length)
+            _queued.AddRange(v.AsSpan(written2).ToArray());
+
+        return written1 + written2;
     }
 
     /// <summary>
@@ -209,11 +227,8 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// <param name="buffer"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    /// <exception cref="NotImplementedException"></exception>
-    public Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default)
-    {
-        throw new NotImplementedException();
-    }
+    public Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default) =>
+        ReceiveToBufferAsync(buffer.AsMemory(), token);
 
     /// <summary>
     /// This method is not implemented
@@ -221,10 +236,42 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// <param name="buffer"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    /// <exception cref="NotImplementedException"></exception>
-    public Task<int> ReceiveToBufferAsync(Memory<byte> buffer, CancellationToken token = default)
+    public async Task<int> ReceiveToBufferAsync(Memory<byte> buffer, CancellationToken token = default)
     {
-        throw new NotImplementedException();
+        if (buffer.Length == 0)
+            return 0;
+
+        var written1 = WriteToSpan(CollectionsMarshal.AsSpan(_queued), buffer.Span);
+
+        _queued.RemoveRange(0, written1);
+        if (written1 == buffer.Length)
+            return written1;
+
+        var remaining = buffer.Slice(written1);
+
+        var v = await ReceiveBytesAsync(token);
+
+        var written2 = WriteToSpan(v, remaining.Span);
+
+        if (written2 < v.Length)
+            _queued.AddRange(v.AsSpan(written2).ToArray());
+
+        return written1 + written2;
+    }
+
+    private int WriteToSpan(ReadOnlySpan<byte> source, Span<byte> dest)
+    {
+        if (dest.Length == 0) return 0;
+
+        if (source.Length <= dest.Length)
+        {
+            source.CopyTo(dest);
+            return source.Length;
+        }
+
+        source.Slice(0, dest.Length).CopyTo(dest);
+
+        return dest.Length;
     }
 
     private void ChannelError(Exception e)
