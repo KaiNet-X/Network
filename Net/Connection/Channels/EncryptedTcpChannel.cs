@@ -190,8 +190,6 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// <returns></returns>
     public int ReceiveToBuffer(byte[] buffer) =>
         ReceiveToBuffer(buffer.AsSpan());
-        throw new NotImplementedException();
-    }
 
     /// <summary>
     /// This method is not implemented
@@ -229,8 +227,6 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// <param name="buffer"></param>
     public Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default) =>
         ReceiveToBufferAsync(buffer.AsMemory(), token);
-        throw new NotImplementedException();
-    }
 
     /// <summary>
     /// This method is not implemented
@@ -278,8 +274,6 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     {
         ConnectionInfo = new(false, e);
         Close();
-    {
-        throw new NotImplementedException();
     }
 
     /// <summary>
