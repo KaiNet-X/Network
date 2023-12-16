@@ -52,6 +52,11 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     public event Action<object> OnReceiveObject;
 
     /// <summary>
+    /// Invoked when the client receives an object
+    /// </summary>
+    public event Func<object, Task> OnReceiveObjectAsync;
+
+    /// <summary>
     /// Invoked when a channel is opened
     /// </summary>
     public Action<IChannel> OnChannelOpened;
@@ -226,6 +231,9 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
 
         if (OnReceiveObject is not null && !oe && !oea)
             Task.Run(() => OnReceiveObject(obj));
+
+        if (OnReceiveObjectAsync is not null && !oe && !oea)
+            Task.Run(async () => await OnReceiveObjectAsync(obj));
     }
 
     private void HandleDisconnect(DisconnectMessage m)

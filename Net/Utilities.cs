@@ -219,10 +219,10 @@ internal static class Utilities
                 var remoteAddr = mainConnection.Value.Remote.Address;
                 var localAddr = mainConnection.Value.Local.Address;
 
-                Socket servSoc = new Socket(localAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                Socket servSoc = new Socket(SocketType.Stream, ProtocolType.Tcp);
                 servSoc.Bind(new IPEndPoint(localAddr, 0));
                 servSoc.Listen();
-
+                
                 var info = new Dictionary<string, string>
                 {
                     { "Port", (servSoc.LocalEndPoint as IPEndPoint).Port.ToString() },
