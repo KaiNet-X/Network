@@ -1,7 +1,6 @@
 ﻿namespace Net.Connection.Channels;
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
@@ -28,12 +27,12 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// <summary>
     /// Remote endpoint
     /// </summary>
-    public IPEndPoint Remote => Socket.RemoteEndPoint as IPEndPoint;
+    public IPEndPoint Remote { get; private set; }
 
     /// <summary>
     /// Local endpoint
     /// </summary>
-    public IPEndPoint Local => Socket.LocalEndPoint as IPEndPoint;
+    public IPEndPoint Local { get; private set; }
 
     /// <summary>
     /// Opens a tcp channel on an already connected socket
@@ -44,6 +43,8 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     {
         _crypto = crypto;
         Socket = socket;
+        Remote = socket.RemoteEndPoint as IPEndPoint;
+        Local = socket.LocalEndPoint as IPEndPoint;
         ConnectionInfo = new(true, null);
     }
 
@@ -173,8 +174,8 @@ public class EncryptedTcpChannel : IChannel, IDisposable
 
         do
         {
-            await Socket.ReceiveAsync(buffer, SocketFlags.None, source.Token);
-            _received.AddRange(buffer);
+            var receiveLength = await Socket.ReceiveAsync(buffer, SocketFlags.None, source.Token);
+            _received.AddRange(buffer[..receiveLength]);
             if (length == -1 && _received.Count >= 4)
                 length = BitConverter.ToInt32(_received.GetRange(0, 4).ToArray());
         }

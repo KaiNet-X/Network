@@ -219,7 +219,7 @@ internal static class Utilities
                 var remoteAddr = mainConnection.Value.Remote.Address;
                 var localAddr = mainConnection.Value.Local.Address;
 
-                Socket servSoc = new Socket(SocketType.Stream, ProtocolType.Tcp);
+                Socket servSoc = new Socket(localAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                 servSoc.Bind(new IPEndPoint(localAddr, 0));
                 servSoc.Listen();
                 
@@ -451,7 +451,7 @@ internal static class Utilities
             {
                 await client.SendMessageAsync(new ChannelManagementMessage
                 {
-                    Type = typeof(TcpChannel).Name,
+                    Type = typeof(EncryptedTcpChannel).Name,
                     Info = new Dictionary<string, string>
                     {
                         { "IdPort", c.Remote.Port.ToString() },

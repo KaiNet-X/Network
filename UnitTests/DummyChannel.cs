@@ -1,5 +1,6 @@
 ﻿namespace UnitTests;
 
+using Net;
 using Net.Connection.Channels;
 using System;
 using System.Threading;
@@ -8,6 +9,8 @@ using System.Threading.Tasks;
 internal class DummyChannel : IChannel
 {
     public bool Connected => true;
+
+    public ChannelConnectionInfo ConnectionInfo => throw new NotImplementedException();
 
     public void Close()
     {
