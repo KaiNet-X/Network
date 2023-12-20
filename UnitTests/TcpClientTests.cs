@@ -5,6 +5,7 @@ using Net.Connection.Channels;
 using Net.Connection.Clients.Tcp;
 using Net.Connection.Servers;
 using Net.Messages;
+using System.Diagnostics;
 using System.Net;
 using System.Text;
 
@@ -47,7 +48,7 @@ public class TcpClientTests
     {
         var server = NewServer(true);
 
-        Action<ServerClient, DisconnectionInfo> del = async (ServerClient client, DisconnectionInfo info) =>
+        Action<ServerClient, DisconnectionInfo> del = (ServerClient client, DisconnectionInfo info) =>
         {
             Assert.Equal(DisconnectionReason.Closed, info.Reason);
             Assert.Null(info.Exception);
@@ -67,23 +68,27 @@ public class TcpClientTests
     [InlineData(false)]
     public async Task SendPrimitive(bool encrypt)
     {
+        var tcs = new TaskCompletionSource();
+
         var server = NewServer(encrypt);
 
         var str = "hello world";
 
-        Action<object, ServerClient> rec = async (obj, client) =>
+        Action<object, ServerClient> rec = (obj, client) =>
         {
+            tcs.SetResult();
             Assert.Equal(str, obj as string);
         };
 
-        server.OnClientObjectReceived += rec;
+        server.OnReceive += rec;
 
         server.Start();
 
         var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         await c.ConnectAsync();
         await c.SendObjectAsync(str);
-        await Task.Delay(500);
+
+        await Task.WhenAny(Task.Delay(500), tcs.Task);
 
         server.ShutDown();
     }
@@ -93,22 +98,26 @@ public class TcpClientTests
     [InlineData(false)]
     public async Task SendComplex(bool encrypt)
     {
+        var tcs = new TaskCompletionSource();
+
         var server = NewServer(encrypt);
 
-        var settings = new ServerSettings() { ConnectionPollTimeout = int.MaxValue, UseEncryption = false };
+        var settings = new ServerSettings() { ConnectionPollTimeout = -1, UseEncryption = false };
 
-        Action<object, ServerClient> rec = async (obj, client) =>
+        Action<object, ServerClient> rec = (obj, client) =>
         {
+            tcs.SetResult();
             Assert.True(Helpers.AreEqual(settings, obj));
         };
-        server.OnClientObjectReceived += rec;
+        server.OnReceive += rec;
 
         server.Start();
 
         var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         await c.ConnectAsync();
         await c.SendObjectAsync(settings);
-        await Task.Delay(500);
+
+        await Task.WhenAny(Task.Delay(500), tcs.Task);
 
         server.ShutDown();
     }
@@ -118,6 +127,8 @@ public class TcpClientTests
     [InlineData(false)]
     public async Task SendMultiDimensional(bool encrypt)
     {
+        var tcs = new TaskCompletionSource();
+
         var server = NewServer(encrypt);
 
         var arr = new int[,]
@@ -127,20 +138,23 @@ public class TcpClientTests
             {3, 2, 1}
         };
 
-        Action<object, ServerClient> rec = async (obj, client) =>
+        Action<object, ServerClient> rec = (obj, client) =>
         {
             Assert.True(Helpers.AreEqual(arr, obj as int[,]));
+            tcs.SetResult();
         };
-        server.OnClientObjectReceived += rec;
+
+        server.OnReceive += rec;
 
         server.Start();
 
         var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         await c.ConnectAsync();
         await c.SendObjectAsync(arr);
-        await Task.Delay(500);
 
-        server.OnClientObjectReceived -= rec;
+        await Task.WhenAny(Task.Delay(500), tcs.Task);
+
+        server.OnReceive -= rec;
 
         server.ShutDown();
     }
@@ -150,27 +164,32 @@ public class TcpClientTests
     [InlineData(false)]
     public async Task SendJagged(bool encrypt)
     {
+        var tcs = new TaskCompletionSource();
+
         var server = NewServer(encrypt);
 
         var arr = new int[][]
         {
-            new int[] {9, 8, 7},
-            new int[] {6, 5, 4, 69, 6, 555},
-            new int[] {3, 2, 1}
+            [9, 8, 7],
+            [6, 5, 4, 69, 6, 555],
+            [3, 2, 1]
         };
 
-        Action<object, ServerClient> rec = async (obj, client) =>
+        Action<object, ServerClient> rec = (obj, client) =>
         {
-            Assert.True(Helpers.AreEqual(arr, obj as int[][]));
+            tcs.SetResult();
+            Assert.True(Helpers.AreEqual(arr, obj));
         };
-        server.OnClientObjectReceived += rec;
+
+        server.RegisterReceive<int[][]>(rec);
 
         server.Start();
 
         var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         await c.ConnectAsync();
         await c.SendObjectAsync(arr);
-        await Task.Delay(500);
+
+        await Task.WhenAny(Task.Delay(500), tcs.Task);
 
         server.ShutDown();
     }
@@ -180,25 +199,32 @@ public class TcpClientTests
     [InlineData(false)]
     public async Task ServerSendComplex(bool encrypt)
     {
+        var tcs = new TaskCompletionSource();
+
         var server = NewServer(encrypt);
-        var settings = new ServerSettings() { ConnectionPollTimeout = int.MaxValue, UseEncryption = false };
+
+        var settings = new ServerSettings() { ConnectionPollTimeout = -1, UseEncryption = false };
 
         Action<ServerClient> conn = async (sc) =>
         {
             await sc.SendObjectAsync(settings);
         };
+
         server.OnClientConnected += conn;
 
         server.Start();
 
         var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
-        c.OnReceiveObject += async (obj) =>
+
+        c.OnReceive += (obj) =>
         {
             Assert.True(Helpers.AreEqual(settings, obj));
+            tcs.SetResult();
         };
 
         await c.ConnectAsync();
-        await Task.Delay(500);
+
+        await Task.WhenAny(Task.Delay(500), tcs.Task);
 
         server.ShutDown();
     }
@@ -208,31 +234,37 @@ public class TcpClientTests
     [InlineData(false)]
     public async Task ServerSendJagged(bool encrypt)
     {
+        var tcs = new TaskCompletionSource();
+
         var server = NewServer(encrypt);
 
         var arr = new int[][]
         {
-            new int[] {9, 8, 7},
-            new int[] {6, 5, 4, 69, 6, 555},
-            new int[] {3, 2, 1}
+            [9, 8, 7],
+            [6, 5, 4, 69, 6, 555],
+            [3, 2, 1]
         };
 
-        Action<ServerClient> conn = async (sc) =>
+        Action<ServerClient> conn = (sc) =>
         {
-            await sc.SendObjectAsync(arr);
+            sc.SendObject(arr);
         };
+
         server.OnClientConnected += conn;
 
         server.Start();
 
         var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
-        await c.ConnectAsync();
-        c.OnReceiveObject += async (obj) =>
-        {
-            Assert.True(Helpers.AreEqual(arr, obj));
-        };
 
-        await Task.Delay(500);
+        c.RegisterReceive<int[][]>((obj) =>
+        {
+            tcs.SetResult();
+            Assert.True(Helpers.AreEqual(arr, obj));
+        });
+
+        await c.ConnectAsync();
+
+        await Task.WhenAny(Task.Delay(500), tcs.Task);
 
         server.ShutDown();
     }
@@ -243,33 +275,37 @@ public class TcpClientTests
     [InlineData(typeof(TcpChannel))]
     public async Task ClientOpenChannelAsync(Type channelType)
     {
+        var tcs = new TaskCompletionSource();
+
         var server = NewServer(true);
 
         bool s = false;
 
-        Action<IChannel, ServerClient> opened = (ch, sc) =>
+        Action<BaseChannel, ServerClient> opened = (ch, sc) =>
         {
             s = true;
+            tcs.SetResult();
             ch.SendBytes(Encoding.UTF8.GetBytes("Hello World"));
         };
-        server.OnClientChannelOpened += opened;
+
+        server.OnChannelOpened += opened;
         server.Start();
 
         var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
         await c.ConnectAsync();
 
-        IChannel ch = null;
-        if (channelType == typeof(UdpChannel))
-            ch = await c.OpenChannelAsync<UdpChannel>();
-        else if (channelType == typeof(TcpChannel))
-            ch = await c.OpenChannelAsync<TcpChannel>();
-        else if (channelType == typeof(EncryptedTcpChannel))
-            ch = await c.OpenChannelAsync<EncryptedTcpChannel>();
-
-        await Task.Delay(500);
+        BaseChannel ch = channelType switch
+        {
+            _ when channelType == typeof(UdpChannel) => await c.OpenChannelAsync<UdpChannel>(),
+            _ when channelType == typeof(TcpChannel) => await c.OpenChannelAsync<TcpChannel>(),
+            _ when channelType == typeof(EncryptedTcpChannel) => await c.OpenChannelAsync<EncryptedTcpChannel>(),
+        };
 
         var text = Encoding.UTF8.GetString(await ch.ReceiveBytesAsync());
+        
+        await Task.WhenAny(Task.Delay(500), tcs.Task);
+
         Assert.True(s);
         Assert.NotNull(ch);
         Assert.Single(c.Channels);
@@ -282,33 +318,35 @@ public class TcpClientTests
     [Theory]
     [InlineData(typeof(UdpChannel))]
     [InlineData(typeof(TcpChannel))]
+    [InlineData(typeof(EncryptedTcpChannel))]
     public async Task ClientCloseChannelAsync(Type channelType)
     {
         var server = NewServer(true);
 
         bool s = false;
 
-        Action<IChannel, ServerClient> opened = (ch, sc) =>
+        Action<BaseChannel, ServerClient> opened = (ch, sc) =>
         {
             s = true;
         };
 
-        server.OnClientChannelOpened += opened;
+        server.OnChannelOpened += opened;
         server.Start();
 
         var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
         await c.ConnectAsync();
 
-        IChannel ch = null;
-        if (channelType == typeof(UdpChannel))
-            ch = await c.OpenChannelAsync<UdpChannel>();
-        else if (channelType == typeof(TcpChannel))
-            ch = await c.OpenChannelAsync<TcpChannel>();
+        BaseChannel ch = channelType switch
+        {
+            _ when channelType == typeof(UdpChannel) => await c.OpenChannelAsync<UdpChannel>(),
+            _ when channelType == typeof(TcpChannel) => await c.OpenChannelAsync<TcpChannel>(),
+            _ when channelType == typeof(EncryptedTcpChannel) => await c.OpenChannelAsync<EncryptedTcpChannel>(),
+        };
 
         c.CloseChannel(ch);
 
-        await Task.Delay(10);
+        await Task.Delay(25);
         Assert.True(c.Channels.Count == 0 && server.Clients[0].Channels.Count == 0);
 
         server.ShutDown();
@@ -318,35 +356,34 @@ public class TcpClientTests
     [InlineData(typeof(UdpChannel))]
     [InlineData(typeof(TcpChannel))]
     [InlineData(typeof(EncryptedTcpChannel))]
-    public async Task ChannelSendsData(Type cType)
+    public async Task ChannelSendsData(Type channelType)
     {
+        var tcs = new TaskCompletionSource();
+
         var server = NewServer(true);
 
-        bool s = false;
-
-        TaskCompletionSource tcs = new TaskCompletionSource();
-
-        Action<IChannel, ServerClient> opened = async (ch, sc) =>
+        Action<BaseChannel, ServerClient> opened = async (ch, sc) =>
         {
             if (Encoding.UTF8.GetString(await ch.ReceiveBytesAsync()) == "Hello World")
-                s = true;
+                tcs.SetResult();
         };
-        server.OnClientChannelOpened += opened;
+        server.OnChannelOpened += opened;
         server.Start();
 
         var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
         await c.ConnectAsync();
-        IChannel ch = cType switch
+        BaseChannel ch = channelType switch
         {
-            _ when cType == typeof(UdpChannel) => await c.OpenChannelAsync<UdpChannel>(),
-            _ when cType == typeof(TcpChannel) =>
-                await c.OpenChannelAsync<TcpChannel>(),
-            _ when cType == typeof(EncryptedTcpChannel) => await c.OpenChannelAsync<EncryptedTcpChannel>(),
+            _ when channelType == typeof(UdpChannel) => await c.OpenChannelAsync<UdpChannel>(),
+            _ when channelType == typeof(TcpChannel) => await c.OpenChannelAsync<TcpChannel>(),
+            _ when channelType == typeof(EncryptedTcpChannel) => await c.OpenChannelAsync<EncryptedTcpChannel>(),
         };
+
         await ch.SendBytesAsync(Encoding.UTF8.GetBytes("Hello World"));
-        await Task.Delay(500);
-        Assert.True(s && ch is not null);
+        await Task.WhenAny(tcs.Task, Task.Delay(500));
+
+        Assert.True(tcs.Task.IsCompletedSuccessfully && ch is not null);
 
         server.ShutDown();
     }
@@ -356,6 +393,8 @@ public class TcpClientTests
     [InlineData(false)]
     public async Task ClientSendsCustomMessage(bool encrypt)
     {
+        var tcs = new TaskCompletionSource();
+
         var server = NewServer(encrypt);
         var msg = new TestMessage
         {
@@ -363,9 +402,10 @@ public class TcpClientTests
             Name = "name"
         };
 
-        Action<MessageBase, ServerClient> msgB = async (m, sc) =>
+        Action<MessageBase, ServerClient> msgB = (m, sc) =>
         {
             Assert.True(Helpers.AreEqual(msg, m));
+            tcs.SetResult();
         };
         server.OnUnregisteredMessage += msgB;
 
@@ -375,7 +415,7 @@ public class TcpClientTests
 
         await c.ConnectAsync();
         c.SendMessage(msg);
-        await Task.Delay(500);
+        await Task.WhenAny(Task.Delay(500), tcs.Task);
 
         server.ShutDown();
     }
@@ -385,6 +425,8 @@ public class TcpClientTests
     [InlineData(false)]
     public async Task ServerSendsCustomMessage(bool encrypt)
     {
+        var tcs = new TaskCompletionSource();
+
         var server = NewServer(encrypt);
         var msg = new TestMessage
         {
@@ -396,14 +438,15 @@ public class TcpClientTests
 
         var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
-        c.OnUnregisteredMessage += async (m) =>
+        c.OnUnregisteredMessage += (m) =>
         {
             Assert.True(Helpers.AreEqual(msg, m));
+            tcs.SetResult();
         };
 
         await c.ConnectAsync();
         server.SendMessageToAll(msg);
-        await Task.Delay(500);
+        await Task.WhenAny(Task.Delay(500), tcs.Task);
 
         server.ShutDown();
     }
@@ -413,6 +456,10 @@ public class TcpClientTests
     [InlineData(false)]
     public async Task ClientOpensCustomChannel(bool encrypt)
     {
+        var createChannels = new TaskCompletionSource();
+        var manageChannels = new TaskCompletionSource();
+        var closeChannels = new TaskCompletionSource();
+
         var opened = 0;
         var managed = 0;
         var closed = 0;
@@ -422,17 +469,23 @@ public class TcpClientTests
         Func<Task<DummyChannel>> open = () =>
         {
             opened++;
+            if (opened == 2)
+                createChannels.SetResult();
             cl.SendMessage(new ChannelManagementMessage() { Type = typeof(DummyChannel).Name });
             return Task.FromResult(new DummyChannel());
         };
         Func<ChannelManagementMessage, Task> management = (cm) =>
         {
             managed++;
+            if (managed == 2)
+                manageChannels.SetResult();
             return Task.CompletedTask;
         };
         Func<DummyChannel, Task> close = (dc) =>
         {
             closed++;
+            if (closed == 2)
+                closeChannels.SetResult();
             return Task.CompletedTask;
         };
 
@@ -440,9 +493,10 @@ public class TcpClientTests
 
         Action<ServerClient> con = (c) =>
         {
-            c.RegisterChannelType<DummyChannel>(open, management, close);
             sc = c;
+            c.RegisterChannelType<DummyChannel>(open, management, close);
         };
+
         server.OnClientConnected += con;
         server.Start();
 
@@ -452,16 +506,13 @@ public class TcpClientTests
         cl = c;
         await c.ConnectAsync();
 
-        await Task.Delay(150);
-
         var d = await cl.OpenChannelAsync<DummyChannel>();
         cl.CloseChannel(d);
-        cl = sc;
-        d = await cl.OpenChannelAsync<DummyChannel>();
-        cl.CloseChannel(d);
-        await Task.Delay(750);
+        d = await sc.OpenChannelAsync<DummyChannel>();
+        sc.CloseChannel(d);
 
-        Assert.True(opened == 2 && closed == 2 && managed == 2);
+        await Task.WhenAny(Task.WhenAll(createChannels.Task, manageChannels.Task, closeChannels.Task), Task.Delay(750));
+
         Assert.Equal(2, opened);
         Assert.Equal(2, managed);
         Assert.Equal(2, closed);
@@ -472,9 +523,11 @@ public class TcpClientTests
     [Fact]
     async Task GenericObjectEventTriggered()
     {
+        var tcs = new TaskCompletionSource();
+
         var server = NewServer(true);
 
-        var settings = new ServerSettings() { ConnectionPollTimeout = int.MaxValue, UseEncryption = false };
+        var settings = new ServerSettings() { ConnectionPollTimeout = -1, UseEncryption = false };
 
         Action<ServerClient> conn = async (sc) =>
         {
@@ -488,10 +541,11 @@ public class TcpClientTests
         c.RegisterReceive<ServerSettings>(obj =>
         {
             Assert.True(Helpers.AreEqual(settings, obj));
+            tcs.SetResult();
         });
 
         await c.ConnectAsync();
-        await Task.Delay(500);
+        await Task.WhenAny(Task.Delay(500), tcs.Task);
 
         server.ShutDown();
     }
@@ -499,9 +553,11 @@ public class TcpClientTests
     [Fact]
     async Task GenericObjectEventTriggeredAsync()
     {
+        var tcs = new TaskCompletionSource();
+
         var server = NewServer(true);
 
-        var settings = new ServerSettings() { ConnectionPollTimeout = int.MaxValue, UseEncryption = false };
+        var settings = new ServerSettings() { ConnectionPollTimeout = -1, UseEncryption = false };
 
         Action<ServerClient> conn = async (sc) =>
         {
@@ -514,12 +570,12 @@ public class TcpClientTests
         var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         c.RegisterReceiveAsync<ServerSettings>(obj =>
         {
+            tcs.SetResult();
             Assert.True(Helpers.AreEqual(settings, obj));
             return Task.CompletedTask;
         });
 
-        await c.ConnectAsync();
-        await Task.Delay(500);
+        await Task.WhenAll(Task.WhenAny(Task.Delay(500), tcs.Task, c.ConnectAsync()));
 
         server.ShutDown();
     }

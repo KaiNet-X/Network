@@ -18,12 +18,15 @@ public enum ConnectionState
     CLOSED
 }
 
+/// <summary>
+/// 
+/// </summary>
 public class ChannelConnectionInfo
 {
     public bool Connected { get; }
     public Exception Exception { get; }
 
-    public ChannelConnectionInfo(bool connected, Exception e)
+    public ChannelConnectionInfo(bool connected, Exception e = null)
     {
         Connected = connected;
         Exception = e;
@@ -154,14 +157,14 @@ public class GuardedList<T> : IEnumerable<T>
     public static implicit operator GuardedList<T>(List<T> obj) => new GuardedList<T>(obj);
 }
 
-public class GuardedChannelList : GuardedList<IChannel>
+public class GuardedChannelList : GuardedList<BaseChannel>
 {
-    public GuardedChannelList(List<IChannel> list) : base(list)
+    public GuardedChannelList(List<BaseChannel> list) : base(list)
     {
 
     }
 
-    public override IChannel this[int index]
+    public override BaseChannel this[int index]
     {
         get
         {
@@ -173,24 +176,24 @@ public class GuardedChannelList : GuardedList<IChannel>
     {
         get
         {
-            _list.RemoveAll(c => !c.ConnectionInfo.Connected);
+            _list.RemoveAll(c => !c.Connected);
             return _list.Count;
         }
     }
 
-    public override bool Contains(IChannel item)
+    public override bool Contains(BaseChannel item)
     {
         _ = Count;
         return base.Contains(item);
     }
 
-    private IChannel GetIndex(int index)
+    private BaseChannel GetIndex(int index)
     {
         var c = _list[index];
-        if (!c.ConnectionInfo.Connected)
+        if (!c.Connected)
             _list.RemoveAt(index);
         return _list[index];
     }
 
-    public static implicit operator GuardedChannelList(List<IChannel> obj) => new GuardedChannelList(obj);
+    public static implicit operator GuardedChannelList(List<BaseChannel> obj) => new GuardedChannelList(obj);
 }

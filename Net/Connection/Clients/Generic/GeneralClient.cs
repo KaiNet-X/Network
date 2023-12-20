@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 /// This is the base client that provides connection management capabilities.
 /// </summary>
 /// <typeparam name="MainChannel">The main channel implementing the connection protocol. It should be a reliable type, however that is not enforced.</typeparam>
-public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel : class, IChannel
+public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel : BaseChannel
 {
     private CryptographyService _crypto = new();
     private bool _timedOut = false;
@@ -79,11 +79,11 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     private void _SendMessage(MessageBase message)
     {
         if (ConnectionState == ConnectionState.CLOSED) return;
-        else if (!Connection.ConnectionInfo.Connected)
+        else if (!Connection.Connected)
         {
             DisconnectedEvent(new DisconnectionInfo
             {
-                Exception = Connection.ConnectionInfo.Exception
+                Exception = Connection.ConnectionException
             });
         }
 
@@ -390,7 +390,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
 /// <summary>
 /// This represents an abstract client where you can set the main connection to any channel type.
 /// </summary>
-public abstract class GeneralClient : GeneralClient<IChannel>
+public abstract class GeneralClient : GeneralClient<BaseChannel>
 {
 
 }

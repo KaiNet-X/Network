@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 /// <summary>
 /// The out-of-the-box ServerClient is similar to the Client class, but it is designed to work on the server-side.
 /// </summary>
-public abstract class ServerClient<MainConnection> : ObjectClient<MainConnection>, IServerClient where MainConnection : class, IChannel
+public abstract class ServerClient<MainConnection> : ObjectClient<MainConnection>, IServerClient where MainConnection : BaseChannel
 {
     Task IServerClient.connectedTask => Connected.Task;
 

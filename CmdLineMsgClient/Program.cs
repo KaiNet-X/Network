@@ -34,7 +34,7 @@ while ((l = Console.ReadLine()) != "EXIT")
 
 await client.CloseAsync();
 
-async void C1_OnChannelOpened(IChannel ch)
+void C1_OnChannelOpened(BaseChannel ch)
 {
     var c = ch as UdpChannel;
     byte[] bytes = null;
@@ -61,7 +61,7 @@ void InitializeClient()
 {
     //Target the client to the chosen address and port 5555
     client = new Client(Addr, 5555);
-    client.OnReceiveObject += rec;
+    client.OnReceive += rec;
     client.OnDisconnect += C1_OnDisconnect;
     client.OnChannelOpened += C1_OnChannelOpened;
 }

@@ -19,7 +19,7 @@ TcpServer s = new TcpServer(endpoints, new ServerSettings { UseEncryption = true
 
 s.OnClientConnected += Connected;
 s.OnClientDisconnected += Disconnected;
-s.OnClientObjectReceived += Recieved;
+s.OnReceive += Recieved;
 
 // Starts listening for incomming connections
 s.Start();

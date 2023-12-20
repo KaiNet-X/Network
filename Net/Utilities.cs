@@ -17,7 +17,7 @@ internal static class Utilities
 {
     private static Type[] allTypes = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes()).ToArray();
 
-    private static List<(IChannel channel, TaskCompletionSource tcs)> _wait = new();
+    private static List<(BaseChannel channel, TaskCompletionSource tcs)> _wait = new();
 
     public static Dictionary<string, Type> NameTypeAssociations = new Dictionary<string, Type>();
 
@@ -148,12 +148,14 @@ internal static class Utilities
         }
     }
 
-    public static async Task ConcurrentAccessAsync(Func<CancellationToken, Task> a, SemaphoreSlim s, int? timeout = 2500)
+    public static void Lock(this SemaphoreSlim s, Action a) =>
+        ConcurrentAccess(a, s);
+
+    public static async Task ConcurrentAccessAsync(Func<CancellationToken, Task> a, SemaphoreSlim s, int timeout = 2500)
     {
         using CancellationTokenSource cts = new CancellationTokenSource();
 
-        if (timeout.HasValue)
-            cts.CancelAfter(timeout.Value);
+        cts.CancelAfter(timeout);
 
         await s.WaitAsync();
 
@@ -180,6 +182,9 @@ internal static class Utilities
             s?.Release();
         }
     }
+
+    public static Task LockAsync(this SemaphoreSlim s, Func<Task> a) =>
+        ConcurrentAccessAsync(a, s);
 
     public static bool MatchAny<T>(T original, params T[] matches) => MatchAny<T>(original, matches as IEnumerable<T>);
 
@@ -211,7 +216,7 @@ internal static class Utilities
             queue.Enqueue(r);
     }
 
-    internal static void RegisterTcpChannel<T>(ObjectClient<T> client, Lazy<TcpChannel> mainConnection) where T : class, IChannel
+    internal static void RegisterTcpChannel<T>(ObjectClient<T> client, Lazy<TcpChannel> mainConnection) where T : BaseChannel
     {
         client.RegisterChannelType<TcpChannel>(
             async () =>
@@ -269,7 +274,7 @@ internal static class Utilities
                 else if (m.Info["Mode"] == "Close")
                 {
                     var c = client._channels.First(ch => ch is TcpChannel c && c.Local.Port.ToString() == m.Info["IdPort"]) as TcpChannel;
-                    c.Dispose();
+                    c.Close();
                     client._channels.Remove(c);
                 }
             },
@@ -284,12 +289,12 @@ internal static class Utilities
                         { "Mode", "Close" }
                     }
                 });
-                c.Dispose();
+                c.Close();
                 client._channels.Remove(c);
             });
     }
 
-    internal static void RegisterUdpChannel<T>(ObjectClient<T> client, Lazy<TcpChannel> mainConnection) where T : class, IChannel
+    internal static void RegisterUdpChannel<T>(ObjectClient<T> client, Lazy<TcpChannel> mainConnection) where T : BaseChannel
     {
         client.RegisterChannelType<UdpChannel>(
             async () =>
@@ -358,7 +363,7 @@ internal static class Utilities
                 else if (m.Info["Mode"] == "Close")
                 {
                     var c = client._channels.First(ch => ch is UdpChannel c && c.Local.Port.ToString() == m.Info["IdPort"]) as UdpChannel;
-                    c.Dispose();
+                    c.Close();
                     client._channels.Remove(c);
                 }
             },
@@ -373,12 +378,12 @@ internal static class Utilities
                         { "Mode", "Close" }
                     }
                 });
-                c.Dispose();
+                c.Close();
                 client._channels.Remove(c);
             });
     }
 
-    internal static void RegisterEncryptedTcpChannel<T>(ObjectClient<T> client, Lazy<TcpChannel> mainConnection) where T : class, IChannel
+    internal static void RegisterEncryptedTcpChannel<T>(ObjectClient<T> client, Lazy<TcpChannel> mainConnection) where T : BaseChannel
     {
         client.RegisterChannelType<EncryptedTcpChannel>(
             async () =>
@@ -443,7 +448,7 @@ internal static class Utilities
                 else if (m.Info["Mode"] == "Close")
                 {
                     var c = client._channels.First(ch => ch is EncryptedTcpChannel c && c.Local.Port.ToString() == m.Info["IdPort"]) as EncryptedTcpChannel;
-                    c.Dispose();
+                    c.Close();
                     client._channels.Remove(c);
                 }
             },
@@ -458,7 +463,7 @@ internal static class Utilities
                         { "Mode", "Close" }
                     }
                 });
-                c.Dispose();
+                c.Close();
                 client._channels.Remove(c);
             });
     }

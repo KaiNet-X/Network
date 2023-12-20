@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 /// <summary>
 /// The out-of-the-box Client implementation allows sending objects to the server, managing UDP channels, and follows an event based approach to receiving data.
 /// </summary>
-public abstract class Client<MainConnection> : ObjectClient<MainConnection> where MainConnection : class, IChannel
+public abstract class Client<MainConnection> : ObjectClient<MainConnection> where MainConnection : BaseChannel
 {
     /// <summary>
     /// Delay between client updates; highly reduces CPU usage
@@ -43,14 +43,14 @@ public abstract class Client<MainConnection> : ObjectClient<MainConnection> wher
     }
 }
 
-public class Client : Client<IChannel>
+public class Client : Client<BaseChannel>
 {
     public Func<bool> ConnectMethod;
     public Func<Task<bool>> ConnectMethodAsync;
     public Action CloseMethod;
     public Func<Task> CloseMethodAsync;
 
-    new public IChannel Connection 
+    new public BaseChannel Connection 
     {
         get => base.Connection; 
         protected set

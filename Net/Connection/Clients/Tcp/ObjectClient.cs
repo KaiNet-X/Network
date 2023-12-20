@@ -22,7 +22,7 @@ public class ObjectClient : ObjectClient<TcpChannel>
     /// </summary>
     public IPEndPoint RemoteEndpoint { get; protected set; }
 
-    protected internal volatile List<(IChannel channel, TaskCompletionSource tcs)> _wait = new();
+    protected internal volatile List<(BaseChannel channel, TaskCompletionSource tcs)> _wait = new();
 
     protected ObjectClient() : base()
     {
@@ -34,7 +34,7 @@ public class ObjectClient : ObjectClient<TcpChannel>
     private protected override void CloseConnection()
     {
         base.CloseConnection();
-        Connection.Dispose();
-        Connection = null;
+        if (Connection.Connected)
+            Connection.Close();
     }
 }

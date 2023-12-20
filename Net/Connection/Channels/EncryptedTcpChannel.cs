@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 /// <summary>
 /// This channel sends encrypted data over TCP
 /// </summary>
-public class EncryptedTcpChannel : IChannel, IDisposable
+public class EncryptedTcpChannel : BaseChannel
 {
     private readonly CryptographyService _crypto;
     private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
@@ -19,10 +19,6 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     private List<byte> _queued = new List<byte>();
 
     internal Socket Socket;
-
-    public ChannelConnectionInfo ConnectionInfo { get; private set; }
-
-    protected bool Connected => ConnectionInfo.Connected;
 
     /// <summary>
     /// Remote endpoint
@@ -45,21 +41,21 @@ public class EncryptedTcpChannel : IChannel, IDisposable
         Socket = socket;
         Remote = socket.RemoteEndPoint as IPEndPoint;
         Local = socket.LocalEndPoint as IPEndPoint;
-        ConnectionInfo = new(true, null);
+        Connected = true;
     }
 
     /// <summary>
     /// Send bytes to remote host
     /// </summary>
     /// <param name="data"></param>
-    public void SendBytes(byte[] data) =>
+    public override void SendBytes(byte[] data) =>
         SendBytes(data.AsSpan());
 
     /// <summary>
     /// Send bytes to remote host
     /// </summary>
     /// <param name="data"></param>
-    public void SendBytes(ReadOnlySpan<byte> data)
+    public override void SendBytes(ReadOnlySpan<byte> data)
     {
         if (!Connected) return;
 
@@ -78,7 +74,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// </summary>
     /// <param name="data"></param>
     /// <param name="token"></param>
-    public Task SendBytesAsync(byte[] data, CancellationToken token = default) =>
+    public override Task SendBytesAsync(byte[] data, CancellationToken token = default) =>
         SendBytesAsync(data.AsMemory(), token);
 
     /// <summary>
@@ -86,7 +82,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// </summary>
     /// <param name="data"></param>
     /// <param name="token"></param>
-    public async Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
+    public override async Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
     {
         if (!Connected) return;
 
@@ -106,7 +102,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// Receive bytes on from remote host
     /// </summary>
     /// <returns>bytes</returns>
-    public byte[] ReceiveBytes()
+    public override byte[] ReceiveBytes()
     {
         ReadOnlySpan<byte> Process(int length)
         {
@@ -117,7 +113,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
         }
 
         if (!Connected) return Array.Empty<byte>();
-
+        
         byte[] buffer = new byte[1024];
 
         int length = -1;
@@ -146,7 +142,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// Receive bytes on from remote host
     /// </summary>
     /// <returns>bytes</returns>
-    public async Task<byte[]> ReceiveBytesAsync(CancellationToken token = default)
+    public override async Task<byte[]> ReceiveBytesAsync(CancellationToken token = default)
     {
         byte[] Process(int length)
         {
@@ -157,7 +153,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
         }
 
         if (!Connected) return Array.Empty<byte>();
-
+        
         using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? [token, cancellationTokenSource.Token] : [token]);
 
         byte[] buffer = new byte[1024];
@@ -169,7 +165,9 @@ public class EncryptedTcpChannel : IChannel, IDisposable
             if (length == -1 && _received.Count >= 4)
                 length = BitConverter.ToInt32(_received.GetRange(0, 4).ToArray());
             if (_received.Count >= length + 4)
+            {
                 return Process(length);
+            }
         }
 
         do
@@ -189,7 +187,7 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// </summary>
     /// <param name="buffer"></param>
     /// <returns></returns>
-    public int ReceiveToBuffer(byte[] buffer) =>
+    public override int ReceiveToBuffer(byte[] buffer) =>
         ReceiveToBuffer(buffer.AsSpan());
 
     /// <summary>
@@ -197,10 +195,9 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// </summary>
     /// <param name="buffer"></param>
     /// <returns></returns>
-    public int ReceiveToBuffer(Span<byte> buffer)
+    public override int ReceiveToBuffer(Span<byte> buffer)
     {
-        if (buffer.Length == 0)
-            return 0;
+        if (buffer.Length == 0 || !Connected) return 0;
 
         ReadOnlySpan<byte> queueSpan = CollectionsMarshal.AsSpan(_queued);
 
@@ -226,17 +223,18 @@ public class EncryptedTcpChannel : IChannel, IDisposable
     /// This method is not implemented
     /// </summary>
     /// <param name="buffer"></param>
-    public Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default) =>
+    /// <param name="token"></param>
+    public override Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default) =>
         ReceiveToBufferAsync(buffer.AsMemory(), token);
 
     /// <summary>
     /// This method is not implemented
     /// </summary>
     /// <param name="buffer"></param>
-    public async Task<int> ReceiveToBufferAsync(Memory<byte> buffer, CancellationToken token = default)
+    /// <param name="token"></param>
+    public override async Task<int> ReceiveToBufferAsync(Memory<byte> buffer, CancellationToken token = default)
     {
-        if (buffer.Length == 0)
-            return 0;
+        if (buffer.Length == 0 || !Connected) return 0;
 
         var written1 = WriteToSpan(CollectionsMarshal.AsSpan(_queued), buffer.Span);
 
@@ -273,37 +271,18 @@ public class EncryptedTcpChannel : IChannel, IDisposable
 
     private void ChannelError(Exception e)
     {
-        ConnectionInfo = new(false, e);
+        ConnectionException = e;
         Close();
     }
 
     /// <summary>
     /// Closes the channel. Handled by the client it is associated with
     /// </summary>
-    public void Close()
+    protected internal void Close()
     {
-        if (Connected)
-            ConnectionInfo = new(false, null);
-        Socket.Close();
         cancellationTokenSource.Cancel();
-    }
-
-    /// <summary>
-    /// Closes the channel. Handled by the client it is associated with
-    /// </summary>
-    public Task CloseAsync()
-    {
-        Close();
-        return Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// Disposes the channel. Typically only called internally
-    /// </summary>
-    public void Dispose()
-    {
-        Close();
+        Socket.Close();
+        Connected = false;
         cancellationTokenSource.Dispose();
-        cancellationTokenSource = null;
     }
 }

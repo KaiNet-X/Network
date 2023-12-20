@@ -18,7 +18,7 @@ public class ServerSettings
     /// <summary>
     /// Timeout for connection checks
     /// </summary>
-    public int ConnectionPollTimeout { get; init; } = 8000;
+    public int ConnectionPollTimeout { get; init; } = 1000;
 
     /// <summary>
     /// Remove clients from the list after disconnection is invoked

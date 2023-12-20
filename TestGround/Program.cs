@@ -21,10 +21,10 @@ DateTime last = DateTime.Now;
 //MessageParser.Serializer = new JSerializer();
 TcpServer server = new TcpServer(endpoint, new ServerSettings { UseEncryption = true, ConnectionPollTimeout = 10000000, MaxClientConnections = 5 });
 server.OnClientConnected += ClientConnected;
-server.OnClientObjectReceived += Server_OnClientObjectReceived;
-server.OnClientChannelOpened += Server_OnClientChannelOpened;
+server.OnReceive += Server_OnClientObjectReceived;
+server.OnChannelOpened += Server_OnClientChannelOpened;
 
-void Server_OnClientChannelOpened(IChannel arg1, ServerClient arg2)
+void Server_OnClientChannelOpened(BaseChannel arg1, ServerClient arg2)
 {
     Task.Run(() =>
     {

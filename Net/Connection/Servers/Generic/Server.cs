@@ -2,7 +2,6 @@
 
 using Channels;
 using Clients.Generic;
-using Clients.LegacyTcp;
 using Messages;
 using System;
 using System.Collections.Concurrent;
@@ -13,7 +12,7 @@ using System.Threading.Tasks;
 /// <summary>
 /// Default server implementation
 /// </summary>
-public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType> where ConnectionType : class, IChannel where ClientType : ObjectClient<ConnectionType>, IServerClient
+public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType> where ConnectionType : BaseChannel where ClientType : ObjectClient<ConnectionType>, IServerClient
 {
     protected volatile SemaphoreSlim _semaphore = new(1);
     private ConcurrentDictionary<Type, Func<object, ClientType, Task>> asyncObjectEvents = new();
@@ -37,22 +36,32 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
     /// <summary>
     /// Handlers for custom message types
     /// </summary>
-    protected Dictionary<Type, Action<MessageBase, ClientType>> _CustomMessageHandlers = new();
+    protected Dictionary<Type, Action<MessageBase, ClientType>> CustomMessageHandlers = new();
 
     /// <summary>
     /// Asynchronous handlers for custom message types
     /// </summary>
-    protected Dictionary<Type, Func<MessageBase, ClientType, Task>> _AsyncCustomMessageHandlers = new();
+    protected Dictionary<Type, Func<MessageBase, ClientType, Task>> AsyncCustomMessageHandlers = new();
 
     /// <summary>
     /// Invoked when a channel is opened on a client
     /// </summary>
-    public event Action<IChannel, ClientType> OnClientChannelOpened;
+    public event Action<BaseChannel, ClientType> OnChannelOpened;
+
+    /// <summary>
+    /// Invoked when a channel is opened on a client
+    /// </summary>
+    public event Func<BaseChannel, ClientType, Task> OnChannelOpenedAsync;
 
     /// <summary>
     /// Invoked when a client receives an object
     /// </summary>
-    public event Action<object, ClientType> OnClientObjectReceived;
+    public event Action<object, ClientType> OnReceive;
+
+    /// <summary>
+    /// Invoked when a client receives an object
+    /// </summary>
+    public event Func<object, ClientType, Task> OnReceiveAsync;
 
     /// <summary>
     /// Invoked when a client receives an unregistered custom message
@@ -69,9 +78,9 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
     /// </summary>
     public event Action<ClientType, DisconnectionInfo> OnClientDisconnected;
 
-    protected Dictionary<Type, Func<LegacyServerClient, Task<IChannel>>> OpenChannelMethods = new();
-    protected Dictionary<Type, Func<ChannelManagementMessage, LegacyServerClient, Task>> ChannelMessages = new();
-    protected Dictionary<Type, Func<IChannel, LegacyServerClient, Task>> CloseChannelMethods = new();
+    protected Dictionary<Type, Func<ClientType, Task<BaseChannel>>> OpenChannelMethods = new();
+    protected Dictionary<Type, Func<ChannelManagementMessage, ClientType, Task>> ChannelMessages = new();
+    protected Dictionary<Type, Func<BaseChannel, ClientType, Task>> CloseChannelMethods = new();
 
     /// <summary>
     /// Sends an object to all clients
@@ -125,8 +134,11 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
 
                 var c = await InitializeClient();
 
-                c.OnChannelOpened += (ch) => OnClientChannelOpened?.Invoke(ch, c);
-                c.OnReceiveObject += (obj) => OnClientObjectReceived?.Invoke(obj, c);
+                c.OnChannelOpened += (ch) => OnChannelOpened?.Invoke(ch, c);
+                c.OnChannelOpenedAsync += (ch) => OnChannelOpenedAsync?.Invoke(ch, c);
+                c.OnReceive += (obj) => OnReceive?.Invoke(obj, c);
+                c.OnReceiveAsync += (obj) => OnReceiveAsync?.Invoke(obj, c);
+                c.OnUnregisteredMessage += (m) => OnUnregisteredMessage?.Invoke(m, c);
                 c.OnDisconnect += async (g) =>
                 {
                     if (Settings.RemoveClientAfterDisconnect)
@@ -143,10 +155,6 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
 
                     OnClientDisconnected?.Invoke(c, g);
                 };
-                c.OnUnregisteredMessage += (m) =>
-                {
-                    OnUnregisteredMessage?.Invoke(m, c);
-                };
 
                 foreach (var v in objectEvents)
                     c.RegisterReceive(v.Key, (obj) => v.Value(obj, c));
@@ -154,7 +162,7 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
                 foreach (var v in asyncObjectEvents)
                     c.RegisterReceiveAsync(v.Key, (obj) => v.Value(obj, c));
 
-                foreach (var v in _CustomMessageHandlers)
+                foreach (var v in CustomMessageHandlers)
                     c.RegisterMessageHandler(mb => v.Value(mb, c), v.Key);
 
                 await Utilities.ConcurrentAccessAsync((ct) =>
@@ -229,7 +237,7 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
     public void RegisterMessageHandler<T>(Action<T, ClientType> handler) where T : MessageBase 
     {
         var del = (MessageBase mb, ClientType sc) => handler((T)mb, sc);
-        _CustomMessageHandlers.Add(typeof(T), del);
+        CustomMessageHandlers.Add(typeof(T), del);
         Utilities.ConcurrentAccess(() =>
         {
             foreach (var client in Clients)
@@ -240,7 +248,7 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
     public void RegisterMessageHandler(Action<MessageBase, ClientType> handler, Type messageType)
     {
         var del = (MessageBase mb, ClientType sc) => handler(mb, sc);
-        _CustomMessageHandlers.Add(messageType, (mb, sc) => handler(mb, sc));
+        CustomMessageHandlers.Add(messageType, (mb, sc) => handler(mb, sc));
         Utilities.ConcurrentAccess(() =>
         {
             foreach (var client in Clients)
@@ -251,7 +259,7 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
     public void RegisterAsyncMessageHandler<T>(Func<T, ClientType, Task> handler) where T : MessageBase
     {
         var del = (MessageBase mb, ClientType sc) => handler((T)mb, sc);
-        _AsyncCustomMessageHandlers.Add(typeof(T), del);
+        AsyncCustomMessageHandlers.Add(typeof(T), del);
         Utilities.ConcurrentAccess(() =>
         {
             foreach (var client in Clients)
@@ -262,7 +270,7 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
     public void RegisterAsyncMessageHandler(Func<MessageBase, ClientType, Task> handler, Type messageType)
     {
         var del = (MessageBase mb, ClientType sc) => handler(mb, sc);
-        _AsyncCustomMessageHandlers.Add(messageType, (mb, sc) => handler(mb, sc));
+        AsyncCustomMessageHandlers.Add(messageType, (mb, sc) => handler(mb, sc));
         Utilities.ConcurrentAccess(() =>
         {
             foreach (var client in Clients)
@@ -270,7 +278,7 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
         }, _semaphore);
     }
 
-    public bool RegisterReceiveObject<T>(Action<T, ClientType> action)
+    public bool RegisterReceive<T>(Action<T, ClientType> action)
     {
         var del = (object obj, ClientType sc) => action((T)obj, sc);
         Utilities.ConcurrentAccess(() =>
@@ -281,7 +289,7 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
         return objectEvents.TryAdd(typeof(T), del);
     }
 
-    public bool RegisterReceiveObjectAsync<T>(Func<T, ClientType, Task> func)
+    public bool RegisterReceiveAsync<T>(Func<T, ClientType, Task> func)
     {
         var del = (object obj, ClientType sc) => func((T)obj, sc);
         Utilities.ConcurrentAccess(() =>
@@ -290,6 +298,24 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
                 client.RegisterReceiveAsync(typeof(T), obj => del(obj, client));
         }, _semaphore);
         return asyncObjectEvents.TryAdd(typeof(T), del);
+    }
+
+    public void UnregisterReceive<T>()
+    {
+        Utilities.ConcurrentAccess(() =>
+        {
+            foreach (var client in Clients)
+                client.UnregisterReceive<T>();
+        }, _semaphore);
+    }
+
+    public void UnregisterReceiveAsync<T>()
+    {
+        Utilities.ConcurrentAccess(() =>
+        {
+            foreach (var client in Clients)
+                client.UnregisterReceiveAsync<T>();
+        }, _semaphore);
     }
 
     protected abstract Task<ClientType> InitializeClient();

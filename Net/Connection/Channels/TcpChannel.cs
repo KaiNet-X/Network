@@ -10,17 +10,10 @@ using System.Threading.Tasks;
 /// <summary>
 /// A channel that communicates using TCP
 /// </summary>
-public class TcpChannel : IChannel, IDisposable
+public class TcpChannel : BaseChannel
 {
     protected internal Socket Socket;
     private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-
-    /// <summary>
-    /// Check if channel is connected
-    /// </summary>
-    public ChannelConnectionInfo ConnectionInfo { get; private set; }
-
-    protected bool Connected => ConnectionInfo.Connected;
 
     /// <summary>
     /// Remote endpoint
@@ -41,24 +34,24 @@ public class TcpChannel : IChannel, IDisposable
         Socket = socket;
         Remote = Socket.RemoteEndPoint as IPEndPoint;
         Local = Socket.LocalEndPoint as IPEndPoint;
-        ConnectionInfo = new(true, null);
+        Connected = true;
     }
 
     /// <summary>
     /// Send bytes to remote host
     /// </summary>
     /// <param name="data"></param>
-    public void SendBytes(byte[] data) =>
+    public override void SendBytes(byte[] data) =>
         SendBytes(data.AsSpan());
 
     /// <summary>
     /// Send bytes to remote host
     /// </summary>
     /// <param name="data"></param>
-    public void SendBytes(ReadOnlySpan<byte> data)
+    public override void SendBytes(ReadOnlySpan<byte> data)
     {
         if (!Connected) return;
-
+        
         try
         {
             Socket.Send(data);
@@ -74,7 +67,7 @@ public class TcpChannel : IChannel, IDisposable
     /// </summary>
     /// <param name="data"></param>
     /// <param name="token"></param>
-    public Task SendBytesAsync(byte[] data, CancellationToken token = default) =>
+    public override Task SendBytesAsync(byte[] data, CancellationToken token = default) =>
         SendBytesAsync(data.AsMemory(), token);
 
     /// <summary>
@@ -82,14 +75,14 @@ public class TcpChannel : IChannel, IDisposable
     /// </summary>
     /// <param name="data"></param>
     /// <param name="token"></param>
-    public async Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
-    {
-        if (!Connected || token.IsCancellationRequested) return;
-
-        using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? [token, cancellationTokenSource.Token] : [token]);
-        
+    public override async Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
+    {        
         try
         {
+            if (!Connected) return;
+
+            using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? [token, cancellationTokenSource.Token] : [token]);
+
             await Socket.SendAsync(data, SocketFlags.None, source.Token);
         }
         catch (SocketException e)
@@ -102,10 +95,10 @@ public class TcpChannel : IChannel, IDisposable
     /// Receive bytes on from remote host
     /// </summary>
     /// <returns>bytes</returns>
-    public byte[] ReceiveBytes()
+    public override byte[] ReceiveBytes()
     {
         if (!Connected) return Array.Empty<byte>();
-
+        
         List<byte> allBytes = new List<byte>();
         const int buffer_length = 1024;
         byte[] buffer = new byte[buffer_length];
@@ -125,7 +118,7 @@ public class TcpChannel : IChannel, IDisposable
             }
         }
         while (received == buffer_length && Connected);
-        
+
         return allBytes.ToArray();
     }
 
@@ -133,9 +126,9 @@ public class TcpChannel : IChannel, IDisposable
     /// Receive bytes on from remote host
     /// </summary>
     /// <returns>bytes</returns>
-    public async Task<byte[]> ReceiveBytesAsync(CancellationToken token = default)
+    public override async Task<byte[]> ReceiveBytesAsync(CancellationToken token = default)
     {
-        if (!Connected || token.IsCancellationRequested) return Array.Empty<byte>();
+        if (!Connected) return Array.Empty<byte>();
 
         using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? [token, cancellationTokenSource.Token] : [token]);
 
@@ -157,7 +150,7 @@ public class TcpChannel : IChannel, IDisposable
                 return Array.Empty<byte>();
             }
         }
-        while (received == buffer_length && !token.IsCancellationRequested && Connected);
+        while (received == buffer_length && Connected);
 
         return allBytes.ToArray();
     }
@@ -167,14 +160,14 @@ public class TcpChannel : IChannel, IDisposable
     /// </summary>
     /// <param name="buffer">Buffer to receive to</param>
     /// <returns></returns>
-    public int ReceiveToBuffer(byte[] buffer) => ReceiveToBuffer(buffer.AsSpan());
+    public override int ReceiveToBuffer(byte[] buffer) => ReceiveToBuffer(buffer.AsSpan());
 
     /// <summary>
     /// Recieves to a buffer, calling the underlying socket method.
     /// </summary>
     /// <param name="buffer">Buffer to receive to</param>
     /// <returns></returns>
-    public int ReceiveToBuffer(Span<byte> buffer)
+    public override int ReceiveToBuffer(Span<byte> buffer)
     {
         if (!Connected) return 0;
 
@@ -195,7 +188,7 @@ public class TcpChannel : IChannel, IDisposable
     /// <param name="buffer">Buffer to receive to</param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default) =>
+    public override async Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default) =>
         await ReceiveToBufferAsync(buffer.AsMemory(), token);
 
     /// <summary>
@@ -204,14 +197,14 @@ public class TcpChannel : IChannel, IDisposable
     /// <param name="buffer">Buffer to receive to</param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<int> ReceiveToBufferAsync(Memory<byte> buffer, CancellationToken token = default)
+    public override async Task<int> ReceiveToBufferAsync(Memory<byte> buffer, CancellationToken token = default)
     {
-        if (!Connected || token.IsCancellationRequested) return 0;
-        
-        using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? [token, cancellationTokenSource.Token] : [token]);
+        if (!Connected) return 0;
 
         try
-        {
+        {        
+            using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? [token, cancellationTokenSource.Token] : [token]);
+
             return await Socket.ReceiveAsync(buffer, token);
         }
         catch (SocketException e)
@@ -223,26 +216,18 @@ public class TcpChannel : IChannel, IDisposable
 
     private void ChannelError(Exception e)
     {
-        ConnectionInfo = new(false, e);
+        ConnectionException = e;
         Close();
-    }
-
-    internal void Close()
-    {
-        if (Connected)
-            ConnectionInfo = new(false, null);
-        cancellationTokenSource?.Cancel();
-        Socket?.Close();
-        Socket = null;
     }
 
     /// <summary>
-    /// Closes the channel. Handled by the client it is associated with.
+    /// Closes the channel. Handled by the client it is associated with
     /// </summary>
-    public void Dispose()
+    protected internal void Close()
     {
-        Close();
+        cancellationTokenSource.Cancel();
+        Socket.Close();
+        Connected = false;
         cancellationTokenSource.Dispose();
-        cancellationTokenSource = null;
     }
 }

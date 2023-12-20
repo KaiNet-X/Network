@@ -11,16 +11,16 @@ using System.Threading.Tasks;
 /// <summary>
 /// Generic base client for Client and ServerClient that adds functionality for sending/receiving objects.
 /// </summary>
-public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> where MainChannel : class, IChannel
+public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> where MainChannel : BaseChannel
 {
     private ConcurrentDictionary<Type, Action<object>> objectEvents = new();
     private ConcurrentDictionary<Type, Func<object, Task>> asyncObjectEvents = new();
     private GuardedChannelList _channelsBack;
 
-    protected ConcurrentDictionary<Type, Func<Task<IChannel>>> OpenChannelMethods = new();
+    protected ConcurrentDictionary<Type, Func<Task<BaseChannel>>> OpenChannelMethods = new();
     protected ConcurrentDictionary<Type, Func<ChannelManagementMessage, Task>> ChannelMessages = new();
-    protected ConcurrentDictionary<Type, Func<IChannel, Task>> CloseChannelMethods = new();
-    protected internal List<IChannel> _channels = new();
+    protected ConcurrentDictionary<Type, Func<BaseChannel, Task>> CloseChannelMethods = new();
+    protected internal List<BaseChannel> _channels = new();
 
     protected ObjectClient()
     {
@@ -49,24 +49,24 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     /// <summary>
     /// Invoked when the client receives an object
     /// </summary>
-    public event Action<object> OnReceiveObject;
+    public event Action<object> OnReceive;
 
     /// <summary>
     /// Invoked when the client receives an object
     /// </summary>
-    public event Func<object, Task> OnReceiveObjectAsync;
+    public event Func<object, Task> OnReceiveAsync;
 
     /// <summary>
     /// Invoked when a channel is opened
     /// </summary>
-    public Action<IChannel> OnChannelOpened;
+    public Action<BaseChannel> OnChannelOpened;
 
     /// <summary>
     /// Invoked when a channel is opened
     /// </summary>
-    public Func<IChannel, Task> OnChannelOpenedAsync;
+    public Func<BaseChannel, Task> OnChannelOpenedAsync;
 
-    protected internal async Task ChannelOpenedAsync(IChannel c) 
+    protected internal async Task ChannelOpenedAsync(BaseChannel c) 
     {
         _channels.Add(c);
         OnChannelOpened?.Invoke(c);
@@ -147,7 +147,7 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     /// Closes a channel associated with this client. 
     /// </summary>
     /// <param name="c"></param>
-    public void CloseChannel(IChannel c) =>
+    public void CloseChannel(BaseChannel c) =>
         CloseChannelAsync(c).GetAwaiter().GetResult();
 
     /// <summary>
@@ -155,7 +155,7 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     /// </summary>
     /// <param name="c"></param>
     /// <returns></returns>
-    public async Task CloseChannelAsync(IChannel c)
+    public async Task CloseChannelAsync(BaseChannel c)
     {
         if (!Channels.Contains(c)) 
             throw new InvalidOperationException("This channel does not belong to this client.");
@@ -169,7 +169,7 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
-    public async Task<T> OpenChannelAsync<T>() where T : class, IChannel
+    public async Task<T> OpenChannelAsync<T>() where T : BaseChannel
     {
         var c = (await OpenChannelMethods[typeof(T)]()) as T;
         _channels.Add(c);
@@ -183,7 +183,7 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     /// <param name="open">Method to create a new channel and notify the other host.</param>
     /// <param name="channelManagement">Manages the creation of this channel. This can be called multiple times before negotiation is complete and the connection is created.</param>
     /// <param name="close">Specifies how to close the channel.</param>
-    public void RegisterChannelType<T>(Func<Task<T>> open, Func<ChannelManagementMessage, Task> channelManagement, Func<T, Task> close) where T : IChannel
+    public void RegisterChannelType<T>(Func<Task<T>> open, Func<ChannelManagementMessage, Task> channelManagement, Func<T, Task> close) where T : BaseChannel
     {
         OpenChannelMethods[typeof(T)] = async () => await open();
         ChannelMessages[typeof(T)] = channelManagement;
@@ -229,11 +229,11 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
         if (oea)
             Task.Run(async () => await asyncObjectEvents[type]?.Invoke(obj));
 
-        if (OnReceiveObject is not null && !oe && !oea)
-            Task.Run(() => OnReceiveObject(obj));
+        if (OnReceive is not null && !oe && !oea)
+            Task.Run(() => OnReceive(obj));
 
-        if (OnReceiveObjectAsync is not null && !oe && !oea)
-            Task.Run(async () => await OnReceiveObjectAsync(obj));
+        if (OnReceiveAsync is not null && !oe && !oea)
+            Task.Run(async () => await OnReceiveAsync(obj));
     }
 
     private void HandleDisconnect(DisconnectMessage m)

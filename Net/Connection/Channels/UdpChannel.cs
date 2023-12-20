@@ -9,18 +9,10 @@ using System.Threading.Tasks;
 /// <summary>
 /// This channel is designed to send UDP data between clients. Call SetRemote to connect to a remote endpoint
 /// </summary>
-public class UdpChannel : IChannel, IDisposable
+public class UdpChannel : BaseChannel
 {
-    private SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
     private UdpClient _udp;
     private CancellationTokenSource _cts = new CancellationTokenSource();
-
-    /// <summary>
-    /// Check if channel is connected
-    /// </summary>
-    protected bool Connected => ConnectionInfo.Connected;
-
-    public ChannelConnectionInfo ConnectionInfo { get; private set; }
 
     /// <summary>
     /// Remote endpoint
@@ -46,19 +38,16 @@ public class UdpChannel : IChannel, IDisposable
     /// Send bytes to remote host
     /// </summary>
     /// <param name="data"></param>
-    public void SendBytes(byte[] data) => 
+    public override void SendBytes(byte[] data) => 
         SendBytes(data.AsSpan());
 
     /// <summary>
     /// Send bytes to remote host
     /// </summary>
     /// <param name="data"></param>
-    public void SendBytes(ReadOnlySpan<byte> data)
+    public override void SendBytes(ReadOnlySpan<byte> data)
     {
-        if (!Connected)
-            return;
-
-        _semaphore.Wait();
+        if (!Connected) return;
 
         try
         {
@@ -68,10 +57,6 @@ public class UdpChannel : IChannel, IDisposable
         {
             ChannelError(e);
         }
-        finally
-        {
-            _semaphore?.Release();
-        }
     }
 
     /// <summary>
@@ -80,7 +65,7 @@ public class UdpChannel : IChannel, IDisposable
     /// <param name="data"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public Task SendBytesAsync(byte[] data, CancellationToken token = default) =>
+    public override Task SendBytesAsync(byte[] data, CancellationToken token = default) =>
         SendBytesAsync(data.AsMemory(), token);
 
     /// <summary>
@@ -89,15 +74,15 @@ public class UdpChannel : IChannel, IDisposable
     /// <param name="data"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
+    public override async Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
     {
         if (!Connected) return;
 
-        using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? [token, _cts.Token] : [token]);
-
         try
         {
-            await Utilities.ConcurrentAccessAsync(async (ct) => await _udp.SendAsync(data, t.Token), _semaphore);
+            using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? [token, _cts.Token] : [token]);
+
+             await _udp.SendAsync(data, t.Token);
         }
         catch (SocketException e)
         {
@@ -109,14 +94,14 @@ public class UdpChannel : IChannel, IDisposable
     /// Receive bytes
     /// </summary>
     /// <returns></returns>
-    public byte[] ReceiveBytes()
+    public override byte[] ReceiveBytes()
     {
         if (!Connected) return Array.Empty<byte>();
 
-        var endpoint = Remote;
-
         try
         {
+            var endpoint = Remote;
+
             return _udp.Receive(ref endpoint);
         }
         catch (SocketException e)
@@ -130,14 +115,14 @@ public class UdpChannel : IChannel, IDisposable
     /// Receive bytes
     /// </summary>
     /// <returns></returns>
-    public async Task<byte[]> ReceiveBytesAsync(CancellationToken token = default)
+    public override async Task<byte[]> ReceiveBytesAsync(CancellationToken token = default)
     {
         if (!Connected) return Array.Empty<byte>();
         
-        using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? [token, _cts.Token] : [token]);
-
         try
         {
+            using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? [token, _cts.Token] : [token]);
+
             var result = await _udp.ReceiveAsync(t.Token);
             return result.Buffer;
         }
@@ -153,13 +138,12 @@ public class UdpChannel : IChannel, IDisposable
     /// </summary>
     /// <param name="buffer">Buffer to receive to</param>
     /// <returns>bytes received</returns>
-    public int ReceiveToBuffer(byte[] buffer)
+    public override int ReceiveToBuffer(byte[] buffer)
     {
-        if (!Connected || _cts.IsCancellationRequested)
-            return 0;
+        if (!Connected) return 0;
 
         try
-        {
+        {    
             return _udp.Client.Receive(buffer, SocketFlags.None);
         }
         catch (SocketException e)
@@ -174,7 +158,7 @@ public class UdpChannel : IChannel, IDisposable
     /// </summary>
     /// <param name="buffer">Buffer to receive to</param>
     /// <returns>bytes received</returns>
-    public int ReceiveToBuffer(Span<byte> buffer)
+    public override int ReceiveToBuffer(Span<byte> buffer)
     {
         if (!Connected) return 0;
 
@@ -196,14 +180,14 @@ public class UdpChannel : IChannel, IDisposable
     /// <param name="buffer">Buffer to receive to</param>
     /// <param name="token"></param>
     /// <returns>bytes received</returns>
-    public async Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default)
+    public override async Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default)
     {
         if (!Connected) return 0;
 
-        using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? [token, _cts.Token] : [token]);
-
         try
         {
+            using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? [token, _cts.Token] : [token]);
+
             return await _udp.Client.ReceiveAsync(buffer, SocketFlags.None, t.Token);
         }
         catch (SocketException e)
@@ -219,14 +203,14 @@ public class UdpChannel : IChannel, IDisposable
     /// <param name="buffer">Buffer to receive to</param>
     /// <param name="token"></param>
     /// <returns>bytes received</returns>
-    public async Task<int> ReceiveToBufferAsync(Memory<byte> buffer, CancellationToken token = default)
+    public override async Task<int> ReceiveToBufferAsync(Memory<byte> buffer, CancellationToken token = default)
     {
         if (!Connected) return 0;
 
-        using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? [token, _cts.Token] : [token]);
-
         try
         {
+            using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? [token, _cts.Token] : [token]);
+
             return await _udp.Client.ReceiveAsync(buffer, t.Token);
         }
         catch (SocketException e)
@@ -243,32 +227,24 @@ public class UdpChannel : IChannel, IDisposable
     public void SetRemote(IPEndPoint endpoint)
     {
         _udp.Connect(Remote = endpoint);
-        ConnectionInfo = new(true, null);
-    }
-
-    /// <summary>
-    /// Closes the channel. Handled by the client it is associated with.
-    /// </summary>
-    public void Dispose()
-    {
-        Close();
-        _cts.Dispose();
-        _cts = null;
-    }
-
-    private void Close()
-    {
-        if (Connected)
-            ConnectionInfo = new(false, null);
-        _cts.Cancel();
-        _semaphore.Dispose();
-        _semaphore = null;
-        _udp.Close();
+        Connected = true;
     }
 
     private void ChannelError(Exception e)
     {
-        ConnectionInfo = new(false, e);
+        Connected = false;
+        ConnectionException = e;
         Close();
+    }
+
+    /// <summary>
+    /// Closes the channel. Handled by the client it is associated with
+    /// </summary>
+    protected internal void Close()
+    {
+        _cts.Cancel();
+        _udp.Close();
+        Connected = false;
+        _cts.Dispose();
     }
 }

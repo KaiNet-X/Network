@@ -1,78 +1,67 @@
 ﻿namespace UnitTests;
 
-using Net;
 using Net.Connection.Channels;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-internal class DummyChannel : IChannel
+internal class DummyChannel : BaseChannel
 {
-    public bool Connected => true;
-
-    public ChannelConnectionInfo ConnectionInfo => throw new NotImplementedException();
-
-    public void Close()
+    public DummyChannel()
     {
-        
+        Connected = true;
     }
-
-    public Task CloseAsync()
+    public override byte[] ReceiveBytes()
     {
         return null;
     }
 
-    public byte[] ReceiveBytes()
+    public override Task<byte[]> ReceiveBytesAsync(CancellationToken token = default)
     {
         return null;
     }
 
-    public Task<byte[]> ReceiveBytesAsync(CancellationToken token = default)
+    public override int ReceiveToBuffer(byte[] buffer)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override int ReceiveToBuffer(Span<byte> buffer)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override Task<int> ReceiveToBufferAsync(Memory<byte> buffer, CancellationToken token = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override void SendBytes(byte[] data)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override void SendBytes(ReadOnlySpan<byte> data)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override Task SendBytesAsync(byte[] data, CancellationToken token = default)
     {
         return null;
     }
 
-    public int ReceiveToBuffer(byte[] buffer)
+    public override Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
     {
         throw new NotImplementedException();
     }
 
-    public int ReceiveToBuffer(Span<byte> buffer)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<int> ReceiveToBufferAsync(byte[] buffer)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<int> ReceiveToBufferAsync(byte[] buffer, CancellationToken token = default)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<int> ReceiveToBufferAsync(Memory<byte> buffer, CancellationToken token = default)
-    {
-        throw new NotImplementedException();
-    }
-
-    public void SendBytes(byte[] data)
-    {
-        throw new NotImplementedException();
-    }
-
-    public void SendBytes(ReadOnlySpan<byte> data)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task SendBytesAsync(byte[] data, CancellationToken token = default)
-    {
-        return null;
-    }
-
-    public Task SendBytesAsync(ReadOnlyMemory<byte> data, CancellationToken token = default)
+    protected void Close()
     {
         throw new NotImplementedException();
     }
