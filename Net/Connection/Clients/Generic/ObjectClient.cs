@@ -224,10 +224,16 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
         var oea = asyncObjectEvents.ContainsKey(type);
 
         if (oe)
-            Task.Run(() => objectEvents[type]?.Invoke(obj));
+            Task.Run(() => 
+            {
+                if (objectEvents.TryGetValue(type, out Action<object> a)) a.Invoke(obj);
+            });
 
         if (oea)
-            Task.Run(async () => await asyncObjectEvents[type]?.Invoke(obj));
+            Task.Run(async () =>
+            {
+                if (asyncObjectEvents.TryGetValue(type, out Func<object, Task> a)) await a.Invoke(obj);
+            });
 
         if (OnReceive is not null && !oe && !oea)
             Task.Run(() => OnReceive(obj));
