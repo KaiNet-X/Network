@@ -14,7 +14,8 @@ using System.Threading.Tasks;
 public class EncryptedTcpChannel : BaseChannel
 {
     private readonly CryptographyService _crypto;
-    private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+    private CancellationTokenSource cts = new CancellationTokenSource();
+    private CancellationToken ct;
     private List<byte> _received = new List<byte>();
     private List<byte> _queued = new List<byte>();
 
@@ -37,6 +38,7 @@ public class EncryptedTcpChannel : BaseChannel
     /// <param name="crypto"></param>
     public EncryptedTcpChannel(Socket socket, CryptographyService crypto)
     {
+        ct = cts.Token;
         _crypto = crypto;
         Socket = socket;
         Remote = socket.RemoteEndPoint as IPEndPoint;
@@ -86,7 +88,7 @@ public class EncryptedTcpChannel : BaseChannel
     {
         if (!Connected) return;
 
-        using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? [token, cancellationTokenSource.Token] : [token]);
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(cts != null ? [token, ct] : [token]);
 
         ReadOnlyMemory<byte> encrypted = _crypto.EncryptAES(data);
         ReadOnlyMemory<byte> head = BitConverter.GetBytes(encrypted.Length);
@@ -154,7 +156,7 @@ public class EncryptedTcpChannel : BaseChannel
 
         if (!Connected) return Array.Empty<byte>();
         
-        using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? [token, cancellationTokenSource.Token] : [token]);
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(cts != null ? [token, ct] : [token]);
 
         byte[] buffer = new byte[1024];
 
@@ -236,6 +238,8 @@ public class EncryptedTcpChannel : BaseChannel
     {
         if (buffer.Length == 0 || !Connected) return 0;
 
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(cts != null ? [token, ct] : [token]);
+
         var written1 = WriteToSpan(CollectionsMarshal.AsSpan(_queued), buffer.Span);
 
         _queued.RemoveRange(0, written1);
@@ -244,7 +248,7 @@ public class EncryptedTcpChannel : BaseChannel
 
         var remaining = buffer.Slice(written1);
 
-        var v = await ReceiveBytesAsync(token);
+        var v = await ReceiveBytesAsync(source.Token);
 
         var written2 = WriteToSpan(v, remaining.Span);
 
@@ -280,9 +284,11 @@ public class EncryptedTcpChannel : BaseChannel
     /// </summary>
     protected internal void Close()
     {
-        cancellationTokenSource.Cancel();
+        if (!Connected) return;
+
+        cts.Cancel();
         Socket.Close();
         Connected = false;
-        cancellationTokenSource.Dispose();
+        cts.Dispose();
     }
 }

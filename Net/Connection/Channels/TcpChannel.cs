@@ -13,7 +13,8 @@ using System.Threading.Tasks;
 public class TcpChannel : BaseChannel
 {
     protected internal Socket Socket;
-    private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+    private CancellationTokenSource cts = new CancellationTokenSource();
+    private CancellationToken ct;
 
     /// <summary>
     /// Remote endpoint
@@ -31,6 +32,7 @@ public class TcpChannel : BaseChannel
     /// <param name="socket"></param>
     public TcpChannel(Socket socket)
     {
+        ct = cts.Token;
         Socket = socket;
         Remote = Socket.RemoteEndPoint as IPEndPoint;
         Local = Socket.LocalEndPoint as IPEndPoint;
@@ -81,7 +83,7 @@ public class TcpChannel : BaseChannel
         {
             if (!Connected) return;
 
-            using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? [token, cancellationTokenSource.Token] : [token]);
+            using var source = CancellationTokenSource.CreateLinkedTokenSource(cts != null ? [token, ct] : [token]);
 
             await Socket.SendAsync(data, SocketFlags.None, source.Token);
         }
@@ -130,7 +132,7 @@ public class TcpChannel : BaseChannel
     {
         if (!Connected) return Array.Empty<byte>();
 
-        using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? [token, cancellationTokenSource.Token] : [token]);
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(cts != null ? [token, ct] : [token]);
 
         List<byte> allBytes = new List<byte>();
         const int buffer_length = 1024;
@@ -203,7 +205,7 @@ public class TcpChannel : BaseChannel
 
         try
         {        
-            using var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource != null ? [token, cancellationTokenSource.Token] : [token]);
+            using var source = CancellationTokenSource.CreateLinkedTokenSource(cts != null ? [token, ct] : [token]);
 
             return await Socket.ReceiveAsync(buffer, token);
         }
@@ -225,9 +227,11 @@ public class TcpChannel : BaseChannel
     /// </summary>
     protected internal void Close()
     {
-        cancellationTokenSource.Cancel();
+        if (!Connected) return;
+
+        cts.Cancel();
         Socket.Close();
         Connected = false;
-        cancellationTokenSource.Dispose();
+        cts.Dispose();
     }
 }

@@ -11,8 +11,9 @@ using System.Threading.Tasks;
 /// </summary>
 public class UdpChannel : BaseChannel
 {
-    private UdpClient _udp;
-    private CancellationTokenSource _cts = new CancellationTokenSource();
+    private UdpClient udp;
+    private CancellationTokenSource cts = new CancellationTokenSource();
+    private CancellationToken ct;
 
     /// <summary>
     /// Remote endpoint
@@ -30,8 +31,9 @@ public class UdpChannel : BaseChannel
     /// <param name="local"></param>
     public UdpChannel(IPEndPoint local)
     {
-        _udp = new UdpClient(local);
-        Local = (IPEndPoint)_udp.Client.LocalEndPoint;
+        ct = cts.Token;
+        udp = new UdpClient(local);
+        Local = (IPEndPoint)udp.Client.LocalEndPoint;
     }
 
     /// <summary>
@@ -51,7 +53,7 @@ public class UdpChannel : BaseChannel
 
         try
         {
-            _udp.Send(data);
+            udp.Send(data);
         }
         catch (SocketException e) 
         {
@@ -80,9 +82,9 @@ public class UdpChannel : BaseChannel
 
         try
         {
-            using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? [token, _cts.Token] : [token]);
+            using var source = CancellationTokenSource.CreateLinkedTokenSource(cts != null ? [token, ct] : [token]);
 
-             await _udp.SendAsync(data, t.Token);
+             await udp.SendAsync(data, source.Token);
         }
         catch (SocketException e)
         {
@@ -102,7 +104,7 @@ public class UdpChannel : BaseChannel
         {
             var endpoint = Remote;
 
-            return _udp.Receive(ref endpoint);
+            return udp.Receive(ref endpoint);
         }
         catch (SocketException e)
         {
@@ -121,9 +123,9 @@ public class UdpChannel : BaseChannel
         
         try
         {
-            using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? [token, _cts.Token] : [token]);
+            using var source = CancellationTokenSource.CreateLinkedTokenSource(cts != null ? [token, ct] : [token]);
 
-            var result = await _udp.ReceiveAsync(t.Token);
+            var result = await udp.ReceiveAsync(source.Token);
             return result.Buffer;
         }
         catch (SocketException e)
@@ -144,7 +146,7 @@ public class UdpChannel : BaseChannel
 
         try
         {    
-            return _udp.Client.Receive(buffer, SocketFlags.None);
+            return udp.Client.Receive(buffer, SocketFlags.None);
         }
         catch (SocketException e)
         {
@@ -164,7 +166,7 @@ public class UdpChannel : BaseChannel
 
         try
         {
-            return _udp.Client.Receive(buffer, SocketFlags.None);
+            return udp.Client.Receive(buffer, SocketFlags.None);
         }
         catch (SocketException e)
         {
@@ -186,9 +188,9 @@ public class UdpChannel : BaseChannel
 
         try
         {
-            using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? [token, _cts.Token] : [token]);
+            using var source = CancellationTokenSource.CreateLinkedTokenSource(cts != null ? [token, ct] : [token]);
 
-            return await _udp.Client.ReceiveAsync(buffer, SocketFlags.None, t.Token);
+            return await udp.Client.ReceiveAsync(buffer, SocketFlags.None, source.Token);
         }
         catch (SocketException e)
         {
@@ -209,9 +211,9 @@ public class UdpChannel : BaseChannel
 
         try
         {
-            using var t = CancellationTokenSource.CreateLinkedTokenSource(_cts != null ? [token, _cts.Token] : [token]);
+            using var source = CancellationTokenSource.CreateLinkedTokenSource(cts != null ? [token, ct] : [token]);
 
-            return await _udp.Client.ReceiveAsync(buffer, t.Token);
+            return await udp.Client.ReceiveAsync(buffer, source.Token);
         }
         catch (SocketException e)
         {
@@ -226,13 +228,12 @@ public class UdpChannel : BaseChannel
     /// <param name="endpoint"></param>
     public void SetRemote(IPEndPoint endpoint)
     {
-        _udp.Connect(Remote = endpoint);
+        udp.Connect(Remote = endpoint);
         Connected = true;
     }
 
     private void ChannelError(Exception e)
     {
-        Connected = false;
         ConnectionException = e;
         Close();
     }
@@ -242,9 +243,11 @@ public class UdpChannel : BaseChannel
     /// </summary>
     protected internal void Close()
     {
-        _cts.Cancel();
-        _udp.Close();
+        if (!Connected) return;
+
+        cts.Cancel();
+        udp.Close();
         Connected = false;
-        _cts.Dispose();
+        cts.Dispose();
     }
 }
