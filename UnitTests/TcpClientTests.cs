@@ -347,7 +347,10 @@ public class TcpClientTests
         c.CloseChannel(ch);
 
         await Task.Delay(25);
-        Assert.True(c.Channels.Count == 0 && server.Clients[0].Channels.Count == 0);
+        
+        Assert.True(s);
+        Assert.Equal(0, c.Channels.Count);
+        Assert.Equal(0, server.Clients[0].Channels.Count);
 
         server.ShutDown();
     }

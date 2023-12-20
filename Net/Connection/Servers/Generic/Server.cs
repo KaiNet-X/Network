@@ -135,9 +135,9 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
                 var c = await InitializeClient();
 
                 c.OnChannelOpened += (ch) => OnChannelOpened?.Invoke(ch, c);
-                c.OnChannelOpenedAsync += (ch) => OnChannelOpenedAsync?.Invoke(ch, c);
+                c.OnChannelOpenedAsync += (ch) => OnChannelOpenedAsync?.Invoke(ch, c) ?? Task.CompletedTask;
                 c.OnReceive += (obj) => OnReceive?.Invoke(obj, c);
-                c.OnReceiveAsync += (obj) => OnReceiveAsync?.Invoke(obj, c);
+                c.OnReceiveAsync += (obj) => OnReceiveAsync?.Invoke(obj, c) ?? Task.CompletedTask;
                 c.OnUnregisteredMessage += (m) => OnUnregisteredMessage?.Invoke(m, c);
                 c.OnDisconnect += async (g) =>
                 {
