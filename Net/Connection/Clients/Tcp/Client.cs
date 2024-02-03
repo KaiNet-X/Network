@@ -92,7 +92,8 @@ public class Client : ObjectClient
         LocalEndpoint = Connection.Socket.LocalEndPoint as IPEndPoint;
         RemoteEndpoint = Connection.Socket.RemoteEndPoint as IPEndPoint;
 
-        while (ConnectionState == ConnectionState.PENDING) ;
+        while (ConnectionState == ConnectionState.PENDING) Thread.Sleep(10);
+
         return true;
     }
 

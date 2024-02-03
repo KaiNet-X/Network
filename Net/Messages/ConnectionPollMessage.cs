@@ -1,8 +1,5 @@
 ﻿namespace Net.Messages;
 
-using Net.Attributes;
-
-[RegisterMessage]
 internal class ConnectionPollMessage : MessageBase
 {
     public bool IsResponse;

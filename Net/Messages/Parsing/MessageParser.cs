@@ -1,5 +1,6 @@
 ﻿namespace Net.Messages.Parsing;
 
+using Net.Internals;
 using Net.Serialization;
 using System;
 using System.Collections.Generic;
@@ -9,12 +10,12 @@ using System.Text;
 /// <summary>
 /// Default message parsing algorithm
 /// </summary>
-public class NewMessageParser : IMessageParser
+public class MessageParser : IMessageParser
 {
     private readonly CryptographyService _cryptographyService;
     private readonly ISerializer _serializer;
 
-    public NewMessageParser(CryptographyService crypto, ISerializer serializer)
+    public MessageParser(CryptographyService crypto, ISerializer serializer)
     {
         _cryptographyService = crypto;
         _serializer = serializer;
@@ -108,7 +109,7 @@ public class NewMessageParser : IMessageParser
         }
 
         var t = span.Slice(0, msgEnd);
-        var type = MessageBase.Registered[Encoding.UTF8.GetString(t)];
+        var type = TypeHandler.RegisteredMessages[Encoding.UTF8.GetString(t)];
 
         origin += lengthEnd + 2 + len;
         return _serializer.Deserialize(msg, type) as MessageBase;

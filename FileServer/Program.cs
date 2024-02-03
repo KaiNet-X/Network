@@ -25,11 +25,11 @@ foreach (var address in addresses)
 
 endpoints.AddRange(new[] { new IPEndPoint(IPAddress.Any, 6969), new IPEndPoint(IPAddress.IPv6Any, 6969) });
 
-var server = new TcpServer(endpoints, new ServerSettings { UseEncryption = true, ConnectionPollTimeout = 600000, MaxClientConnections = 5 });
+var server = new TcpServer(endpoints, new ConnectionSettings { UseEncryption = true, ConnectionPollTimeout = 600000, MaxClientConnections = 5 });
 
 server.OnClientConnected += OnConnect;
 
-server.OnClientDisconnected += OnDisconnect;
+server.OnDisconnect(OnDisconnect);
 
 server.Start();
 
@@ -46,7 +46,7 @@ void OnConnect(ServerClient sc)
     Console.WriteLine($"{sc.LocalEndpoint} connected");
 }
 
-void OnDisconnect (ServerClient sc, DisconnectionInfo info)
+void OnDisconnect (DisconnectionInfo info, ServerClient sc)
 {
     Console.WriteLine($"{sc.LocalEndpoint} disconnected {info.Reason}");
 }

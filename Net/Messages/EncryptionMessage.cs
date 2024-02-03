@@ -1,9 +1,7 @@
 ﻿namespace Net.Messages;
 
 using System.Security.Cryptography;
-using Attributes;
 
-[RegisterMessage]
 public sealed class EncryptionMessage : MessageBase
 {
     public EncryptionStage Stage { get; set; }

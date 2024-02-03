@@ -48,4 +48,7 @@ public abstract class ServerClient<MainConnection> : ObjectClient<MainConnection
             throw;
         }
     }
+
+    void IServerClient.SetRegisteredObjectTypes(HashSet<string> registeredTypes) =>
+        RegisteredObjectTypes = registeredTypes;
 }

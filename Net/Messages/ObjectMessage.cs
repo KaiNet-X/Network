@@ -5,7 +5,6 @@ using Net.Serialization;
 using System;
 using System.Reflection;
 
-[RegisterMessage]
 public sealed class ObjectMessage : MessageBase
 {
     public string TypeName { get; set; }
@@ -21,7 +20,4 @@ public sealed class ObjectMessage : MessageBase
     }
 
     public ObjectMessage() { }
-
-    internal object GetValue() =>
-        DefaultSerializer.Deserialize(Data, Utilities.GetTypeFromName(TypeName));
 }

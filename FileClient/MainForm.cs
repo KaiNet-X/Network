@@ -48,7 +48,7 @@ public partial class MainForm : Form
                 //treeView.Nodes.Add(ToNode(t));
             });
         });
-        _client.RegisterMessageHandler<FileRequestMessage>(async msg =>
+        _client.OnMessageReceived<FileRequestMessage>((Action<FileRequestMessage>)(async msg =>
         {
             Directory.CreateDirectory(_dir);
 
@@ -82,8 +82,9 @@ public partial class MainForm : Form
 
             if (msg.EndOfMessage)
                 current.Dispose();
-        });
-        _client.OnChannelOpened += async (obj) =>
+        }));
+
+        _client.OnAnyChannel(async obj =>
         {
             var bytes = await obj.ReceiveBytesAsync();
 
@@ -94,13 +95,13 @@ public partial class MainForm : Form
             {
                 await fs.WriteAsync(bytes);
             }
-        };
+        });
 
-        _client.OnDisconnect += (obj) =>
+        _client.OnDisconnected(obj =>
         {
             MessageBox.Show("Server disconnected");
             Task.Run(() => Invoke(this.Close));
-        };
+        });
 
         Task.Run(async () =>
         {

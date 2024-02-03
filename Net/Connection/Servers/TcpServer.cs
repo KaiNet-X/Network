@@ -2,6 +2,7 @@
 
 using Channels;
 using Clients.Tcp;
+using Net;
 using Servers.Generic;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,7 +31,7 @@ public class TcpServer : Server<ServerClient, TcpChannel>
     /// <param name="address">IP address for the server to bind to</param>
     /// <param name="port">Port for the server to bind to</param>
     /// <param name="settings">Settings for connection</param>
-    public TcpServer(IPAddress address, int port, ServerSettings settings = null) :
+    public TcpServer(IPAddress address, int port, ConnectionSettings settings = null) :
         this(new IPEndPoint(address, port), settings)
     { }
 
@@ -39,7 +40,7 @@ public class TcpServer : Server<ServerClient, TcpChannel>
     /// </summary>
     /// <param name="endpoint">Endpoint for the server to bind to</param>
     /// <param name="settings">Settings for connection</param>
-    public TcpServer(IPEndPoint endpoint, ServerSettings settings = null) :
+    public TcpServer(IPEndPoint endpoint, ConnectionSettings settings = null) :
         this(new List<IPEndPoint> { endpoint }, settings)
     { }
 
@@ -48,9 +49,8 @@ public class TcpServer : Server<ServerClient, TcpChannel>
     /// </summary>
     /// <param name="endpoints">List of endpoints for the server to bind to</param>
     /// <param name="settings">Settings for connection</param>
-    public TcpServer(List<IPEndPoint> endpoints, ServerSettings settings = null)
+    public TcpServer(List<IPEndPoint> endpoints, ConnectionSettings settings = null) : base(settings ?? new ConnectionSettings())
     {
-        Settings = settings ?? new ServerSettings();
         Endpoints = endpoints;
         _bindingSockets = new List<Socket>();
     }

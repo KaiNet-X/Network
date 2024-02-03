@@ -3,7 +3,6 @@
 using Channels;
 using Messages;
 using Net;
-using Net.Connection.Servers;
 using Net.Messages.Parsing;
 using System;
 using System.Collections.Generic;
@@ -18,17 +17,17 @@ using System.Threading.Tasks;
 /// <typeparam name="MainChannel">The main channel implementing the connection protocol. It should be a reliable type, however that is not enforced.</typeparam>
 public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel : BaseChannel
 {
-    private CryptographyService _crypto = new();
+    protected readonly CryptographyService _crypto = new();
+
     private bool _timedOut = false;
     private System.Timers.Timer _pollTimer;
     private EncryptionStage encryptionStage = EncryptionStage.NONE;
-    private IMessageParser _parser;
     private TaskCompletionSource connectedSource = new TaskCompletionSource();
 
     protected SemaphoreSlim _sendSemaphore = new SemaphoreSlim(1, 1);
     protected SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
     protected CancellationTokenSource TokenSource = new CancellationTokenSource();
-    protected volatile ServerSettings Settings;
+    protected ClientSettings Settings;
 
     /// <summary>
     /// This channel represents the connection for this server. It is best to use a reliable protocol such at TCP over one like UDP for the main connection.
@@ -36,17 +35,9 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     protected MainChannel Connection { get; set; }
 
     /// <summary>
-    /// Register message handlers for custom message types with message type name
-    /// </summary>
-    protected readonly Dictionary<Type, Action<MessageBase>> _MessageHandlers = new()
-    {
-
-    };
-
-    /// <summary>
     /// Register asynchronous message handlers for custom message types with message type name
     /// </summary>
-    protected readonly Dictionary<Type, Func<MessageBase, Task>> _AsyncMessageHandlers = new()
+    protected readonly Dictionary<Type, Func<MessageBase, Task>> _MessageHandlers = new()
     {
 
     };
@@ -64,17 +55,14 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     /// <summary>
     /// Message parser the library uses (by default, NewMessageParser with MpSerializer
     /// </summary>
-    public IMessageParser MessageParser { get => _parser ??= new NewMessageParser(_crypto, Consts.DefaultSerializer); init => _parser = value; }
+    public IMessageParser MessageParser { get; init; }
 
     /// <summary>
     /// Invoked when an unregistered message is received
     /// </summary>
     public event Action<MessageBase> OnUnregisteredMessage;
 
-    /// <summary>
-    /// Invoked when disconnected from. Argument is graceful or ungraceful. 
-    /// </summary>
-    public event Action<DisconnectionInfo> OnDisconnect;
+    protected Func<DisconnectionInfo, Task> OnDisconnect;
 
     private void _SendMessage(MessageBase message)
     {
@@ -143,37 +131,50 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     public override async Task SendMessageAsync(MessageBase message, CancellationToken token = default) =>
         await _SendMessageAsync(message, token);
 
-    /// <summary>
-    /// Generic method to register an action to handle the specified method type.
-    /// </summary>
-    /// <typeparam name="T">Type of the message</typeparam>
-    /// <param name="handler">Action that is called whenever the message is received.</param>
-    public void RegisterMessageHandler<T>(Action<T> handler) where T : MessageBase =>
-        RegisterMessageHandler(mb => handler(mb as T), typeof(T));
+    public void OnDisconnected(Func<DisconnectionInfo, Task> onDisconnect) =>
+        OnDisconnect = onDisconnect;
+
+    public void OnDisconnected(Action<DisconnectionInfo> onDisconnect) =>
+        OnDisconnect = inf =>
+        {
+            onDisconnect(inf);
+            return Task.CompletedTask;
+        };
 
     /// <summary>
     /// Generic method to register an action to handle the specified method type.
     /// </summary>
     /// <typeparam name="T">Type of the message</typeparam>
     /// <param name="handler">Action that is called whenever the message is received.</param>
-    public void RegisterAsyncMessageHandler<T>(Func<T, Task> handler) where T : MessageBase =>
-        RegisterAsyncMessageHandler(mb => handler(mb as T), typeof(T));
+    public void OnMessageReceived<T>(Action<T> handler) where T : MessageBase =>
+        OnMessageReceived(typeof(T), mb => handler(mb as T));
+
+    /// <summary>
+    /// Generic method to register an action to handle the specified method type.
+    /// </summary>
+    /// <typeparam name="T">Type of the message</typeparam>
+    /// <param name="handler">Action that is called whenever the message is received.</param>
+    public void OnMessageReceived<T>(Func<T, Task> handler) where T : MessageBase =>
+        OnMessageReceived(typeof(T), mb => handler(mb as T));
 
     /// <summary>
     /// Non-generic method to register an action to handle the specified method type.
     /// </summary>
-    /// <param name="handler">Action that is called whenever the message is received.</param>
     /// <param name="messageType">Type of the message to register.</param>
-    public void RegisterMessageHandler(Action<MessageBase> handler, Type messageType) =>
-        _MessageHandlers.Add(messageType, handler);
+    /// <param name="handler">Action that is called whenever the message is received.</param>
+    public void OnMessageReceived(Type messageType, Action<MessageBase> handler) =>
+        _MessageHandlers.Add(messageType, (mb) => { 
+            handler(mb); 
+            return Task.CompletedTask; 
+        });
 
     /// <summary>
     /// Non-generic method to register an action to handle the specified method type.
     /// </summary>
-    /// <param name="handler">Action that is called whenever the message is received.</param>
     /// <param name="messageType">Type of the message to register.</param>
-    public void RegisterAsyncMessageHandler(Func<MessageBase, Task> handler, Type messageType) =>
-        _AsyncMessageHandlers.Add(messageType, handler);
+    /// <param name="handler">Action that is called whenever the message is received.</param>
+    public void OnMessageReceived(Type messageType, Func<MessageBase, Task> handler) =>
+        _MessageHandlers.TryAdd(messageType, handler);
 
     private string GetEnc() => encryptionStage switch
     {
@@ -189,7 +190,13 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         switch (message)
         {
             case SettingsMessage m:
-                Settings = m.Settings;
+                Settings = new ClientSettings()
+                {
+                    UseEncryption = m.Settings.UseEncryption,
+                    ConnectionPollTimeout = m.Settings.ConnectionPollTimeout,
+                    RequiresRegisteredTypes = m.Settings.ClientRequiresRegisteredTypes,
+                };
+                
                 if (!Settings.UseEncryption)
                 {
                     await _SendMessageAsync(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));
@@ -241,14 +248,9 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 if (!m.IsResponse) await _SendMessageAsync(new ConnectionPollMessage(true));
                 break;
             default:
-                var asyncMsgHandler = _AsyncMessageHandlers.FirstOrDefault(kv => kv.Key.Name.Equals(message.MessageType)).Value;
                 var msgHandler = _MessageHandlers.FirstOrDefault(kv => kv.Key.Name.Equals(message.MessageType)).Value;
-                if (asyncMsgHandler == null && msgHandler == null) OnUnregisteredMessage?.Invoke(message);
-                else
-                {
-                    if (asyncMsgHandler != null) await asyncMsgHandler(message);
-                    if (msgHandler != null) msgHandler(message);
-                }
+                if (msgHandler == null) OnUnregisteredMessage?.Invoke(message);
+                else if (msgHandler != null) await msgHandler(message);
                 break;
         }
     }

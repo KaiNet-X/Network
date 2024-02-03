@@ -1,7 +1,6 @@
 ﻿namespace Net.Connection.Clients.Tcp;
 
 using Channels;
-using Servers;
 using Generic;
 using Messages;
 using System;
@@ -9,6 +8,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using Net;
 
 public class ServerClient : ObjectClient, IServerClient
 {
@@ -20,11 +20,16 @@ public class ServerClient : ObjectClient, IServerClient
     /// </summary>
     public Exception ControlLoopException { get; protected set; }
 
-    internal ServerClient(Socket soc, ServerSettings settings = null) : base()
+    internal ServerClient(Socket soc, ConnectionSettings settings) : base()
     {
         ConnectionState = ConnectionState.PENDING;
 
-        Settings = settings ?? new ServerSettings();
+        Settings = new ClientSettings()
+        {
+            UseEncryption = settings.UseEncryption,
+            ConnectionPollTimeout = settings.ConnectionPollTimeout,
+            RequiresRegisteredTypes = settings.ServerRequiresRegisteredTypes,
+        };
         Connection = new TcpChannel(soc);
 
         LocalEndpoint = Connection.Socket.LocalEndPoint as IPEndPoint;
@@ -32,7 +37,7 @@ public class ServerClient : ObjectClient, IServerClient
 
         _receiver = ReceiveMessagesAsync().GetAsyncEnumerator();
 
-        (this as GeneralClient<TcpChannel>).SendMessage(new SettingsMessage(Settings));
+        (this as GeneralClient<TcpChannel>).SendMessage(new SettingsMessage(settings));
     }
 
     async Task IServerClient.ReceiveNextAsync()
@@ -52,4 +57,7 @@ public class ServerClient : ObjectClient, IServerClient
             throw;
         }
     }
+
+    void IServerClient.SetRegisteredObjectTypes(HashSet<string> registeredTypes) =>
+        RegisteredObjectTypes = registeredTypes;
 }

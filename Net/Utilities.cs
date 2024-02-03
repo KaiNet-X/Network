@@ -15,24 +15,7 @@ using System.Threading.Tasks;
 
 internal static class Utilities
 {
-    private static Type[] allTypes = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes()).ToArray();
-
     private static List<(BaseChannel channel, TaskCompletionSource tcs)> _wait = new();
-
-    public static Dictionary<string, Type> NameTypeAssociations = new Dictionary<string, Type>();
-
-    static Utilities()
-    {
-        var aliasedTypes = allTypes
-            .Where(type => type.IsDefined(typeof(NetAliasAttribute), false))
-            .ToDictionary(
-                type => type.GetCustomAttribute<NetAliasAttribute>().TypeAlias,
-                type => type
-            );
-
-        foreach (var pair in aliasedTypes)
-            NameTypeAssociations.Add(pair.Key, pair.Value);
-    }
 
     public static int IndexInByteArray(byte[] Bytes, byte[] SearchBytes, int offset = 0)
     {
@@ -65,73 +48,6 @@ internal static class Utilities
                 else if (I == SearchBytes.Length - 1 && SearchBytes[I].Equals(bytes[i + I]))
                     return i;
         return -1;
-    }
-
-    public static bool IsArray(string typeName) =>
-        typeName.Contains('[');
-
-    public static void RegisterType(Type t)
-    {
-        var objectAttribute = t.GetCustomAttribute<NetAliasAttribute>();
-        if (objectAttribute is null)
-            NameTypeAssociations[t.Name] = t;
-        else
-            NameTypeAssociations[objectAttribute.TypeAlias] = t;
-    }
-
-    public static Type GetTypeFromName(string name)
-    {
-        if (NameTypeAssociations.ContainsKey(name))
-            return NameTypeAssociations[name];
-        else
-        {
-            Type t = ResolveType(name);
-            try
-            {
-                NameTypeAssociations[name] = t;
-            }
-            catch
-            {
-                return NameTypeAssociations[name];
-            }
-            return t;
-        }
-    }
-
-    public static Type ResolveType(string name)
-    {
-        Type type = allTypes.First(x => x.Name == GetBaseTypeName(name));
-
-        if (!IsArray(name))
-            return type;
-        else if (name.Contains(","))
-            type = MultiDimensionalArrayType(type, (byte)name.Where(c => c == ',').Count());
-        else
-            type = JaggedArrayType(type, (byte)name.Where(c => c == '[').Count());
-
-        return type;
-    }
-
-    public static bool IsHerritableType<T>(this Type obType) =>
-        typeof(T).IsAssignableFrom(obType);
-
-    public static string GetBaseTypeName(string typeName) =>
-        typeName.Replace("[", "").Replace(",", "").Replace("]", "");
-
-    public static Type JaggedArrayType(Type baseType, byte dimensions)
-    {
-        Type type = baseType;
-        for (int i = 0; i < dimensions; i++)
-            type = Array.CreateInstance(type, 0).GetType();
-        return type;
-    }
-
-    public static Type MultiDimensionalArrayType(Type baseType, byte dimensions)
-    {
-        int[] lengths = new int[dimensions + 1];
-        for (int i = 0; i <= dimensions; i++)
-            lengths[i] = 0;
-        return Array.CreateInstance(baseType, lengths).GetType();
     }
 
     public static void ConcurrentAccess(Action a, SemaphoreSlim s)

@@ -5,6 +5,7 @@ using Serialization;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Threading.Tasks;
 
 /// <summary>
@@ -124,6 +125,21 @@ public enum DisconnectionReason
     TimedOut
 }
 
+public class GuardedDictionary<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
+{
+    private IDictionary<TKey, TValue> _dictionary;
+
+    public GuardedDictionary(IDictionary<TKey, TValue> dictionary)
+    {
+        _dictionary = dictionary;
+    }
+
+    public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => _dictionary.GetEnumerator();
+
+    IEnumerator IEnumerable.GetEnumerator() => ((IEnumerable)_dictionary).GetEnumerator();
+
+    public TValue this[TKey key] => _dictionary[key];
+}
 /// <summary>
 /// Provides a readonly view over a list.
 /// </summary>

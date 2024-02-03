@@ -1,9 +1,9 @@
-﻿namespace Net.Connection.Servers;
+﻿namespace Net;
 
 /// <summary>
 /// Settings that you can pass to the server
 /// </summary>
-public class ServerSettings
+public class ConnectionSettings
 {
     /// <summary>
     /// Encrypt the main connection
@@ -29,4 +29,15 @@ public class ServerSettings
     /// Max connections at one time. If less than one, considered to be unset
     /// </summary>
     public int MaxClientConnections { get; init; } = -1;
+
+    /// <summary>
+    /// Requires the server to register allowed types to deserialize
+    /// </summary>
+    public bool ServerRequiresRegisteredTypes { get; set; } = true;
+
+    /// <summary>
+    /// Requires the client to register allowed types to deserialize
+    /// </summary>
+    public bool ClientRequiresRegisteredTypes { get; set; } = false;
 }
+
