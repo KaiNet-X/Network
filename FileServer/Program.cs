@@ -25,11 +25,16 @@ foreach (var address in addresses)
 
 endpoints.AddRange(new[] { new IPEndPoint(IPAddress.Any, 6969), new IPEndPoint(IPAddress.IPv6Any, 6969) });
 
-var server = new TcpServer(endpoints, new ConnectionSettings { UseEncryption = true, ConnectionPollTimeout = 600000, MaxClientConnections = 5 });
+var server = new TcpServer(endpoints, new ServerSettings { UseEncryption = true, ConnectionPollTimeout = 600000, MaxClientConnections = 5 });
 
-server.OnClientConnected += OnConnect;
+server.OnClientConnected(OnConnect);
 
 server.OnDisconnect(OnDisconnect);
+
+server.OnObjectError((eFrame, sc) =>
+{
+    Console.WriteLine($"Potential malicious payload \"{eFrame.TypeName}\" by {sc.RemoteEndpoint}");
+});
 
 server.Start();
 

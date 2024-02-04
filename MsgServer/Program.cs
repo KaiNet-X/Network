@@ -15,9 +15,9 @@ var endpoints = new List<IPEndPoint>
 };
 
 // Initialize server to listen on all available addresses with a maximum of 5 clients
-TcpServer s = new TcpServer(endpoints, new ConnectionSettings { UseEncryption = true, ConnectionPollTimeout = 40000, MaxClientConnections = 5 });
+TcpServer s = new TcpServer(endpoints, new ServerSettings { UseEncryption = true, ConnectionPollTimeout = 40000, MaxClientConnections = 5 });
 
-s.OnClientConnected += Connected;
+s.OnClientConnected(Connected);
 s.OnDisconnect(Disconnected);
 s.RegisterReceive<object>(Recieved);
 

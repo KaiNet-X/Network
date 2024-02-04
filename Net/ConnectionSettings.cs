@@ -1,8 +1,5 @@
 ﻿namespace Net;
 
-/// <summary>
-/// Settings that you can pass to the server
-/// </summary>
 public class ConnectionSettings
 {
     /// <summary>
@@ -11,33 +8,12 @@ public class ConnectionSettings
     public bool UseEncryption { get; init; } = true;
 
     /// <summary>
-    /// Run serverclients on one thread or dedicated threads
-    /// </summary>
-    public bool SingleThreadedServer { get; init; } = false;
-
-    /// <summary>
     /// Timeout for connection checks
     /// </summary>
     public int ConnectionPollTimeout { get; init; } = 1000;
 
     /// <summary>
-    /// Remove clients from the list after disconnection is invoked
-    /// </summary>
-    public bool RemoveClientAfterDisconnect { get; init; } = true;
-
-    /// <summary>
-    /// Max connections at one time. If less than one, considered to be unset
-    /// </summary>
-    public int MaxClientConnections { get; init; } = -1;
-
-    /// <summary>
-    /// Requires the server to register allowed types to deserialize
-    /// </summary>
-    public bool ServerRequiresRegisteredTypes { get; set; } = true;
-
-    /// <summary>
     /// Requires the client to register allowed types to deserialize
     /// </summary>
-    public bool ClientRequiresRegisteredTypes { get; set; } = false;
+    public bool RequiresWhitelistedTypes = false;
 }
-

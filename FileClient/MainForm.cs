@@ -121,6 +121,7 @@ public partial class MainForm : Form
 
     private async void downloadButton_Click(object sender, EventArgs e)
     {
+        await _client.SendObjectAsync(new FileRequestMessage { });
         await _client.SendMessageAsync(new FileRequestMessage { RequestType = FileRequestType.Download, PathRequest = _path, User = _user });
     }
 

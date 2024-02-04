@@ -19,8 +19,8 @@ IPEndPoint endpoint = new IPEndPoint(address, 15555);
 DateTime last = DateTime.Now;
 
 //MessageParser.Serializer = new JSerializer();
-TcpServer server = new TcpServer(endpoint, new ConnectionSettings { UseEncryption = true, ConnectionPollTimeout = 10000000, MaxClientConnections = 5 });
-server.OnClientConnected += ClientConnected;
+TcpServer server = new TcpServer(endpoint, new ServerSettings { UseEncryption = true, ConnectionPollTimeout = 10000000, MaxClientConnections = 5 });
+server.OnClientConnected(ClientConnected);
 server.RegisterReceive<object>(Server_OnClientObjectReceived);
 server.OnAnyChannel(Server_OnClientChannelOpened);
 

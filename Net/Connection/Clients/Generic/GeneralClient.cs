@@ -27,7 +27,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     protected SemaphoreSlim _sendSemaphore = new SemaphoreSlim(1, 1);
     protected SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
     protected CancellationTokenSource TokenSource = new CancellationTokenSource();
-    protected ClientSettings Settings;
+    protected ConnectionSettings Settings;
 
     /// <summary>
     /// This channel represents the connection for this server. It is best to use a reliable protocol such at TCP over one like UDP for the main connection.
@@ -64,7 +64,11 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
 
     protected Func<DisconnectionInfo, Task> OnDisconnect;
 
-    private void _SendMessage(MessageBase message)
+    /// <summary>
+    /// Sends a message to the remote client.
+    /// </summary>
+    /// <param name="message"></param>
+    public override void SendMessage(MessageBase message)
     {
         if (ConnectionState == ConnectionState.CLOSED) return;
         else if (!Connection.Connected)
@@ -99,11 +103,18 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     /// Sends a message to the remote client.
     /// </summary>
     /// <param name="message"></param>
-    public override void SendMessage(MessageBase message) =>
-        _SendMessage(message);
-
-    private async Task _SendMessageAsync(MessageBase message, CancellationToken token = default)
+    /// <param name="token"></param>
+    public override async Task SendMessageAsync(MessageBase message, CancellationToken token = default)
     {
+        if (ConnectionState == ConnectionState.CLOSED) return;
+        else if (!Connection.Connected)
+        {
+            DisconnectedEvent(new DisconnectionInfo
+            {
+                Exception = Connection.ConnectionException
+            });
+        }
+        
         using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(token, TokenSource.Token);
 
         try
@@ -116,20 +127,12 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         catch (Exception ex)
         {
             if (ConnectionState != ConnectionState.CLOSED)
-                await DisconnectedEventAsync(new DisconnectionInfo 
+                await DisconnectedEventAsync(new DisconnectionInfo
                 {
                     Exception = ex
                 });
         }
     }
-
-    /// <summary>
-    /// Sends a message to the remote client.
-    /// </summary>
-    /// <param name="message"></param>
-    /// <param name="token"></param>
-    public override async Task SendMessageAsync(MessageBase message, CancellationToken token = default) =>
-        await _SendMessageAsync(message, token);
 
     public void OnDisconnected(Func<DisconnectionInfo, Task> onDisconnect) =>
         OnDisconnect = onDisconnect;
@@ -189,16 +192,11 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         switch (message)
         {
             case SettingsMessage m:
-                Settings = new ClientSettings()
-                {
-                    UseEncryption = m.Settings.UseEncryption,
-                    ConnectionPollTimeout = m.Settings.ConnectionPollTimeout,
-                    RequiresRegisteredTypes = m.Settings.ClientRequiresRegisteredTypes,
-                };
+                Settings = m.Settings;
                 
                 if (!Settings.UseEncryption)
                 {
-                    await _SendMessageAsync(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));
+                    await SendMessageAsync(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));
                     ConnectionState = ConnectionState.CONNECTED;
                     connectedSource.SetResult();
                     StartPoll();
@@ -211,18 +209,18 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 if (encryptionStage == EncryptionStage.SYN)
                 {
                     _crypto.PublicKey = m.RsaPair;
-                    await _SendMessageAsync(new EncryptionMessage(_crypto.AesKey, _crypto.AesIv));
+                    await SendMessageAsync(new EncryptionMessage(_crypto.AesKey, _crypto.AesIv));
                 }
                 else if (encryptionStage == EncryptionStage.ACK)
                 {
                     _crypto.AesKey = m.AesKey;
                     _crypto.AesIv = m.AesIv;
-                    await _SendMessageAsync(new EncryptionMessage(EncryptionStage.SYNACK));
+                    await SendMessageAsync(new EncryptionMessage(EncryptionStage.SYNACK));
                     encryptionStage = EncryptionStage.SYNACK;
                 }
                 else if (encryptionStage == EncryptionStage.SYNACK)
                 {
-                    await _SendMessageAsync(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));
+                    await SendMessageAsync(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));
                     ConnectionState = ConnectionState.CONNECTED;
                     connectedSource.SetResult();
                     StartPoll();
@@ -239,12 +237,12 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                     case ConfirmationMessage.Confirmation.ENCRYPTION:
                         CryptographyService.GenerateKeyPair(out RSAParameters Public, out RSAParameters p);
                         _crypto.PrivateKey = p;
-                        await _SendMessageAsync(new EncryptionMessage(Public));
+                        await SendMessageAsync(new EncryptionMessage(Public));
                         break;
                 }
                 break;
             case ConnectionPollMessage m:
-                if (!m.IsResponse) await _SendMessageAsync(new ConnectionPollMessage(true));
+                if (!m.IsResponse) await SendMessageAsync(new ConnectionPollMessage(true));
                 break;
             default:
                 var msgHandler = _MessageHandlers.FirstOrDefault(kv => kv.Key.Name.Equals(message.MessageType)).Value;
@@ -312,7 +310,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
 
     private protected abstract void CloseConnection();
 
-    protected void Disconnected()
+    private void Disconnected()
     {
         ConnectionState = ConnectionState.CLOSED;
         encryptionStage = EncryptionStage.NONE;
@@ -328,7 +326,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         {
             if (ConnectionState == ConnectionState.CLOSED) return;
 
-            _SendMessage(new DisconnectMessage());
+            SendMessage(new DisconnectMessage());
             Disconnected();
         }, _semaphore);
 
@@ -337,7 +335,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         {
             if (ConnectionState == ConnectionState.CLOSED) return;
 
-            await _SendMessageAsync(new DisconnectMessage());
+            await SendMessageAsync(new DisconnectMessage());
             Disconnected();
         }, _semaphore);
 

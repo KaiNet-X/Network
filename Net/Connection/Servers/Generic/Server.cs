@@ -34,7 +34,7 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
     /// <summary>
     /// Settings for this server
     /// </summary>
-    public ConnectionSettings Settings { get; protected set; }
+    public ServerSettings Settings { get; protected set; }
 
     /// <summary>
     /// Asynchronous handlers for custom message types
@@ -48,7 +48,7 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
     /// <summary>
     /// Invoked when a client is connected
     /// </summary>
-    public event Action<ClientType> OnClientConnected;
+    protected Func<ClientType, Task> ClientConnected;
 
     private Func<DisconnectionInfo, ClientType, Task> clientDisconnected;
     // TODO: Fix order of args
@@ -58,10 +58,10 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
 
     protected Func<ObjectMessageErrorFrame, ClientType, Task> ObjectError;
 
-    public Server(ConnectionSettings settings)
+    public Server(ServerSettings settings)
     {
         Settings = settings;
-        if (settings.ServerRequiresRegisteredTypes) 
+        if (settings.ServerRequiresWhitelistedTypes) 
             RegisteredObjectTypes = new();
     }
 
@@ -161,10 +161,16 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
 
                 await c.connectedTask;
 
-                OnClientConnected?.Invoke(c);
+                ClientConnected?.Invoke(c);
             }
         }, TaskCreationOptions.LongRunning);
     }
+
+    public void OnClientConnected(Func<ClientType, Task> clientConnected) =>
+        ClientConnected = clientConnected;
+
+    public void OnClientConnected(Action<ClientType> clientConnected) =>
+        OnClientConnected(Utilities.SyncToAsync(clientConnected));
 
     public void WhitelistObjectType(Type type) =>
         RegisteredObjectTypes.Add(type);

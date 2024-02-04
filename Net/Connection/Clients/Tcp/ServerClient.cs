@@ -24,20 +24,13 @@ public class ServerClient : ObjectClient, IServerClient
     {
         ConnectionState = ConnectionState.PENDING;
 
-        Settings = new ClientSettings()
-        {
-            UseEncryption = settings.UseEncryption,
-            ConnectionPollTimeout = settings.ConnectionPollTimeout,
-            RequiresRegisteredTypes = settings.ServerRequiresRegisteredTypes,
-        };
+        Settings = settings;
         Connection = new TcpChannel(soc);
 
         LocalEndpoint = Connection.Socket.LocalEndPoint as IPEndPoint;
         RemoteEndpoint = Connection.Socket.RemoteEndPoint as IPEndPoint;
 
         _receiver = ReceiveMessagesAsync().GetAsyncEnumerator();
-
-        (this as GeneralClient<TcpChannel>).SendMessage(new SettingsMessage(settings));
     }
 
     async Task IServerClient.ReceiveNextAsync()

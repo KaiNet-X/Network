@@ -14,14 +14,14 @@ public class TcpClientTests
     private TcpServer NewServer(bool encrypted)
     {
         var settings = encrypted ? 
-            new ConnectionSettings 
+            new ServerSettings 
             { 
-                ServerRequiresRegisteredTypes = false 
+                ServerRequiresWhitelistedTypes = false 
             } : 
-            new ConnectionSettings 
+            new ServerSettings 
             {
                 UseEncryption = false,
-                ServerRequiresRegisteredTypes = false
+                ServerRequiresWhitelistedTypes = false
             };
 
         return new TcpServer(new IPEndPoint(IPAddress.Loopback, 0), settings);
@@ -107,9 +107,9 @@ public class TcpClientTests
         var tcs = new TaskCompletionSource<bool>();
         var server = NewServer(encrypt);
 
-        var settings = new ConnectionSettings() { ConnectionPollTimeout = -1, UseEncryption = false, ServerRequiresRegisteredTypes = false };
+        var settings = new ServerSettings() { ConnectionPollTimeout = -1, UseEncryption = false, ServerRequiresWhitelistedTypes = false };
 
-        server.RegisterReceive<ConnectionSettings>((obj, client) =>
+        server.RegisterReceive<ServerSettings>((obj, client) =>
         {
             tcs.SetResult(Helpers.AreEqual(settings, obj));
         });
@@ -203,20 +203,20 @@ public class TcpClientTests
 
         var server = NewServer(encrypt);
 
-        var settings = new ConnectionSettings() { ConnectionPollTimeout = -1, UseEncryption = false };
+        var settings = new ServerSettings() { ConnectionPollTimeout = -1, UseEncryption = false };
 
         Action<ServerClient> conn = async (sc) =>
         {
             await sc.SendObjectAsync(settings);
         };
 
-        server.OnClientConnected += conn;
+        server.OnClientConnected(conn);
 
         server.Start();
 
         var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
-        c.RegisterReceive<ConnectionSettings>(obj =>
+        c.RegisterReceive<ServerSettings>(obj =>
         {
             tcs.SetResult(Helpers.AreEqual(settings, obj));
         });
@@ -250,7 +250,7 @@ public class TcpClientTests
             sc.SendObject(arr);
         };
 
-        server.OnClientConnected += conn;
+        server.OnClientConnected(conn);
 
         server.Start();
 
@@ -502,7 +502,7 @@ public class TcpClientTests
             c.RegisterChannelType<DummyChannel>(open, management, close);
         };
 
-        server.OnClientConnected += con;
+        server.OnClientConnected(con);
         server.Start();
 
         c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
