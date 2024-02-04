@@ -113,7 +113,7 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
 
     public bool RegisterReceive(Type type, Func<object, Task> receive)
     {
-        WhitelistedObjectTypes.Add(type);
+        WhitelistedObjectTypes?.Add(type);
         return ObjectEvents.TryAdd(type, receive);
     }
 
