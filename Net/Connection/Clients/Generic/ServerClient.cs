@@ -50,5 +50,5 @@ public abstract class ServerClient<MainConnection> : ObjectClient<MainConnection
     }
 
     void IServerClient.SetRegisteredObjectTypes(HashSet<Type> registeredTypes) =>
-        RegisteredObjectTypes = registeredTypes;
+        WhitelistedObjectTypes = registeredTypes;
 }

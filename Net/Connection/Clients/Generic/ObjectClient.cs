@@ -8,7 +8,6 @@ using Net.Serialization;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,7 +24,7 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     protected readonly ConcurrentDictionary<Type, Func<BaseChannel, Task>> CloseChannelMethods = new();
     protected readonly ConcurrentDictionary<Type, Func<BaseChannel, Task>> ChannelEvents = new();
     protected internal readonly List<BaseChannel> _channels = new();
-    protected HashSet<Type> RegisteredObjectTypes = new();
+    protected HashSet<Type> WhitelistedObjectTypes = new();
 
     protected Func<ObjectMessageErrorFrame, Task> ObjectError;
 
@@ -112,8 +111,11 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     public bool RegisterReceive<T>(Action<T> action) =>
         RegisterReceive(Utilities.SyncToAsync(action));
 
-    public bool RegisterReceive(Type type, Func<object, Task> receive) =>
-        ObjectEvents.TryAdd(type, receive);
+    public bool RegisterReceive(Type type, Func<object, Task> receive)
+    {
+        WhitelistedObjectTypes.Add(type);
+        return ObjectEvents.TryAdd(type, receive);
+    }
 
     /// <summary>
     /// Registers a generic action to be invoked asynchronously when an object of specified type is received
@@ -122,7 +124,7 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     /// <param name="func"></param>
     /// <returns>False if there is already a handler for type T, otherwise true</returns>
     public bool RegisterReceive<T>(Func<T, Task> func) =>
-        ObjectEvents.TryAdd(typeof(T), (obj) => func((T)obj));
+        RegisterReceive(typeof(T), (obj) => func((T)obj));
 
     /// <summary>
     /// Unregisters handlers for T
@@ -224,7 +226,7 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     private void HandleObject(ObjectMessage m)
     {
         var unknown = !TypeHandler.TryGetTypeFromName(m.TypeName, out Type t);
-        var notRegistered = Settings.RequiresWhitelistedTypes && !RegisteredObjectTypes.Contains(t);
+        var notRegistered = Settings.RequiresWhitelistedTypes && !WhitelistedObjectTypes.Contains(t);
 
         if (notRegistered || unknown)
         {
@@ -237,7 +239,11 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
                 Serializer);
 
             if (ObjectError != null)
-                Task.Run(async () => await ObjectError(errorFrame));
+                Task.Run(async () =>
+                {
+                    var task = ObjectError(errorFrame);
+                    if (task != null) await task;
+                });
 
             return;
         }

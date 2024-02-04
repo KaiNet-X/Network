@@ -33,12 +33,6 @@ public partial class MainForm : Form
         Directory.CreateDirectory(_dir);
 
         _client = new Client(IPAddress.Parse(Interaction.InputBox("What is a valid server address?", "Address", "127.0.0.1")), 6969);
-        _client.Connect(15, true);
-
-        cAddr.Text = _client.LocalEndpoint.Address.ToString();
-        cPort.Text = _client.LocalEndpoint.Port.ToString();
-        sAddr.Text = _client.RemoteEndpoint.Address.ToString();
-        sPort.Text = _client.RemoteEndpoint.Port.ToString();
 
         _client.RegisterReceive<Tree>(t =>
         {
@@ -102,6 +96,13 @@ public partial class MainForm : Form
             MessageBox.Show("Server disconnected");
             Task.Run(() => Invoke(this.Close));
         });
+
+        _client.Connect(15, true);
+
+        cAddr.Text = _client.LocalEndpoint.Address.ToString();
+        cPort.Text = _client.LocalEndpoint.Port.ToString();
+        sAddr.Text = _client.RemoteEndpoint.Address.ToString();
+        sPort.Text = _client.RemoteEndpoint.Port.ToString();
 
         Task.Run(async () =>
         {

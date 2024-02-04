@@ -18,7 +18,7 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
 {
     protected volatile SemaphoreSlim _semaphore = new(1);
     private ConcurrentDictionary<Type, Func<object, ClientType, Task>> ObjectEvents = new();
-    protected readonly HashSet<Type> RegisteredObjectTypes;
+    protected readonly HashSet<Type> WhitelistedObjectTypes;
     protected readonly ConcurrentDictionary<Type, Func<BaseChannel, ClientType, Task>> ChannelEvents = new();
 
     /// <summary>
@@ -62,7 +62,7 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
     {
         Settings = settings;
         if (settings.ServerRequiresWhitelistedTypes) 
-            RegisteredObjectTypes = new();
+            WhitelistedObjectTypes = new();
     }
 
     /// <summary>
@@ -116,7 +116,7 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
                 }
 
                 var c = await InitializeClient();
-                c.SetRegisteredObjectTypes(RegisteredObjectTypes);
+                c.SetRegisteredObjectTypes(WhitelistedObjectTypes);
                 c.OnAnyChannel((ch) => channelOpened?.Invoke(ch, c));
                 c.OnAnyMessage(m => unregisteredMessage?.Invoke(m, c));
                 c.OnObjectError(e => ObjectError?.Invoke(e, c));
@@ -173,10 +173,10 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
         OnClientConnected(Utilities.SyncToAsync(clientConnected));
 
     public void WhitelistObjectType(Type type) =>
-        RegisteredObjectTypes.Add(type);
+        WhitelistedObjectTypes.Add(type);
 
     public void WhitelistObjectType<T>() =>
-        RegisteredObjectTypes.Add(typeof(T));
+        WhitelistedObjectTypes.Add(typeof(T));
 
     public void OnObjectError(Func<ObjectMessageErrorFrame, ClientType, Task> handler) =>
         ObjectError = handler;

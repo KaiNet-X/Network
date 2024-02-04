@@ -147,10 +147,10 @@ public class Client : ObjectClient
     }
 
     public void WhitelistObjectType(Type type) =>
-        RegisteredObjectTypes.Add(type);
+        WhitelistedObjectTypes.Add(type);
 
     public void WhitelistObjectType<T>() =>
-        RegisteredObjectTypes.Add(typeof(T));
+        WhitelistedObjectTypes.Add(typeof(T));
 
     private void Initialize()
     {
