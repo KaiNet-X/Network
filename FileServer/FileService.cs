@@ -18,7 +18,7 @@ internal class FileService
         this.server = server;
         this.authService = authService;
         this.workingDirectory = workingDirectory;
-        this.server.RegisterMessageHandler<FileRequestMessage>(HandleFileRequest);
+        this.server.OnMessage<FileRequestMessage>(HandleFileRequest);
     }
 
     public async Task SendFile(FileStream file, ServerClient client, FileRequestMessage msg)

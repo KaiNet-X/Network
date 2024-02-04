@@ -60,7 +60,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     /// <summary>
     /// Invoked when an unregistered message is received
     /// </summary>
-    public event Action<MessageBase> OnUnregisteredMessage;
+    private Func<MessageBase, Task> unregisteredMessage;
 
     protected Func<DisconnectionInfo, Task> OnDisconnect;
 
@@ -135,11 +135,13 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         OnDisconnect = onDisconnect;
 
     public void OnDisconnected(Action<DisconnectionInfo> onDisconnect) =>
-        OnDisconnect = inf =>
-        {
-            onDisconnect(inf);
-            return Task.CompletedTask;
-        };
+        OnDisconnected(Utilities.SyncToAsync(onDisconnect));
+
+    public void OnAnyMessage(Func<MessageBase, Task> handler) => 
+        unregisteredMessage = handler;
+
+    public void OnAnyMessage(Action<MessageBase> handler) =>
+        OnAnyMessage(Utilities.SyncToAsync(handler));
 
     /// <summary>
     /// Generic method to register an action to handle the specified method type.
@@ -163,10 +165,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     /// <param name="messageType">Type of the message to register.</param>
     /// <param name="handler">Action that is called whenever the message is received.</param>
     public void OnMessageReceived(Type messageType, Action<MessageBase> handler) =>
-        _MessageHandlers.Add(messageType, (mb) => { 
-            handler(mb); 
-            return Task.CompletedTask; 
-        });
+        OnMessageReceived(messageType, Utilities.SyncToAsync(handler));
 
     /// <summary>
     /// Non-generic method to register an action to handle the specified method type.
@@ -249,7 +248,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 break;
             default:
                 var msgHandler = _MessageHandlers.FirstOrDefault(kv => kv.Key.Name.Equals(message.MessageType)).Value;
-                if (msgHandler == null) OnUnregisteredMessage?.Invoke(message);
+                if (msgHandler == null) unregisteredMessage?.Invoke(message);
                 else if (msgHandler != null) await msgHandler(message);
                 break;
         }

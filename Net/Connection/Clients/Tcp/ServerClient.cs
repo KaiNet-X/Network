@@ -58,6 +58,6 @@ public class ServerClient : ObjectClient, IServerClient
         }
     }
 
-    void IServerClient.SetRegisteredObjectTypes(HashSet<string> registeredTypes) =>
+    void IServerClient.SetRegisteredObjectTypes(HashSet<Type> registeredTypes) =>
         RegisteredObjectTypes = registeredTypes;
 }

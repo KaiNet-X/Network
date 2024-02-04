@@ -411,7 +411,7 @@ public class TcpClientTests
             Assert.True(Helpers.AreEqual(msg, m));
             tcs.SetResult();
         };
-        server.OnUnregisteredMessage += msgB;
+        server.OnUnregisteredMessage(msgB);
 
         server.Start();
 
@@ -442,11 +442,11 @@ public class TcpClientTests
 
         var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
-        c.OnUnregisteredMessage += (m) =>
+        c.OnAnyMessage(m =>
         {
             Assert.True(Helpers.AreEqual(msg, m));
             tcs.SetResult();
-        };
+        });
 
         await c.ConnectAsync();
         server.SendMessageToAll(msg);

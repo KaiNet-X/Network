@@ -146,6 +146,12 @@ public class Client : ObjectClient
         return true;
     }
 
+    public void WhitelistObjectType(Type type) =>
+        RegisteredObjectTypes.Add(type);
+
+    public void WhitelistObjectType<T>() =>
+        RegisteredObjectTypes.Add(typeof(T));
+
     private void Initialize()
     {
         Connection = new TcpChannel(new Socket(_targetEndpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp));

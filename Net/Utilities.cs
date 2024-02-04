@@ -132,6 +132,18 @@ internal static class Utilities
             queue.Enqueue(r);
     }
 
+    public static Func<T, Task> SyncToAsync<T>(Action<T> action) => a =>
+    {
+        action(a);
+        return Task.CompletedTask;
+    };
+
+    public static Func<T1, T2, Task> SyncToAsync<T1, T2>(Action<T1, T2> action) => (a, b) =>
+    {
+        action(a, b);
+        return Task.CompletedTask;
+    };
+
     internal static void RegisterTcpChannel<T>(ObjectClient<T> client, Lazy<TcpChannel> mainConnection) where T : BaseChannel
     {
         client.RegisterChannelType<TcpChannel>(
