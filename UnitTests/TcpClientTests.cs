@@ -5,7 +5,6 @@ using Net.Connection.Channels;
 using Net.Connection.Clients.Tcp;
 using Net.Connection.Servers;
 using Net.Messages;
-using System.Diagnostics;
 using System.Net;
 using System.Text;
 
@@ -522,5 +521,59 @@ public class TcpClientTests
         Assert.Equal(2, closed);
 
         server.ShutDown();
+    }
+
+    [Fact]
+    public async Task ServerRejectsUnWhitelisted()
+    {
+        var tcs = new TaskCompletionSource();
+
+        var server = new TcpServer(IPAddress.Loopback, 11111, new ServerSettings
+        {
+            ClientRequiresWhitelistedTypes = true,
+            ServerRequiresWhitelistedTypes = true
+        });
+
+        server.OnObjectError((eFrame, sc) =>
+        {
+            tcs.SetResult();
+        });
+
+        server.Start();
+
+        var client = new Client(IPAddress.Loopback, 11111);
+        await client.ConnectAsync();
+
+        await client.SendObjectAsync(6.9);
+
+        var task = await Task.WhenAny(tcs.Task, Task.Delay(500));
+        Assert.Equal(task, tcs.Task);
+    }
+
+    [Fact]
+    public async Task ClientRejectsUnWhitelisted()
+    {
+        var tcs = new TaskCompletionSource();
+
+        var server = new TcpServer(IPAddress.Loopback, 11111, new ServerSettings
+        {
+            ClientRequiresWhitelistedTypes = true,
+            ServerRequiresWhitelistedTypes = true
+        });
+
+        server.Start();
+
+        var client = new Client(IPAddress.Loopback, 11111);
+        client.OnObjectError(eFrame =>
+        {
+            tcs.SetResult();
+        });
+
+        await client.ConnectAsync();
+
+        await server.SendObjectToAllAsync(6.9);
+
+        var task = await Task.WhenAny(tcs.Task, Task.Delay(500));
+        Assert.Equal(task, tcs.Task);
     }
 }

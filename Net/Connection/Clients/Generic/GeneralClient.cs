@@ -60,7 +60,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     /// <summary>
     /// Invoked when an unregistered message is received
     /// </summary>
-    private Func<MessageBase, Task> unregisteredMessage;
+    private Func<MessageBase, Task> UnregisteredMessage;
 
     protected Func<DisconnectionInfo, Task> OnDisconnect;
 
@@ -141,7 +141,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         OnDisconnected(Utilities.SyncToAsync(onDisconnect));
 
     public void OnAnyMessage(Func<MessageBase, Task> handler) => 
-        unregisteredMessage = handler;
+        UnregisteredMessage = handler;
 
     public void OnAnyMessage(Action<MessageBase> handler) =>
         OnAnyMessage(Utilities.SyncToAsync(handler));
@@ -246,7 +246,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 break;
             default:
                 var msgHandler = _MessageHandlers.FirstOrDefault(kv => kv.Key.Name.Equals(message.MessageType)).Value;
-                if (msgHandler == null) unregisteredMessage?.Invoke(message);
+                if (msgHandler == null) UnregisteredMessage?.Invoke(message);
                 else if (msgHandler != null) await msgHandler(message);
                 break;
         }
