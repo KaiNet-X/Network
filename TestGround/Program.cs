@@ -21,7 +21,7 @@ DateTime last = DateTime.Now;
 //MessageParser.Serializer = new JSerializer();
 TcpServer server = new TcpServer(endpoint, new ServerSettings { UseEncryption = true, ConnectionPollTimeout = 10000000, MaxClientConnections = 5, ServerRequiresWhitelistedTypes = false });
 server.OnClientConnected(ClientConnected);
-server.RegisterReceive<object>(Server_OnClientObjectReceived);
+server.OnReceive<object>(Server_OnClientObjectReceived);
 server.OnAnyChannel(Server_OnClientChannelOpened);
 
 void Server_OnClientChannelOpened(BaseChannel arg1, ServerClient arg2)
@@ -38,7 +38,7 @@ server.Start();
 Client client = new Client(endpoint);
 //client.OnReceiveObject += Client_OnReceiveObject;
 
-client.RegisterReceive<string>(str =>
+client.OnReceive<string>(str =>
 {
     Console.WriteLine($"Down: {(DateTime.Now - last).Milliseconds}");
     last = DateTime.Now;

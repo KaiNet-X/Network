@@ -99,8 +99,8 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     public void OnChannel<TChannel>(Action<TChannel> onChannelOpened) where TChannel : BaseChannel =>
         OnChannel(Utilities.SyncToAsync(onChannelOpened));
 
-    public bool RegisterReceive(Type type, Action<object> receive) =>
-        RegisterReceive(type, Utilities.SyncToAsync(receive));
+    public bool OnReceive(Type type, Action<object> receive) =>
+        OnReceive(type, Utilities.SyncToAsync(receive));
 
     /// <summary>
     /// Registers a generic action to be invoked when an object of specified type is received
@@ -108,10 +108,10 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     /// <typeparam name="T">Type to return</typeparam>
     /// <param name="action"></param>
     /// <returns>False if there is already a handler for type T, otherwise true</returns>
-    public bool RegisterReceive<T>(Action<T> action) =>
-        RegisterReceive(Utilities.SyncToAsync(action));
+    public bool OnReceive<T>(Action<T> action) =>
+        OnReceive(Utilities.SyncToAsync(action));
 
-    public bool RegisterReceive(Type type, Func<object, Task> receive)
+    public bool OnReceive(Type type, Func<object, Task> receive)
     {
         WhitelistedObjectTypes?.Add(type);
         return ObjectEvents.TryAdd(type, receive);
@@ -123,8 +123,8 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     /// <typeparam name="T">Type to return</typeparam>
     /// <param name="func"></param>
     /// <returns>False if there is already a handler for type T, otherwise true</returns>
-    public bool RegisterReceive<T>(Func<T, Task> func) =>
-        RegisterReceive(typeof(T), (obj) => func((T)obj));
+    public bool OnReceive<T>(Func<T, Task> func) =>
+        OnReceive(typeof(T), (obj) => func((T)obj));
 
     /// <summary>
     /// Unregisters handlers for T

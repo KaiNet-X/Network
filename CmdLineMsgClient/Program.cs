@@ -61,7 +61,7 @@ void InitializeClient()
 {
     //Target the client to the chosen address and port 5555
     client = new Client(Addr, 5555);
-    client.RegisterReceive<object>(rec);
+    client.OnReceive<object>(rec);
     client.OnDisconnected(C1_OnDisconnect);
     client.OnAnyChannel(C1_OnChannelOpened);
 }

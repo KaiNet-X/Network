@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 /// </summary>
 public abstract class ServerClient<MainConnection> : ObjectClient<MainConnection>, IServerClient where MainConnection : BaseChannel
 {
-    Task IServerClient.connectedTask => Connected.Task;
+    Task IServerClient.connectedTask => ConnectedTask.Task;
 
     private readonly IAsyncEnumerator<MessageBase> _receiver;
 

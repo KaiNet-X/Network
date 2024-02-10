@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 public abstract class BaseChannel
 {
     /// <summary>
-    /// Shorthand for ConnectionInfo.Connected
+    /// Shorthand for ConnectionInfo.ConnectedTask
     /// </summary>
     public bool Connected { get; protected set; }
 

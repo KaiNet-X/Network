@@ -15,7 +15,7 @@ public class TcpClientTests
         var settings = encrypted ? 
             new ServerSettings 
             { 
-                ServerRequiresWhitelistedTypes = false 
+                ServerRequiresWhitelistedTypes = false
             } : 
             new ServerSettings 
             {
@@ -81,7 +81,7 @@ public class TcpClientTests
 
         var str = "hello world";
 
-        server.RegisterReceive<string>((obj, client) =>
+        server.OnReceive<string>((obj, client) =>
         {
             tcs.SetResult(str == obj);
         });
@@ -108,7 +108,7 @@ public class TcpClientTests
 
         var settings = new ServerSettings() { ConnectionPollTimeout = -1, UseEncryption = false, ServerRequiresWhitelistedTypes = false };
 
-        server.RegisterReceive<ServerSettings>((obj, client) =>
+        server.OnReceive<ServerSettings>((obj, client) =>
         {
             tcs.SetResult(Helpers.AreEqual(settings, obj));
         });
@@ -141,7 +141,7 @@ public class TcpClientTests
             {3, 2, 1}
         };
 
-        server.RegisterReceive<int[,]>((obj, client) =>
+        server.OnReceive<int[,]>((obj, client) =>
         {
             tcs.SetResult(Helpers.AreEqual(arr, obj));
         });
@@ -180,7 +180,7 @@ public class TcpClientTests
             Assert.True(Helpers.AreEqual(arr, obj));
         };
 
-        server.RegisterReceive<int[][]>(rec);
+        server.OnReceive<int[][]>(rec);
 
         server.Start();
 
@@ -215,7 +215,7 @@ public class TcpClientTests
 
         var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
-        c.RegisterReceive<ServerSettings>(obj =>
+        c.OnReceive<ServerSettings>(obj =>
         {
             tcs.SetResult(Helpers.AreEqual(settings, obj));
         });
@@ -255,7 +255,7 @@ public class TcpClientTests
 
         var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
-        c.RegisterReceive<int[][]>((obj) =>
+        c.OnReceive<int[][]>((obj) =>
         {
             tcs.SetResult();
             Assert.True(Helpers.AreEqual(arr, obj));
@@ -575,5 +575,36 @@ public class TcpClientTests
 
         var task = await Task.WhenAny(tcs.Task, Task.Delay(500));
         Assert.Equal(task, tcs.Task);
+    }
+
+    [Fact]
+    public async Task ClientReconnects()
+    {
+        var tcs = new TaskCompletionSource();
+
+        var server = new TcpServer(new IPEndPoint(IPAddress.Loopback, 0), new ServerSettings
+        {
+            ConnectionPollTimeout = 30000
+        });
+        server.Start();
+
+        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var connected = await c.ConnectAsync();
+
+        await c.CloseAsync();
+
+        server.OnClientConnected(sc =>
+        {
+            sc.OnReceive<string>(str =>
+            {
+                tcs.SetResult();
+            });
+        });
+
+        await c.ConnectAsync();
+        await c.SendObjectAsync("Hello world");
+        Assert.Equal(tcs.Task, await Task.WhenAny(tcs.Task, Task.Delay(2000)));
+
+        server.ShutDown();
     }
 }

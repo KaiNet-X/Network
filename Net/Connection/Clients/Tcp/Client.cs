@@ -42,10 +42,7 @@ public class Client : ObjectClient
     /// <param name="ep">IPEndpoint of the server</param>
     public Client(IPEndPoint ep) : base()
     {
-        ConnectionState = ConnectionState.PENDING;
         _targetEndpoint = ep;
-
-        Initialize();
     }
 
     /// <summary>
@@ -56,12 +53,15 @@ public class Client : ObjectClient
     /// <returns>true if connected, otherwise false</returns>
     public bool Connect(ulong maxAttempts = 0, bool throwWhenExausted = false)
     {
+        if (ConnectionState == ConnectionState.PENDING || ConnectionState == ConnectionState.CONNECTED)
+            throw new InvalidOperationException("Tried to connect when there is already a connection in progress.");
+
         List<Exception> exceptions = null;
 
         var soc = new Socket(_targetEndpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
         ConnectionState = ConnectionState.PENDING;
-        TokenSource ??= new CancellationTokenSource();
+        DisconnectTokenSource ??= new CancellationTokenSource();
 
         for (ulong i = 0; i <= maxAttempts; i++)
         {
@@ -71,7 +71,7 @@ public class Client : ObjectClient
             {
                 soc.Connect(_targetEndpoint);
                 Connection = new TcpChannel(soc);
-                StartLoop();
+                StartLoop(DisconnectTokenSource.Token);
                 break;
             }
             catch (Exception e)
@@ -105,12 +105,15 @@ public class Client : ObjectClient
     /// <returns>true if connected, otherwise false</returns>
     public async Task<bool> ConnectAsync(ulong maxAttempts = 0, bool throwWhenExausted = false)
     {
+        if (ConnectionState == ConnectionState.PENDING || ConnectionState == ConnectionState.CONNECTED)
+            throw new InvalidOperationException("Tried to connect when there is already a connection in progress.");
+
         List<Exception> exceptions = null;
 
         var soc = new Socket(_targetEndpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
         ConnectionState = ConnectionState.PENDING;
-        TokenSource ??= new CancellationTokenSource();
+        DisconnectTokenSource ??= new CancellationTokenSource();
 
         for (ulong i = 0; i <= maxAttempts; i++)
         {
@@ -120,7 +123,7 @@ public class Client : ObjectClient
             {
                 await soc.ConnectAsync(_targetEndpoint);
                 Connection = new TcpChannel(soc);
-                StartLoop();
+                StartLoop(DisconnectTokenSource.Token);
                 break;
             }
             catch (Exception e)
@@ -141,7 +144,7 @@ public class Client : ObjectClient
         LocalEndpoint = Connection.Socket.LocalEndPoint as IPEndPoint;
         RemoteEndpoint = Connection.Socket.RemoteEndPoint as IPEndPoint;
 
-        await Connected.Task;
+        await ConnectedTask.Task;
 
         return true;
     }
@@ -152,23 +155,14 @@ public class Client : ObjectClient
     public void WhitelistObjectType<T>() =>
         WhitelistedObjectTypes.Add(typeof(T));
 
-    private void Initialize()
-    {
-        Connection = new TcpChannel(new Socket(_targetEndpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp));
-
-        ConnectionState = ConnectionState.PENDING;
-        TokenSource = new CancellationTokenSource();
-    }
-
-    private void StartLoop()
+    private void StartLoop(CancellationToken ct)
     {
         _listener = Task.Factory.StartNew(async () =>
         {
             await foreach (var msg in ReceiveMessagesAsync())
-            {
-                if (msg != null)
+                if (msg != null && !ct.IsCancellationRequested)
                     await HandleMessageAsync(msg);
-            }
+
         }, TaskCreationOptions.LongRunning);
     }
 }

@@ -138,7 +138,7 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
                 });
 
                 foreach (var v in ObjectEvents)
-                    c.RegisterReceive(v.Key, obj => v.Value(obj, c));
+                    c.OnReceive(v.Key, obj => v.Value(obj, c));
 
                 foreach (var v in CustomMessageHandlers)
                     c.OnMessageReceived(v.Key, mb => v.Value(mb, c));
@@ -301,16 +301,16 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
         }, _semaphore);
     }
 
-    public bool RegisterReceive<T>(Action<T, ClientType> action) =>
-        RegisterReceive(Utilities.SyncToAsync(action));
+    public bool OnReceive<T>(Action<T, ClientType> action) =>
+        OnReceive(Utilities.SyncToAsync(action));
 
-    public bool RegisterReceive<T>(Func<T, ClientType, Task> func)
+    public bool OnReceive<T>(Func<T, ClientType, Task> func)
     {
         var del = (object obj, ClientType sc) => func((T)obj, sc);
         Utilities.ConcurrentAccess(() =>
         {
             foreach (var client in Clients)
-                client.RegisterReceive(typeof(T), obj => del(obj, client));
+                client.OnReceive(typeof(T), obj => del(obj, client));
         }, _semaphore);
         return ObjectEvents.TryAdd(typeof(T), del);
     }

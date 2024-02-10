@@ -36,5 +36,6 @@ public class ObjectClient : ObjectClient<TcpChannel>
         base.CloseConnection();
         if (Connection.Connected)
             Connection.Close();
+        Connection = null;
     }
 }

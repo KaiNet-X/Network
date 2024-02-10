@@ -22,11 +22,10 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     private bool _timedOut = false;
     private System.Timers.Timer _pollTimer;
     private EncryptionStage encryptionStage = EncryptionStage.NONE;
-    private TaskCompletionSource connectedSource = new TaskCompletionSource();
 
     protected SemaphoreSlim _sendSemaphore = new SemaphoreSlim(1, 1);
     protected SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
-    protected CancellationTokenSource TokenSource = new CancellationTokenSource();
+    protected CancellationTokenSource DisconnectTokenSource = new CancellationTokenSource();
     protected ConnectionSettings Settings;
 
     /// <summary>
@@ -45,7 +44,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     /// <summary>
     /// Task that completes when the connection is finished. Call this in inherrited classes to asynchrounously complete the connection.
     /// </summary>
-    protected TaskCompletionSource Connected { get => connectedSource; set => connectedSource = value; }
+    protected TaskCompletionSource ConnectedTask { get; set; } = new TaskCompletionSource();
 
     /// <summary>
     /// The state of the current connection.
@@ -115,7 +114,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
             });
         }
         
-        using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(token, TokenSource.Token);
+        using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(token, DisconnectTokenSource.Token);
 
         try
         {
@@ -198,7 +197,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 {
                     await SendMessageAsync(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));
                     ConnectionState = ConnectionState.CONNECTED;
-                    connectedSource.SetResult();
+                    ConnectedTask.SetResult();
                     StartPoll();
                 }
                 else 
@@ -222,7 +221,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 {
                     await SendMessageAsync(new ConfirmationMessage(ConfirmationMessage.Confirmation.RESOLVED));
                     ConnectionState = ConnectionState.CONNECTED;
-                    connectedSource.SetResult();
+                    ConnectedTask.SetResult();
                     StartPoll();
                 }
                 break;
@@ -231,7 +230,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 {
                     case ConfirmationMessage.Confirmation.RESOLVED:
                         ConnectionState = ConnectionState.CONNECTED;
-                        connectedSource.SetResult();
+                        ConnectedTask.SetResult();
                         StartPoll();
                         break;
                     case ConfirmationMessage.Confirmation.ENCRYPTION:
@@ -261,6 +260,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         const int buffer_length = 4096;
         byte[] buffer = new byte[buffer_length];
         List<byte> allBytes = new List<byte>();
+        var token = DisconnectTokenSource.Token;
 
         while (ConnectionState != ConnectionState.CLOSED)
         {
@@ -269,10 +269,10 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
                 int received;
                 do
                 {
-                    received = await Connection.ReceiveToBufferAsync(buffer);
+                    received = await Connection.ReceiveToBufferAsync(buffer, token);
                     allBytes.AddRange(buffer[0..received]);
                 }
-                while (received == buffer_length);
+                while (received == buffer_length && ConnectionState != ConnectionState.CLOSED && !token.IsCancellationRequested);
             }
             catch (Exception ex)
             {
@@ -312,12 +312,15 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
 
     private void Disconnected()
     {
+        ConnectedTask.TrySetCanceled();
+        ConnectedTask = new TaskCompletionSource();
         ConnectionState = ConnectionState.CLOSED;
         encryptionStage = EncryptionStage.NONE;
-        TokenSource.Cancel();
-        TokenSource.Dispose();
-        TokenSource = new CancellationTokenSource();
+        DisconnectTokenSource.Cancel();
+        DisconnectTokenSource.Dispose();
+        DisconnectTokenSource = new CancellationTokenSource();
         _pollTimer?.Dispose();
+        _pollTimer = null;
         CloseConnection();
     }
 

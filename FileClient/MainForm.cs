@@ -34,7 +34,7 @@ public partial class MainForm : Form
 
         _client = new Client(IPAddress.Parse(Interaction.InputBox("What is a valid server address?", "Address", "127.0.0.1")), 6969);
 
-        _client.RegisterReceive<Tree>(t =>
+        _client.OnReceive<Tree>(t =>
         {
             Invoke(() =>
             {
@@ -122,7 +122,6 @@ public partial class MainForm : Form
 
     private async void downloadButton_Click(object sender, EventArgs e)
     {
-        await _client.SendObjectAsync(new FileRequestMessage { });
         await _client.SendMessageAsync(new FileRequestMessage { RequestType = FileRequestType.Download, PathRequest = _path, User = _user });
     }
 
@@ -177,19 +176,15 @@ public partial class MainForm : Form
         }
 
         foreach (TreeNode t in treeNodes)
-            UpdateNodes(tree.FirstOrDefault(x => x.Value == t.Text), t.Nodes);
+            UpdateNodes(tree.First(x => x.Value == t.Text), t.Nodes);
 
         foreach (Tree t in tree)
         {
             bool match = false;
             foreach (TreeNode node in treeNodes)
-            {
                 if (t.Value == node.Text)
-                {
                     match = true;
-                    continue;
-                }
-            }
+
             if (!match)
                 treeNodes.Add(ToNode(t));
         }

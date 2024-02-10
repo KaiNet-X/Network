@@ -12,7 +12,7 @@ using Net;
 
 public class ServerClient : ObjectClient, IServerClient
 {
-    Task IServerClient.connectedTask => Connected.Task;
+    Task IServerClient.connectedTask => ConnectedTask.Task;
     private IAsyncEnumerator<MessageBase> _receiver;
 
     /// <summary>
