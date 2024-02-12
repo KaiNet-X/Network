@@ -32,7 +32,8 @@ public partial class MainForm : Form
 
         Directory.CreateDirectory(_dir);
 
-        _client = new Client(IPAddress.Parse(Interaction.InputBox("What is a valid server address?", "Address", "127.0.0.1")), 6969);
+        var addr = IPAddress.Parse(Interaction.InputBox("What is a valid server address?", "Address", "127.0.0.1"));
+        _client = new Client();
 
         _client.OnReceive<Tree>(t =>
         {
@@ -97,7 +98,7 @@ public partial class MainForm : Form
             Task.Run(() => Invoke(this.Close));
         });
 
-        _client.Connect(15, true);
+        _client.Connect(addr, 6969, 15, true);
 
         cAddr.Text = _client.LocalEndpoint.Address.ToString();
         cPort.Text = _client.LocalEndpoint.Port.ToString();

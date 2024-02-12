@@ -21,7 +21,7 @@ while (true)
 }
 
 //Tries to connect up to 5 times, if there is an exception, throw it
-await client.ConnectAsync(5, true);
+await client.ConnectAsync(Addr, 6969, 5, true);
 
 Console.WriteLine("Connected");
 
@@ -48,7 +48,7 @@ void C1_OnChannelOpened(BaseChannel ch)
 void C1_OnDisconnect(DisconnectionInfo inf)
 {
     Console.WriteLine($"{inf.Reason}");
-    client.Connect(15);
+    client.Connect(Addr, 6969, 15);
 }
 
 void rec(object obj)
@@ -60,7 +60,7 @@ void rec(object obj)
 void InitializeClient()
 {
     //Target the client to the chosen address and port 5555
-    client = new Client(Addr, 5555);
+    client = new Client();
     client.OnReceive<object>(rec);
     client.OnDisconnected(C1_OnDisconnect);
     client.OnAnyChannel(C1_OnChannelOpened);
