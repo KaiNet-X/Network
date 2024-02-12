@@ -10,7 +10,7 @@ using System.Text;
 
 public class TcpClientTests
 {
-    private TcpServer NewServer(bool encrypted)
+    private static TcpServer NewServer(bool encrypted)
     {
         var settings = encrypted ? 
             new ServerSettings 
@@ -32,8 +32,8 @@ public class TcpClientTests
         var server = NewServer(true);
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
-        Assert.True(c.Connect());
+        var c = new Client();
+        Assert.True(c.Connect(IPAddress.Loopback, server.ActiveEndpoints[0].Port));
 
         server.ShutDown();
     }
@@ -43,8 +43,8 @@ public class TcpClientTests
     {
         var server = NewServer(true);
         server.Start();
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
-        var connected = await c.ConnectAsync();
+        var c = new Client();
+        var connected = await c.ConnectAsync(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         Assert.True(connected);
 
         server.ShutDown();
@@ -64,8 +64,8 @@ public class TcpClientTests
         server.OnDisconnect(del);
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
-        await c.ConnectAsync();
+        var c = new Client();
+        await c.ConnectAsync(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
         server.ShutDown();
     }
@@ -88,8 +88,8 @@ public class TcpClientTests
 
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
-        await c.ConnectAsync();
+        var c = new Client();
+        await c.ConnectAsync(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         await c.SendObjectAsync(str);
 
         var t = await Task.WhenAny(Task.Delay(500), tcs.Task);
@@ -115,8 +115,8 @@ public class TcpClientTests
 
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
-        await c.ConnectAsync();
+        var c = new Client();
+        await c.ConnectAsync(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         await c.SendObjectAsync(settings);
 
         var t = await Task.WhenAny(Task.Delay(500), tcs.Task);
@@ -148,8 +148,8 @@ public class TcpClientTests
 
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
-        await c.ConnectAsync();
+        var c = new Client();
+        await c.ConnectAsync(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         await c.SendObjectAsync(arr);
 
         var t = await Task.WhenAny(Task.Delay(500), tcs.Task);
@@ -184,8 +184,8 @@ public class TcpClientTests
 
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
-        await c.ConnectAsync();
+        var c = new Client();
+        await c.ConnectAsync(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         await c.SendObjectAsync(arr);
 
         await Task.WhenAny(Task.Delay(500), tcs.Task);
@@ -213,14 +213,14 @@ public class TcpClientTests
 
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new Client();
 
         c.OnReceive<ServerSettings>(obj =>
         {
             tcs.SetResult(Helpers.AreEqual(settings, obj));
         });
 
-        await c.ConnectAsync();
+        await c.ConnectAsync(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
         var t = await Task.WhenAny(Task.Delay(500), tcs.Task);
         Assert.True(t == tcs.Task && tcs.Task.Result);
@@ -253,7 +253,7 @@ public class TcpClientTests
 
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new Client();
 
         c.OnReceive<int[][]>((obj) =>
         {
@@ -261,7 +261,7 @@ public class TcpClientTests
             Assert.True(Helpers.AreEqual(arr, obj));
         });
 
-        await c.ConnectAsync();
+        await c.ConnectAsync(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
         await Task.WhenAny(Task.Delay(500), tcs.Task);
 
@@ -290,9 +290,9 @@ public class TcpClientTests
         server.OnAnyChannel(opened);
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new Client();
 
-        await c.ConnectAsync();
+        await c.ConnectAsync(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
         BaseChannel ch = channelType switch
         {
@@ -333,9 +333,9 @@ public class TcpClientTests
         server.OnAnyChannel(opened);
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new Client();
 
-        await c.ConnectAsync();
+        await c.ConnectAsync(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
         BaseChannel ch = channelType switch
         {
@@ -373,9 +373,9 @@ public class TcpClientTests
         server.OnAnyChannel(opened);
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new Client();
 
-        await c.ConnectAsync();
+        await c.ConnectAsync(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         BaseChannel ch = channelType switch
         {
             _ when channelType == typeof(UdpChannel) => await c.OpenChannelAsync<UdpChannel>(),
@@ -414,9 +414,9 @@ public class TcpClientTests
 
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new Client();
 
-        await c.ConnectAsync();
+        await c.ConnectAsync(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         c.SendMessage(msg);
         await Task.WhenAny(Task.Delay(500), tcs.Task);
 
@@ -439,7 +439,7 @@ public class TcpClientTests
 
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        var c = new Client();
 
         c.OnAnyMessage(m =>
         {
@@ -447,7 +447,7 @@ public class TcpClientTests
             tcs.SetResult();
         });
 
-        await c.ConnectAsync();
+        await c.ConnectAsync(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         server.SendMessageToAll(msg);
         await Task.WhenAny(Task.Delay(500), tcs.Task);
 
@@ -504,10 +504,10 @@ public class TcpClientTests
         server.OnClientConnected(con);
         server.Start();
 
-        c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
+        c = new Client();
         c.RegisterChannelType<DummyChannel>(open, management, close);
 
-        await c.ConnectAsync();
+        await c.ConnectAsync(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
         var d = await c.OpenChannelAsync<DummyChannel>();
         c.CloseChannel(d);
@@ -541,13 +541,15 @@ public class TcpClientTests
 
         server.Start();
 
-        var client = new Client(IPAddress.Loopback, 11111);
-        await client.ConnectAsync();
+        var client = new Client();
+        await client.ConnectAsync(IPAddress.Loopback, 11111);
 
         await client.SendObjectAsync(6.9);
 
         var task = await Task.WhenAny(tcs.Task, Task.Delay(500));
         Assert.Equal(task, tcs.Task);
+
+        await server.ShutDownAsync();
     }
 
     [Fact]
@@ -555,7 +557,7 @@ public class TcpClientTests
     {
         var tcs = new TaskCompletionSource();
 
-        var server = new TcpServer(IPAddress.Loopback, 11111, new ServerSettings
+        var server = new TcpServer(IPAddress.Loopback, 0, new ServerSettings
         {
             ClientRequiresWhitelistedTypes = true,
             ServerRequiresWhitelistedTypes = true
@@ -563,18 +565,20 @@ public class TcpClientTests
 
         server.Start();
 
-        var client = new Client(IPAddress.Loopback, 11111);
+        var client = new Client();
         client.OnObjectError(eFrame =>
         {
             tcs.SetResult();
         });
 
-        await client.ConnectAsync();
+        await client.ConnectAsync(server.ActiveEndpoints[0]);
 
         await server.SendObjectToAllAsync(6.9);
 
         var task = await Task.WhenAny(tcs.Task, Task.Delay(500));
         Assert.Equal(task, tcs.Task);
+
+        server.ShutDown();
     }
 
     [Fact]
@@ -588,8 +592,8 @@ public class TcpClientTests
         });
         server.Start();
 
-        var c = new Client(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
-        var connected = await c.ConnectAsync();
+        var c = new Client();
+        var connected = await c.ConnectAsync(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
         await c.CloseAsync();
 
@@ -601,7 +605,7 @@ public class TcpClientTests
             });
         });
 
-        await c.ConnectAsync();
+        await c.ConnectAsync(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         await c.SendObjectAsync("Hello world");
         Assert.Equal(tcs.Task, await Task.WhenAny(tcs.Task, Task.Delay(2000)));
 

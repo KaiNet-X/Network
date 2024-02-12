@@ -13,8 +13,6 @@ using System.Threading.Tasks;
 /// </summary>
 public class Client : ObjectClient
 {
-    private readonly IPEndPoint _targetEndpoint;
-
     private Task _listener { get; set; }
 
     /// <summary>
@@ -23,45 +21,22 @@ public class Client : ObjectClient
     public Exception ControlLoopException => _listener.Exception;
 
     /// <summary>
-    /// Initializes a new client
-    /// </summary>
-    /// <param name="address">IP address of server</param>
-    /// <param name="port">Server port the client will connect to</param>
-    public Client(IPAddress address, int port) : this(new IPEndPoint(address, port)) { }
-
-    /// <summary>
-    /// Initializes a new client
-    /// </summary>
-    /// <param name="address">IP address of server</param>
-    /// <param name="port">Server port the client will connect to</param>
-    public Client(string address, int port) : this(IPAddress.Parse(address), port) { }
-
-    /// <summary>
-    /// Initializes a new client
-    /// </summary>
-    /// <param name="ep">IPEndpoint of the server</param>
-    public Client(IPEndPoint ep) : base()
-    {
-        _targetEndpoint = ep;
-    }
-
-    /// <summary>
     /// Connect to the server this client is bound to
     /// </summary>
+    /// <param name="serverEndPoint"></param>
     /// <param name="maxAttempts">Max amount of connection attempts</param>
     /// <param name="throwWhenExausted">Throw exception if connection didn't work</param>
     /// <returns>true if connected, otherwise false</returns>
-    public bool Connect(ulong maxAttempts = 0, bool throwWhenExausted = false)
+    public bool Connect(IPEndPoint serverEndPoint, ulong maxAttempts = 0, bool throwWhenExausted = false)
     {
         if (ConnectionState == ConnectionState.PENDING || ConnectionState == ConnectionState.CONNECTED)
             throw new InvalidOperationException("Tried to connect when there is already a connection in progress.");
 
         List<Exception> exceptions = null;
 
-        var soc = new Socket(_targetEndpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+        var soc = new Socket(serverEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
         ConnectionState = ConnectionState.PENDING;
-        DisconnectTokenSource ??= new CancellationTokenSource();
 
         for (ulong i = 0; i <= maxAttempts; i++)
         {
@@ -69,7 +44,7 @@ public class Client : ObjectClient
                 i--;
             try
             {
-                soc.Connect(_targetEndpoint);
+                soc.Connect(serverEndPoint);
                 Connection = new TcpChannel(soc);
                 StartLoop(DisconnectTokenSource.Token);
                 break;
@@ -97,23 +72,29 @@ public class Client : ObjectClient
         return true;
     }
 
+    public bool Connect(IPAddress serverAddress, int serverPort, ulong maxAttempts = 0, bool throwWhenExausted = false) =>
+        Connect(new IPEndPoint(serverAddress, serverPort), maxAttempts, throwWhenExausted);
+
+    public bool Connect(string serverAddress, int serverPort, ulong maxAttempts = 0, bool throwWhenExausted = false) =>
+        Connect(IPAddress.Parse(serverAddress), serverPort, maxAttempts, throwWhenExausted);
+
     /// <summary>
     /// Connect to the server this client is bound to
     /// </summary>
+    /// <param name="serverEndPoint"></param>
     /// <param name="maxAttempts">Max amount of connection attempts</param>
     /// <param name="throwWhenExausted">Throw exception if connection didn't work</param>
     /// <returns>true if connected, otherwise false</returns>
-    public async Task<bool> ConnectAsync(ulong maxAttempts = 0, bool throwWhenExausted = false)
+    public async Task<bool> ConnectAsync(IPEndPoint serverEndPoint, ulong maxAttempts = 0, bool throwWhenExausted = false)
     {
         if (ConnectionState == ConnectionState.PENDING || ConnectionState == ConnectionState.CONNECTED)
             throw new InvalidOperationException("Tried to connect when there is already a connection in progress.");
 
-        List<Exception> exceptions = null;
-
-        var soc = new Socket(_targetEndpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+        var soc = new Socket(serverEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
         ConnectionState = ConnectionState.PENDING;
-        DisconnectTokenSource ??= new CancellationTokenSource();
+
+        List<Exception> exceptions = null;
 
         for (ulong i = 0; i <= maxAttempts; i++)
         {
@@ -121,7 +102,7 @@ public class Client : ObjectClient
                 i--;
             try
             {
-                await soc.ConnectAsync(_targetEndpoint);
+                await soc.ConnectAsync(serverEndPoint);
                 Connection = new TcpChannel(soc);
                 StartLoop(DisconnectTokenSource.Token);
                 break;
@@ -148,6 +129,12 @@ public class Client : ObjectClient
 
         return true;
     }
+
+    public Task<bool> ConnectAsync(IPAddress serverAddress, int serverPort, ulong maxAttempts = 0, bool throwWhenExausted = false) =>
+        ConnectAsync(new IPEndPoint(serverAddress, serverPort), maxAttempts, throwWhenExausted);
+
+    public Task<bool> ConnectAsync(string serverAddress, int serverPort, ulong maxAttempts = 0, bool throwWhenExausted = false) =>
+        ConnectAsync(IPAddress.Parse(serverAddress), serverPort, maxAttempts, throwWhenExausted);
 
     public void WhitelistObjectType(Type type) =>
         WhitelistedObjectTypes.Add(type);
