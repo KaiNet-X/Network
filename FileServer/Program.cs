@@ -18,8 +18,14 @@ if (!Directory.Exists(workingDirectory))
     Directory.CreateDirectory(workingDirectory);
 
 var addresses = await Dns.GetHostAddressesAsync(Dns.GetHostName());
+var endpoints = new List<IPEndPoint>();
 
-var server = new TcpServer([new IPEndPoint(IPAddress.Any, 6969), new IPEndPoint(IPAddress.IPv6Any, 6969)], new ServerSettings 
+foreach (var address in addresses)
+    endpoints.Add(new IPEndPoint(address, 6969));
+
+endpoints.AddRange(new[] { new IPEndPoint(IPAddress.Any, 6969), new IPEndPoint(IPAddress.IPv6Any, 6969) });
+
+var server = new TcpServer(endpoints, new ServerSettings 
 {
     UseEncryption = true, 
     ConnectionPollTimeout = 600000,
@@ -40,8 +46,8 @@ server.Start();
 
 var fileService = new FileService(server, authService, workingDirectory);
 
-foreach (var address in addresses)
-    Console.WriteLine($"Hosting on {address}:6969");
+foreach (var endpoint in endpoints)
+    Console.WriteLine($"Hosting on {endpoint}");
 
 Console.ReadLine();
 await server.ShutDownAsync();

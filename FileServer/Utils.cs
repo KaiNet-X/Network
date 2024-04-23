@@ -2,5 +2,5 @@
 
 internal static class Utils
 {
-    public static string PathFormat(this string str) => str.Replace('\\', Path.DirectorySeparatorChar);
+    public static string PathFormat(this string str) => str.Replace("\\", Path.DirectorySeparatorChar);
 }
