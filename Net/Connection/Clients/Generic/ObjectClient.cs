@@ -19,9 +19,10 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     private GuardedChannelList _channelsBack;
 
     protected readonly ConcurrentDictionary<Type, Func<object, Task>> ObjectEvents = new();
-    protected readonly ConcurrentDictionary<Type, Func<Task<BaseChannel>>> OpenChannelMethods = new();
-    protected readonly ConcurrentDictionary<Type, Func<ChannelManagementMessage, Task>> ChannelMessages = new();
-    protected readonly ConcurrentDictionary<Type, Func<BaseChannel, Task>> CloseChannelMethods = new();
+    protected readonly ConcurrentDictionary<Type, ChannelRegistration> ChannelRegistrationHandlers = new();
+    //protected readonly ConcurrentDictionary<Type, Func<Task<BaseChannel>>> OpenChannelMethods = new();
+    //protected readonly ConcurrentDictionary<Type, Func<ChannelManagementMessage, Task>> ChannelMessages = new();
+    //protected readonly ConcurrentDictionary<Type, Func<BaseChannel, Task>> CloseChannelMethods = new();
     protected readonly ConcurrentDictionary<Type, Func<BaseChannel, Task>> ChannelEvents = new();
     protected internal readonly List<BaseChannel> _channels = new();
     protected HashSet<Type> WhitelistedObjectTypes = new();
@@ -44,16 +45,15 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     {
         MessageParser ??= new MessageParser(_crypto, Serializer);
 
-        OnMessageReceived(typeof(ChannelManagementMessage), (mb) =>
+        OnMessageReceived<ChannelManagementMessage>((m) =>
         {
-            var m = mb as ChannelManagementMessage;
             if (m.Info is not null && m.Info.ContainsKey("Type"))
             {
-                foreach (var name in ChannelMessages.Keys)
+                foreach (var name in ChannelRegistrationHandlers.Keys)
                 {
                     if (name.Name == m.Info["Type"])
                     {
-                        ChannelMessages[name](m);
+                        ChannelRegistrationHandlers[name].OnMessage(m);
                         break;
                     }
                 }
@@ -168,7 +168,7 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
         if (!Channels.Contains(c)) 
             throw new InvalidOperationException("This channel does not belong to this client.");
 
-        await CloseChannelMethods[c.GetType()](c);
+        await ChannelRegistrationHandlers[c.GetType()].OnClose(c);
         _channels.Remove(c);
     }
 
@@ -179,7 +179,7 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     /// <returns></returns>
     public async Task<T> OpenChannelAsync<T>() where T : BaseChannel
     {
-        var c = (await OpenChannelMethods[typeof(T)]()) as T;
+        var c = (await ChannelRegistrationHandlers[typeof(T)].OnOpen()) as T;
         _channels.Add(c);
         return c;
     }
@@ -191,12 +191,8 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     /// <param name="open">Method to create a new channel and notify the other host.</param>
     /// <param name="channelManagement">Manages the creation of this channel. This can be called multiple times before negotiation is complete and the connection is created.</param>
     /// <param name="close">Specifies how to close the channel.</param>
-    public void RegisterChannelType<T>(Func<Task<T>> open, Func<ChannelManagementMessage, Task> channelManagement, Func<T, Task> close) where T : BaseChannel
-    {
-        OpenChannelMethods[typeof(T)] = async () => await open();
-        ChannelMessages[typeof(T)] = channelManagement;
-        CloseChannelMethods[typeof(T)] = async (t) => await close((T)t);
-    }
+    public void RegisterChannelType<T>(Func<Task<T>> open, Func<ChannelManagementMessage, Task> channelManagement, Func<T, Task> close) where T : BaseChannel =>
+        ChannelRegistrationHandlers[typeof(T)] = ChannelRegistration.Create(open, channelManagement, close);
 
     /// <summary>
     /// This is called whenever a message is recieved. 
@@ -215,7 +211,7 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
                 break;
             case ChannelManagementMessage m:
                 if (TypeHandler.TryGetTypeFromName(m.Type, out Type t))
-                    await ChannelMessages[t](m);
+                    await ChannelRegistrationHandlers[t].OnMessage(m);
                 break;
             default:
                 await base.HandleMessageAsync(message);

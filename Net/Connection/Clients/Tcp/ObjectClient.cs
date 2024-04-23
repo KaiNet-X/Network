@@ -26,9 +26,9 @@ public class ObjectClient : ObjectClient<TcpChannel>
 
     protected ObjectClient() : base()
     {
-        Utilities.RegisterUdpChannel(this, new Lazy<TcpChannel>(() => Connection, true));
-        Utilities.RegisterTcpChannel(this, new Lazy<TcpChannel>(() => Connection, true));
-        Utilities.RegisterEncryptedTcpChannel(this, new Lazy<TcpChannel>(() => Connection, true));
+        ChannelHelper.RegisterUdpChannel(this, new Lazy<TcpChannel>(() => Connection, true));
+        ChannelHelper.RegisterTcpChannel(this, new Lazy<TcpChannel>(() => Connection, true));
+        ChannelHelper.RegisterEncryptedTcpChannel(this, new Lazy<TcpChannel>(() => Connection, true));
     }
 
     private protected override void CloseConnection()

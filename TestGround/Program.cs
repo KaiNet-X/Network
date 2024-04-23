@@ -35,7 +35,7 @@ void Server_OnClientChannelOpened(BaseChannel arg1, ServerClient arg2)
 
 server.Start();
 
-Client client = new Client(endpoint);
+Client client = new Client();
 //client.OnReceiveObject += Client_OnReceiveObject;
 
 client.OnReceive<string>(str =>
@@ -45,7 +45,7 @@ client.OnReceive<string>(str =>
     client.SendObject(str + " Hello world");
 });
 
-client.Connect();
+client.Connect(endpoint);
 
 var udp = await client.OpenChannelAsync<EncryptedTcpChannel>();
 
