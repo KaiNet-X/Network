@@ -35,6 +35,10 @@ public partial class MainForm : Form
         var addr = IPAddress.Parse(Interaction.InputBox("What is a valid server address?", "Address", "127.0.0.1"));
         _client = new Client();
 
+        _client.OnAnyMessage(mb =>
+        {
+            MessageBox.Show(mb.MessageType);
+        });
         _client.OnReceive<Tree>(t =>
         {
             Invoke(() =>

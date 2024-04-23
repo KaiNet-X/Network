@@ -24,8 +24,9 @@ internal class FileService
     public async Task SendFile(FileStream file, ServerClient client, FileRequestMessage msg)
     {
         const int sendChunkSize = 16384;
+        msg.PathRequest = msg.PathRequest.PathFormat();
 
-        Console.WriteLine($"{client.RemoteEndpoint} requested {msg.PathRequest.Split('\\')[^1]}");
+        Console.WriteLine($"{client.RemoteEndpoint} requested {msg.PathRequest.Split(Path.DirectorySeparatorChar)[^1]}");
 
         var id = Guid.NewGuid();
         if (file.Length <= sendChunkSize)
@@ -33,7 +34,7 @@ internal class FileService
             var newMsg = new FileRequestMessage()
             {
                 RequestType = FileRequestType.Upload,
-                FileName = msg.PathRequest.Split('\\')[^1],
+                FileName = msg.PathRequest.Split(Path.DirectorySeparatorChar)[^1],
                 RequestId = id,
                 EndOfMessage = true
             };
@@ -49,7 +50,7 @@ internal class FileService
             var newMsg = new FileRequestMessage()
             {
                 RequestType = FileRequestType.Upload,
-                FileName = msg.PathRequest.Split('\\')[^1],
+                FileName = msg.PathRequest.Split(Path.DirectorySeparatorChar)[^1],
                 RequestId = id,
                 EndOfMessage = i == max - 1 ? true : false
             };
@@ -79,7 +80,7 @@ internal class FileService
             {
                 case FileRequestType.Download:
                     {
-                        var path = @$"{workingDirectory}\{msg.PathRequest}";
+                        var path = @$"{workingDirectory}\{msg.PathRequest}".PathFormat();
                         var key = await authService.GetUserKeyAsync(msg.User.UserName, msg.User.Password);
                         await CryptoServices.DecryptFileAsync(path, key, key);
                         using (FileStream fs = File.OpenRead(path))
@@ -91,8 +92,8 @@ internal class FileService
                     break;
                 case FileRequestType.Upload:
                     {
-                        Directory.CreateDirectory(@$"{workingDirectory}\{msg.PathRequest}");
-                        var path = @$"{workingDirectory}\{msg.PathRequest}\{msg.FileName}";
+                        Directory.CreateDirectory(@$"{workingDirectory}\{msg.PathRequest}".PathFormat());
+                        var path = $@"{workingDirectory}\{msg.PathRequest}\{msg.FileName}".PathFormat();
                         await using (FileStream fs = File.Create(path))
                         {
                             await fs.WriteAsync(msg.FileData);
@@ -107,7 +108,7 @@ internal class FileService
                     break;
                 case FileRequestType.Delete:
                     {
-                        File.Delete(@$"{workingDirectory}\{msg.PathRequest}.aes");
+                        File.Delete(@$"{workingDirectory}\{msg.PathRequest}.aes".PathFormat());
                         var tree = GetTree(workingDirectory);
                         tree.Value = "Root";
                         await server.SendObjectToAllAsync(tree);
@@ -137,12 +138,12 @@ internal class FileService
         };
 
         foreach (var file in Directory.EnumerateFiles(dir))
-            tree.Nodes.Add(new Tree() { Value = file.Split('\\')[^1].Replace(".aes", "") });
+            tree.Nodes.Add(new Tree() { Value = file.Split(Path.DirectorySeparatorChar)[^1].Replace(".aes", "") });
 
         foreach (var folder in Directory.EnumerateDirectories(dir))
         {
             var tr = GetTree(folder);
-            tr.Value = folder.Split('\\')[^1];
+            tr.Value = folder.Split(Path.DirectorySeparatorChar)[^1];
             tree.Nodes.Add(tr);
         }
         return tree;
