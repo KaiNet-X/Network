@@ -80,44 +80,47 @@ internal class FileService
             {
                 case FileRequestType.Download:
                     {
-                        var path = @$"{workingDirectory}\{msg.PathRequest}".PathFormat();
+                        var path = @$"{workingDirectory}\{msg.User.UserName}\{msg.PathRequest}".PathFormat();
                         var key = await authService.GetUserKeyAsync(msg.User.UserName, msg.User.Password);
                         await CryptoServices.DecryptFileAsync(path, key, key);
                         using (FileStream fs = File.OpenRead(path))
                         {
                             await SendFile(fs, c, msg);
                         }
+                        var tree = GetTree(@$"{workingDirectory}\{msg.User.UserName}".PathFormat());
+                        tree.Value = "Root";
+                        await c.SendObjectAsync(tree);
                         File.Delete(path);
                     }
                     break;
                 case FileRequestType.Upload:
                     {
-                        Directory.CreateDirectory(@$"{workingDirectory}\{msg.PathRequest}".PathFormat());
-                        var path = $@"{workingDirectory}\{msg.PathRequest}\{msg.FileName}".PathFormat();
+                        Directory.CreateDirectory(@$"{workingDirectory}\{msg.User.UserName}\{msg.PathRequest}".PathFormat());
+                        var path = $@"{workingDirectory}\{msg.User.UserName}\{msg.PathRequest}\{msg.FileName}".PathFormat();
                         await using (FileStream fs = File.Create(path))
                         {
                             await fs.WriteAsync(msg.FileData);
                         }
                         var key = await authService.GetUserKeyAsync(msg.User.UserName, msg.User.Password);
                         await CryptoServices.EncryptFileAsync(path, key, key);
-                        var tree = GetTree(workingDirectory);
+                        var tree = GetTree(@$"{workingDirectory}\{msg.User.UserName}".PathFormat());
                         tree.Value = "Root";
-                        await server.SendObjectToAllAsync(tree);
+                        await c.SendObjectAsync(tree);
                         Console.WriteLine($"{c.RemoteEndpoint} uploaded {msg.FileName}");
                     }
                     break;
                 case FileRequestType.Delete:
                     {
-                        File.Delete(@$"{workingDirectory}\{msg.PathRequest}.aes".PathFormat());
-                        var tree = GetTree(workingDirectory);
+                        File.Delete(@$"{workingDirectory}\{msg.User.UserName}\{msg.PathRequest}.aes".PathFormat());
+                        var tree = GetTree(@$"{workingDirectory}\{msg.User.UserName}".PathFormat());
                         tree.Value = "Root";
-                        await server.SendObjectToAllAsync(tree);
+                        await c.SendObjectAsync(tree);
                         Console.WriteLine($"{c.RemoteEndpoint} deleted {msg.PathRequest}");
                     }
                     break;
                 case FileRequestType.Tree:
                     {
-                        var tree = GetTree(workingDirectory);
+                        var tree = GetTree(@$"{workingDirectory}\{msg.User.UserName}".PathFormat());
                         tree.Value = "Root";
                         await c.SendObjectAsync(tree);
                     }
@@ -132,6 +135,7 @@ internal class FileService
 
     public Tree GetTree(string dir)
     {
+        dir = dir.PathFormat();
         var tree = new Tree()
         {
             Nodes = new List<Tree>()
