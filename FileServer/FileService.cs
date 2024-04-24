@@ -1,6 +1,5 @@
 ﻿namespace FileServer;
 
-using Net.Connection.Clients.Generic;
 using Net.Connection.Clients.Tcp;
 using Net.Connection.Servers;
 using System.Collections.Concurrent;
