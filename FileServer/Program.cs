@@ -12,9 +12,6 @@ var workingDirectory = @$"{Directory.GetCurrentDirectory()}\Files";
 
 var authService = new AuthService();
 await authService.LoadUsersAsync();
-await authService.AddUser("Kai", "Kai");
-await authService.AddUser("Kai1", "Kai1");
-await authService.SaveUsersAsync();
 
 if (!Directory.Exists(workingDirectory))
     Directory.CreateDirectory(workingDirectory);
@@ -41,12 +38,26 @@ server.OnObjectError((eFrame, sc) =>
 
 server.Start();
 
+AppDomain.CurrentDomain.ProcessExit += OnKill;
+
 var fileService = new FileService(server, authService, workingDirectory);
 
 foreach (var address in addresses)
     Console.WriteLine($"Hosting on {address}:{PORT}");
 
-while (Console.ReadLine()?.ToUpper() != "EXIT") ;
+bool exiting = false;
+do
+{
+    switch (Console.ReadLine()?.ToUpper())
+    {
+        case "EXIT":
+            exiting = true;
+            break;
+        default:
+            Console.WriteLine("Unknown command");
+            break;
+    }
+} while (!exiting);
 
 await server.ShutDownAsync();
 
@@ -58,4 +69,9 @@ void OnConnect(ServerClient sc)
 void OnDisconnect (DisconnectionInfo info, ServerClient sc)
 {
     Console.WriteLine($"{sc.LocalEndpoint} {info.Reason}");
+}
+
+void OnKill(object? sender, EventArgs e)
+{
+    server.ShutDown();
 }
