@@ -67,7 +67,7 @@ public class AuthService
     {
         if (users.ContainsKey(username)) return;
 
-        var pHash = CryptoServices.CreateHash(password);
+        var pHash = CryptoServices.Hash(CryptoServices.Hash(password));
         var encHash = await CryptoServices.EncryptAESAsync(pHash, encryption.Key, encryption.Iv);
 
         users.Add(username, encHash);
@@ -77,7 +77,7 @@ public class AuthService
     {
         if (!users.ContainsKey(username)) return false;
 
-        var pHash = CryptoServices.CreateHash(password);
+        var pHash = CryptoServices.Hash(CryptoServices.Hash(password));
         var encHash = await CryptoServices.EncryptAESAsync(pHash, encryption.Key, encryption.Iv);
 
         return encHash.SequenceEqual(users[username]);
@@ -85,8 +85,16 @@ public class AuthService
 
     public async Task<byte[]> GetUserKeyAsync(string username, string password)
     {
-        return await CheckUserAsync(username, password) ?
-            CryptoServices.KeyFromHash(CryptoServices.CreateHash(password)) : Array.Empty<byte>();
+        if (!users.ContainsKey(username)) return Array.Empty<byte>();
+
+        var kHash = CryptoServices.Hash(password);
+        var pHash = CryptoServices.Hash(kHash);
+        var encHash = await CryptoServices.EncryptAESAsync(pHash, encryption.Key, encryption.Iv);
+
+        if (!encHash.SequenceEqual(users[username]))
+            return Array.Empty<byte>();
+
+        return CryptoServices.KeyFromHash(kHash);
     }
 
     private record struct EncryptionPair(byte[] Key, byte[] Iv);

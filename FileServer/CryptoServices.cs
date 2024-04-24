@@ -15,14 +15,14 @@ internal static class CryptoServices
     public static byte[] GenerateRandomKey(ushort keyLength) =>
         RandomNumberGenerator.GetBytes(keyLength);
 
-    public static byte[] CreateHash(byte[] input)
+    public static byte[] Hash(byte[] input)
     {
         using (HashAlgorithm algorithm = SHA256.Create())
             return algorithm.ComputeHash(input);
     }
 
-    public static byte[] CreateHash(string input) =>
-        CreateHash(Encoding.UTF8.GetBytes(input));
+    public static byte[] Hash(string input) =>
+        Hash(Encoding.UTF8.GetBytes(input));
 
     public static byte[] KeyFromHash(byte[] hash, int length = 16)
     {

@@ -55,7 +55,9 @@ internal class FileService
 
     async void HandleFileRequest(FileRequestMessage msg, ServerClient c)
     {
-        if (!await authService.CheckUserAsync(msg.User.UserName, msg.User.Password))
+        var key = await authService.GetUserKeyAsync(msg.User.UserName, msg.User.Password);
+
+        if (key.Length == 0)
         {
             Console.WriteLine($"Authentication error on {c.RemoteEndpoint.Address}, name: {msg.User.UserName}");
             return;
@@ -79,7 +81,6 @@ internal class FileService
                     {
                         Console.WriteLine($"{c.RemoteEndpoint} requested {msg.FileName}");
                         Directory.CreateDirectory(@$"{workingDirectory}\temp".PathFormat());
-                        var key = await authService.GetUserKeyAsync(msg.User.UserName, msg.User.Password);
                         var tempPath = @$"{workingDirectory}\temp\{msg.RequestId}.tmp".PathFormat();
                         await using (FileStream destination = File.Create(tempPath))
                         {
@@ -96,7 +97,6 @@ internal class FileService
                 case FileRequestType.Upload:
                     {
                         Directory.CreateDirectory(dir);
-                        var key = await authService.GetUserKeyAsync(msg.User.UserName, msg.User.Password);
                         await using (MemoryStream source = new MemoryStream(msg.FileData))
                         {
                             await using (FileStream destination = File.Create($"{fpath}.aes"))
