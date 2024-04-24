@@ -136,6 +136,7 @@ internal static class CryptoServices
         FileStream fs = File.Create(path.Replace(".aes", ""));
 
         await cryptoStream.CopyToAsync(fs);
+        fs.Seek(0, SeekOrigin.Begin);
         return fs;
     }
 
