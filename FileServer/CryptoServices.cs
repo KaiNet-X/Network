@@ -75,24 +75,6 @@ internal static class CryptoServices
         await cryptoStream.CopyToAsync(destination);
     }
 
-    public static async Task CreateEncryptedFileAsync(string path, byte[] source, byte[] key, byte[] iv)
-    {
-        await using FileStream encFs = File.Create($"{path}.aes");
-        await using CryptoStream cs = new CryptoStream(encFs, _aes.CreateEncryptor(key, iv), CryptoStreamMode.Write);
-        await cs.WriteAsync(source);
-    }
-
-    public static async Task<Stream> DecryptedFileStreamAsync(string path, byte[] key, byte[] iv)
-    {
-        await using FileStream encFs = File.OpenRead($"{path}.aes");
-        await using CryptoStream cryptoStream = new CryptoStream(encFs, _aes.CreateDecryptor(key, iv), CryptoStreamMode.Read);
-        FileStream fs = File.Create(path.Replace(".aes", ""));
-
-        await cryptoStream.CopyToAsync(fs);
-        fs.Seek(0, SeekOrigin.Begin);
-        return fs;
-    }
-
     private static Aes GetAes()
     {
         var a = Aes.Create();
