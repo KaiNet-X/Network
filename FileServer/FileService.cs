@@ -56,9 +56,19 @@ internal class FileService
     async void HandleFileRequest(FileRequestMessage msg, ServerClient c)
     {
         if (!await authService.CheckUserAsync(msg.User.UserName, msg.User.Password))
+        {
+            Console.WriteLine($"Authentication error on {c.RemoteEndpoint.Address}, name: {msg.User.UserName}");
             return;
+        }
 
-        var dir = @$"{workingDirectory}\{msg.User.UserName}\{msg.PathRequest}".Replace("..", string.Empty).PathFormat();
+        var dir = @$"{workingDirectory}\{msg.User.UserName}\{msg.PathRequest}".PathFormat();
+
+        if (dir.Contains($"..{Path.DirectorySeparatorChar}"))
+        {
+            Console.WriteLine($"Potential malicious url from {c.RemoteEndpoint.Address}");
+            Console.WriteLine(dir);
+            return;
+        }
         var fpath = @$"{dir}\{msg.FileName}".PathFormat();
 
         try
