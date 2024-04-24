@@ -34,44 +34,6 @@ internal static class CryptoServices
         return key;
     }
 
-    public static void GenerateKeyPair(out RSAParameters PublicKey, out RSAParameters PrivateKey)
-    {
-        using (var prov = new RSACryptoServiceProvider(2048))
-        {
-            PrivateKey = prov.ExportParameters(true);
-            PublicKey = prov.ExportParameters(false);
-        }
-    }
-
-    public static byte[] EncryptAES(byte[] input, byte[] key, byte[] iv)
-    {
-        using (MemoryStream memoryStream = new MemoryStream())
-        {
-            using (CryptoStream cryptoStream = new CryptoStream(memoryStream, _aes.CreateEncryptor(key, iv), CryptoStreamMode.Write))
-            {
-                cryptoStream.Write(input, 0, input.Length);
-                cryptoStream.FlushFinalBlock();
-
-                return memoryStream.ToArray();
-            }
-        }
-    }
-
-    public static byte[] DecryptAES(byte[] input, byte[] key, byte[] iv)
-    {
-        using (MemoryStream memoryStream = new MemoryStream(input))
-        {
-            using (CryptoStream cryptoStream = new CryptoStream(memoryStream, _aes.CreateDecryptor(key, iv), CryptoStreamMode.Read))
-            {
-                using (var outputStream = new MemoryStream())
-                {
-                    cryptoStream.CopyTo(outputStream);
-                    return outputStream.ToArray();
-                }
-            }
-        }
-    }
-
     public static async Task<byte[]> EncryptAESAsync(byte[] input, byte[] key, byte[] iv)
     {
         using (MemoryStream memoryStream = new MemoryStream())
@@ -101,16 +63,16 @@ internal static class CryptoServices
         }
     }
 
-    public static async Task EncryptFileAsync(string path, byte[] key, byte[] iv)
+    public static async Task EncryptStreamAsync(Stream source, Stream destination, byte[] key, byte[] iv)
     {
-        await using FileStream encFs = File.Create($"{path}.aes");
-        await using CryptoStream cryptoStream = new CryptoStream(encFs, _aes.CreateEncryptor(key, iv), CryptoStreamMode.Write);
-        await using (FileStream fs = File.OpenRead(path))
-        {
-            await fs.CopyToAsync(cryptoStream);
-        }
+        await using CryptoStream cryptoStream = new CryptoStream(destination, _aes.CreateEncryptor(key, iv), CryptoStreamMode.Write);
+        await source.CopyToAsync(cryptoStream);
+    }
 
-        File.Delete(path);
+    public static async Task DecryptStreamAsync(Stream source, Stream destination, byte[] key, byte[] iv)
+    {
+        await using CryptoStream cryptoStream = new CryptoStream(source, _aes.CreateDecryptor(key, iv), CryptoStreamMode.Read);
+        await cryptoStream.CopyToAsync(destination);
     }
 
     public static async Task CreateEncryptedFileAsync(string path, byte[] source, byte[] key, byte[] iv)
@@ -118,15 +80,6 @@ internal static class CryptoServices
         await using FileStream encFs = File.Create($"{path}.aes");
         await using CryptoStream cs = new CryptoStream(encFs, _aes.CreateEncryptor(key, iv), CryptoStreamMode.Write);
         await cs.WriteAsync(source);
-    }
-
-    public static async Task DecryptFileAsync(string path, byte[] key, byte[] iv)
-    {
-        await using FileStream encFs = File.OpenRead($"{path}.aes");
-        await using CryptoStream cryptoStream = new CryptoStream(encFs, _aes.CreateDecryptor(key, iv), CryptoStreamMode.Read);
-        await using FileStream fs = File.Create(path.Replace(".aes", ""));
-        
-        await cryptoStream.CopyToAsync(fs);
     }
 
     public static async Task<Stream> DecryptedFileStreamAsync(string path, byte[] key, byte[] iv)

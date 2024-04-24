@@ -1,8 +1,10 @@
 ﻿namespace FileServer;
 
+using Net.Connection.Clients.Generic;
 using Net.Connection.Clients.Tcp;
 using Net.Connection.Servers;
 using System.Collections.Concurrent;
+using System.IO;
 using System.Threading.Tasks;
 
 internal class FileService
@@ -26,8 +28,6 @@ internal class FileService
     public async Task SendFile(Stream file, ServerClient client, FileRequestMessage msg)
     {
         const int sendChunkSize = 16384;
-
-        Console.WriteLine($"{client.RemoteEndpoint} requested {msg.PathRequest.Split(Path.DirectorySeparatorChar)[^1]}");
 
         var fileName = msg.PathRequest.PathFormat().Split(Path.DirectorySeparatorChar)[^1];
 
@@ -59,7 +59,7 @@ internal class FileService
         if (!await authService.CheckUserAsync(msg.User.UserName, msg.User.Password))
             return;
 
-        var dir = @$"{workingDirectory}\{msg.User.UserName}\{msg.PathRequest}".PathFormat();
+        var dir = @$"{workingDirectory}\{msg.User.UserName}\{msg.PathRequest}".Replace("..", string.Empty).PathFormat();
         var fpath = @$"{dir}\{msg.FileName}".PathFormat();
 
         try
@@ -68,18 +68,33 @@ internal class FileService
             {
                 case FileRequestType.Download:
                     {
+                        Console.WriteLine($"{c.RemoteEndpoint} requested {msg.FileName}");
+                        Directory.CreateDirectory(@$"{workingDirectory}\temp".PathFormat());
                         var key = await authService.GetUserKeyAsync(msg.User.UserName, msg.User.Password);
-                        await using Stream fs = await CryptoServices.DecryptedFileStreamAsync(dir, key, key);
-                        await SendFile(fs, c, msg);
-                        File.Delete(dir);
-                        Console.WriteLine($"{c.RemoteEndpoint} downloaded {msg.PathRequest}");
+                        var tempPath = @$"{workingDirectory}\temp\{msg.RequestId}.tmp".PathFormat();
+                        await using (FileStream destination = File.Create(tempPath))
+                        {
+                            await using (FileStream source = File.OpenRead($"{fpath}.aes"))
+                            {
+                                await CryptoServices.DecryptStreamAsync(source, destination, key, key);
+                            }
+                            await SendFile(destination, c, msg);
+                        }
+                        File.Delete(tempPath);
+                        Console.WriteLine($"{c.RemoteEndpoint} downloaded {msg.FileName}");
                     }
                     break;
                 case FileRequestType.Upload:
                     {
                         Directory.CreateDirectory(dir);
                         var key = await authService.GetUserKeyAsync(msg.User.UserName, msg.User.Password);
-                        await CryptoServices.CreateEncryptedFileAsync(fpath, msg.FileData, key, key);
+                        await using (MemoryStream source = new MemoryStream(msg.FileData))
+                        {
+                            await using (FileStream destination = File.Create($"{fpath}.aes"))
+                            {
+                                await CryptoServices.EncryptStreamAsync(source, destination, key, key);
+                            }
+                        }
                         Console.WriteLine($"{c.RemoteEndpoint} uploaded {msg.FileName}");
                     }
                     break;
@@ -91,6 +106,7 @@ internal class FileService
                     break;
                 case FileRequestType.Tree:
                     {
+                        Directory.CreateDirectory(dir);
                     }
                     break;
             }

@@ -327,7 +327,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     public override void Close() =>
         Utilities.ConcurrentAccess(() =>
         {
-            if (ConnectionState == ConnectionState.CLOSED) return;
+            if (ConnectionState == ConnectionState.CLOSED || !Connection.Connected) return;
 
             SendMessage(new DisconnectMessage());
             Disconnected();
@@ -336,7 +336,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     public override async Task CloseAsync() =>
         await Utilities.ConcurrentAccessAsync(async (ct) =>
         {
-            if (ConnectionState == ConnectionState.CLOSED) return;
+            if (ConnectionState == ConnectionState.CLOSED || !Connection.Connected) return;
 
             await SendMessageAsync(new DisconnectMessage());
             Disconnected();

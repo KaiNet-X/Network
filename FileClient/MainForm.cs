@@ -99,35 +99,26 @@ public partial class MainForm : Form
         _client.OnDisconnected(obj =>
         {
             MessageBox.Show("Server disconnected");
-            Task.Run(() => Invoke(this.Close));
+
+            Task.Run(() =>
+            {
+                if (!IsDisposed)
+                    Invoke(this.Close);
+            });
         });
 
         _client.Connect(addr, 6969, 15, true);
+        _client.SendMessage(new FileRequestMessage { RequestType = FileRequestType.Tree, User = _user });
 
         cAddr.Text = _client.LocalEndpoint.Address.ToString();
         cPort.Text = _client.LocalEndpoint.Port.ToString();
         sAddr.Text = _client.RemoteEndpoint.Address.ToString();
         sPort.Text = _client.RemoteEndpoint.Port.ToString();
-
-        Task.Run(async () =>
-        {
-            while (_client.ConnectionState != ConnectionState.CONNECTED)
-                await Task.Delay(10);
-
-            try
-            {
-                _client.SendMessage(new FileRequestMessage { RequestType = FileRequestType.Tree, User = _user });
-            }
-            catch
-            {
-                MessageBox.Show("ERROR");
-            }
-        });
     }
 
     private async void downloadButton_Click(object sender, EventArgs e)
     {
-        await _client.SendMessageAsync(new FileRequestMessage { RequestType = FileRequestType.Download, PathRequest = _path, User = _user });
+        await _client.SendMessageAsync(new FileRequestMessage { RequestType = FileRequestType.Download, PathRequest = Path.GetDirectoryName(_path), FileName = Path.GetFileName(_path), User = _user });
     }
 
     private async void deleteFileButton_Click(object sender, EventArgs e)
