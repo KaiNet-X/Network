@@ -118,7 +118,7 @@ public partial class MainForm : Form
 
     private async void downloadButton_Click(object sender, EventArgs e)
     {
-        await _client.SendMessageAsync(new FileRequestMessage { RequestType = FileRequestType.Download, PathRequest = Path.GetDirectoryName(_path), FileName = Path.GetFileName(_path), User = _user });
+        await _client.SendMessageAsync(new FileRequestMessage { RequestType = FileRequestType.Download, PathRequest = _path, User = _user });
     }
 
     private async void deleteFileButton_Click(object sender, EventArgs e)
@@ -132,7 +132,7 @@ public partial class MainForm : Form
         if (ofd.ShowDialog() == DialogResult.OK)
         {
             using FileStream fs = File.OpenRead(ofd.FileName);
-            var newMsg = new FileRequestMessage() { RequestType = FileRequestType.Upload, FileName = ofd.SafeFileName, PathRequest = "upload", User = _user };
+            var newMsg = new FileRequestMessage() { RequestType = FileRequestType.Upload, PathRequest = ofd.SafeFileName, User = _user };
             newMsg.FileData = new byte[fs.Length];
             await fs.ReadAsync(newMsg.FileData);
             await _client.SendMessageAsync(newMsg);

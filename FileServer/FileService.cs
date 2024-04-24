@@ -42,7 +42,7 @@ internal class FileService
             var newMsg = new FileRequestMessage()
             {
                 RequestType = FileRequestType.Upload,
-                FileName = fileName,
+                PathRequest = fileName,
                 RequestId = id,
                 EndOfMessage = eom,
                 FileData = eom ? (i > 0 ? new byte[file.Length - file.Position] : bytes) : bytes
@@ -63,9 +63,9 @@ internal class FileService
             return;
         }
 
-        var dir = @$"{workingDirectory}\{msg.User.UserName}\{msg.PathRequest}".PathFormat();
+        var dir = @$"{workingDirectory}\{msg.User.UserName}\{msg.Directory}".PathFormat();
 
-        if (dir.Contains($"..{Path.DirectorySeparatorChar}"))
+        if (dir.Contains("../") || dir.Contains(@"..\"))
         {
             Console.WriteLine($"Potential malicious url from {c.RemoteEndpoint.Address}");
             Console.WriteLine(dir);
@@ -79,7 +79,7 @@ internal class FileService
             {
                 case FileRequestType.Download:
                     {
-                        Console.WriteLine($"{c.RemoteEndpoint} requested {msg.FileName}");
+                        Console.WriteLine($"{c.RemoteEndpoint} requested {msg.PathRequest}");
                         Directory.CreateDirectory(@$"{workingDirectory}\temp".PathFormat());
                         var tempPath = @$"{workingDirectory}\temp\{msg.RequestId}.tmp".PathFormat();
                         await using (FileStream destination = File.Create(tempPath))
@@ -88,10 +88,11 @@ internal class FileService
                             {
                                 await CryptoServices.DecryptStreamAsync(source, destination, key, key);
                             }
+                            destination.Seek(0, SeekOrigin.Begin);
                             await SendFile(destination, c, msg);
                         }
                         File.Delete(tempPath);
-                        Console.WriteLine($"{c.RemoteEndpoint} downloaded {msg.FileName}");
+                        Console.WriteLine($"{c.RemoteEndpoint} downloaded {msg.PathRequest}");
                     }
                     break;
                 case FileRequestType.Upload:
@@ -104,12 +105,12 @@ internal class FileService
                                 await CryptoServices.EncryptStreamAsync(source, destination, key, key);
                             }
                         }
-                        Console.WriteLine($"{c.RemoteEndpoint} uploaded {msg.FileName}");
+                        Console.WriteLine($"{c.RemoteEndpoint} uploaded {msg.PathRequest}");
                     }
                     break;
                 case FileRequestType.Delete:
                     {
-                        File.Delete(@$"{dir}.aes".PathFormat());
+                        File.Delete(@$"{fpath}.aes".PathFormat());
                         Console.WriteLine($"{c.RemoteEndpoint} deleted {msg.PathRequest}");
                     }
                     break;

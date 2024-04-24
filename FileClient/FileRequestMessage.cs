@@ -4,13 +4,22 @@ using Net.Messages;
 
 internal class FileRequestMessage : MessageBase
 {
-    public FileRequestType RequestType { get; set; }
-    public Guid RequestId { get; set; }
-    public User User { get; set; }
-    public bool EndOfMessage { get; set; }
-    public string FileName { get; set; }
+    private string _fileName;
+
+    public FileRequestType RequestType { get; init; }
+    public Guid RequestId { get; init; }
+    public User User { get; init; }
+    public bool EndOfMessage { get; init; }
     public byte[] FileData { get; set; }
-    public string PathRequest { get; set; }
+    public string PathRequest { get; init; }
+
+    public string FileName 
+    {
+        get
+        {
+            return _fileName ??= Path.GetFileName(PathRequest);
+        }
+    }
 }
 
 public enum FileRequestType
