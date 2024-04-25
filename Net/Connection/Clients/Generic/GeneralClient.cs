@@ -310,7 +310,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
 
     private protected abstract void CloseConnection();
 
-    private void Disconnected()
+    private void Disconnected(bool closeConnection = true)
     {
         ConnectedTask.TrySetCanceled();
         ConnectedTask = new TaskCompletionSource();
@@ -321,7 +321,9 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         DisconnectTokenSource = new CancellationTokenSource();
         _pollTimer?.Dispose();
         _pollTimer = null;
-        CloseConnection();
+
+        if (closeConnection)
+            CloseConnection();
     }
 
     public override void Close() =>
@@ -358,8 +360,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     private void DisconnectedEventLogic(DisconnectionInfo info)
     {
         if (ConnectionState == ConnectionState.CLOSED) return;
-        if (info.Reason == DisconnectionReason.TimedOut)
-            Disconnected();
+        Disconnected(info.Reason == DisconnectionReason.TimedOut);
         OnDisconnect?.Invoke(info);
     }
 
