@@ -47,27 +47,36 @@ public class TcpClientTests
         var connected = await c.ConnectAsync(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
         Assert.True(connected);
 
-        server.ShutDown();
+        await server.ShutDownAsync();
     }
 
+    [Fact]
+    public async Task CanCancelConnectAsync()
+    {
+        var cts = new CancellationTokenSource();
+        var client = new Client();
+        cts.CancelAfter(500);
+        await client.ConnectAsync(IPAddress.Loopback, 1, 0, false, cts.Token);
+    }
+    
     [Fact]
     public async Task DisconnectsGracefully()
     {
         var server = NewServer(true);
 
-        var del = (DisconnectionInfo info, ServerClient client) =>
-        {
-            Assert.Equal(DisconnectionReason.Closed, info.Reason);
-            Assert.Null(info.Exception);
-        };
-
-        server.OnDisconnect(del);
+        server.OnDisconnect((Action<DisconnectionInfo, ServerClient>?)Del);
         server.Start();
 
         var c = new Client();
         await c.ConnectAsync(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
-        server.ShutDown();
+        await server.ShutDownAsync();
+
+        void Del(DisconnectionInfo info, ServerClient client)
+        {
+            Assert.Equal(DisconnectionReason.Closed, info.Reason);
+            Assert.Null(info.Exception);
+        }
     }
 
     [Theory]
@@ -93,9 +102,9 @@ public class TcpClientTests
         await c.SendObjectAsync(str);
 
         var t = await Task.WhenAny(Task.Delay(500), tcs.Task);
-        Assert.True(t == tcs.Task && tcs.Task.Result);
+        Assert.True(t == tcs.Task && tcs.Task is { Result: true });
 
-        server.ShutDown();
+        await server.ShutDownAsync();
     }
 
     [Theory]
@@ -120,9 +129,9 @@ public class TcpClientTests
         await c.SendObjectAsync(settings);
 
         var t = await Task.WhenAny(Task.Delay(500), tcs.Task);
-        Assert.True(t == tcs.Task && tcs.Task.Result);
+        Assert.True(t == tcs.Task && tcs.Task is { Result: true });
 
-        server.ShutDown();
+        await server.ShutDownAsync();
     }
 
     [Theory]
@@ -153,9 +162,9 @@ public class TcpClientTests
         await c.SendObjectAsync(arr);
 
         var t = await Task.WhenAny(Task.Delay(500), tcs.Task);
-        Assert.True(t == tcs.Task && tcs.Task.Result);
+        Assert.True(t == tcs.Task && tcs.Task is { Result: true });
 
-        server.ShutDown();
+        await server.ShutDownAsync();
     }
 
     [Theory]
@@ -190,7 +199,7 @@ public class TcpClientTests
 
         await Task.WhenAny(Task.Delay(500), tcs.Task);
 
-        server.ShutDown();
+        await server.ShutDownAsync();
     }
 
     [Theory]
@@ -223,9 +232,9 @@ public class TcpClientTests
         await c.ConnectAsync(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
         var t = await Task.WhenAny(Task.Delay(500), tcs.Task);
-        Assert.True(t == tcs.Task && tcs.Task.Result);
+        Assert.True(t == tcs.Task && tcs.Task is { Result: true });
 
-        server.ShutDown();
+        await server.ShutDownAsync();
     }
 
     [Theory]
@@ -244,12 +253,7 @@ public class TcpClientTests
             [3, 2, 1]
         };
 
-        Action<ServerClient> conn = (sc) =>
-        {
-            sc.SendObject(arr);
-        };
-
-        server.OnClientConnected(conn);
+        server.OnClientConnected((Action<ServerClient>)Conn);
 
         server.Start();
 
@@ -265,7 +269,13 @@ public class TcpClientTests
 
         await Task.WhenAny(Task.Delay(500), tcs.Task);
 
-        server.ShutDown();
+        await server.ShutDownAsync();
+        return;
+
+        void Conn(ServerClient sc)
+        {
+            sc.SendObject(arr);
+        }
     }
 
     [Theory]
@@ -278,13 +288,13 @@ public class TcpClientTests
 
         var server = NewServer(true);
 
-        bool s = false;
+        var s = false;
 
         Action<BaseChannel, ServerClient> opened = (ch, sc) =>
         {
             s = true;
             tcs.SetResult();
-            ch.SendBytes(Encoding.UTF8.GetBytes("Hello World"));
+            ch.SendBytes("Hello World"u8.ToArray());
         };
 
         server.OnAnyChannel(opened);
@@ -312,7 +322,7 @@ public class TcpClientTests
         Assert.Single(server.Clients[^1].Channels);
         Assert.Equal("Hello World", text);
 
-        server.ShutDown();
+        await server.ShutDownAsync();
     }
 
     [Theory]
@@ -344,7 +354,7 @@ public class TcpClientTests
             _ when channelType == typeof(EncryptedTcpChannel) => await c.OpenChannelAsync<EncryptedTcpChannel>(),
         };
 
-        c.CloseChannel(ch);
+        await c.CloseChannelAsync(ch);
 
         await Task.Delay(25);
         
@@ -352,7 +362,7 @@ public class TcpClientTests
         Assert.Equal(0, c.Channels.Count);
         Assert.Equal(0, server.Clients[0].Channels.Count);
 
-        server.ShutDown();
+        await server.ShutDownAsync();
     }
 
     [Theory]
@@ -388,7 +398,7 @@ public class TcpClientTests
 
         Assert.True(tcs.Task.IsCompletedSuccessfully && ch is not null);
 
-        server.ShutDown();
+        await server.ShutDownAsync();
     }
 
     [Theory]
@@ -417,10 +427,10 @@ public class TcpClientTests
         var c = new Client();
 
         await c.ConnectAsync(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
-        c.SendMessage(msg);
+        await c.SendMessageAsync(msg);
         await Task.WhenAny(Task.Delay(500), tcs.Task);
 
-        server.ShutDown();
+        await server.ShutDownAsync();
     }
 
     [Theory]
@@ -448,10 +458,10 @@ public class TcpClientTests
         });
 
         await c.ConnectAsync(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
-        server.SendMessageToAll(msg);
+        await server.SendMessageToAllAsync(msg);
         await Task.WhenAny(Task.Delay(500), tcs.Task);
 
-        server.ShutDown();
+        await server.ShutDownAsync();
     }
 
     [Theory]
@@ -510,9 +520,9 @@ public class TcpClientTests
         await c.ConnectAsync(IPAddress.Loopback, server.ActiveEndpoints[0].Port);
 
         var d = await c.OpenChannelAsync<DummyChannel>();
-        c.CloseChannel(d);
+        await c.CloseChannelAsync(d);
         d = await sc.OpenChannelAsync<DummyChannel>();
-        sc.CloseChannel(d);
+        await sc.CloseChannelAsync(d);
 
         await Task.WhenAny(Task.WhenAll(createChannels.Task, manageChannels.Task, closeChannels.Task), Task.Delay(750));
 
@@ -520,7 +530,7 @@ public class TcpClientTests
         Assert.Equal(2, managed);
         Assert.Equal(2, closed);
 
-        server.ShutDown();
+        await server.ShutDownAsync();
     }
 
     [Fact]
@@ -578,7 +588,7 @@ public class TcpClientTests
         var task = await Task.WhenAny(tcs.Task, Task.Delay(500));
         Assert.Equal(task, tcs.Task);
 
-        server.ShutDown();
+        await server.ShutDownAsync();
     }
 
     [Fact]
@@ -609,6 +619,6 @@ public class TcpClientTests
         await c.SendObjectAsync("Hello world");
         Assert.Equal(tcs.Task, await Task.WhenAny(tcs.Task, Task.Delay(2000)));
 
-        server.ShutDown();
+        await server.ShutDownAsync();
     }
 }
