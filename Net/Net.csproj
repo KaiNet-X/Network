@@ -1,7 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
     <PackageId>KaiNet.Net</PackageId>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
     <Description>Net is an extensible networking library that is easy to get running. It is ideal for hobbiest programmers and rapid development as all of the networking features are highly configurable, yet work straight out of the box.</Description>
@@ -12,10 +11,11 @@
 	<PackageProjectUrl>https://github.com/KaiNet-X/Network</PackageProjectUrl>
 	<PackageTags>networking, sockets, tcp, network</PackageTags>
 	<Authors>$(AssemblyName), KaiNet-X</Authors>
+	<TargetFrameworks>net8.0;net9.0</TargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MessagePack" Version="3.0.238-rc.1" />
+    <PackageReference Include="MessagePack" Version="3.1.3" />
   </ItemGroup>
 
 </Project>
