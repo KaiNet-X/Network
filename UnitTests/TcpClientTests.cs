@@ -15,12 +15,12 @@ public class TcpClientTests
         var settings = encrypted ? 
             new ServerSettings 
             { 
-                ServerRequiresWhitelistedTypes = false
+                RequireWhitelistedTypes = false
             } : 
             new ServerSettings 
             {
                 UseEncryption = false,
-                ServerRequiresWhitelistedTypes = false
+                RequireWhitelistedTypes = false
             };
 
         return new TcpServer(new IPEndPoint(IPAddress.Loopback, 0), settings);
@@ -115,7 +115,7 @@ public class TcpClientTests
         var tcs = new TaskCompletionSource<bool>();
         var server = NewServer(encrypt);
 
-        var settings = new ServerSettings() { ConnectionPollTimeout = -1, UseEncryption = false, ServerRequiresWhitelistedTypes = false };
+        var settings = new ServerSettings() { ConnectionPollTimeout = -1, UseEncryption = false, RequireWhitelistedTypes = false };
 
         server.OnReceive<ServerSettings>((obj, client) =>
         {
@@ -540,8 +540,7 @@ public class TcpClientTests
 
         var server = new TcpServer(IPAddress.Loopback, 11111, new ServerSettings
         {
-            ClientRequiresWhitelistedTypes = true,
-            ServerRequiresWhitelistedTypes = true
+            RequireWhitelistedTypes = true
         });
 
         server.OnObjectError((eFrame, sc) =>
@@ -569,8 +568,7 @@ public class TcpClientTests
 
         var server = new TcpServer(IPAddress.Loopback, 0, new ServerSettings
         {
-            ClientRequiresWhitelistedTypes = true,
-            ServerRequiresWhitelistedTypes = true
+            RequireWhitelistedTypes = true
         });
 
         server.Start();

@@ -15,5 +15,5 @@ public class ConnectionSettings
     /// <summary>
     /// Requires the client to register allowed types to deserialize
     /// </summary>
-    public bool RequiresWhitelistedTypes = false;
+    public bool RequireWhitelistedTypes = false;
 }

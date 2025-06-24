@@ -222,7 +222,7 @@ public abstract class ObjectClient<MainChannel> : GeneralClient<MainChannel> whe
     private void HandleObject(ObjectMessage m)
     {
         var unknown = !TypeHandler.TryGetTypeFromName(m.TypeName, out Type t);
-        var notRegistered = Settings.RequiresWhitelistedTypes && !WhitelistedObjectTypes.Contains(t);
+        var notRegistered = Settings.RequireWhitelistedTypes && !WhitelistedObjectTypes.Contains(t);
 
         if (notRegistered || unknown)
         {

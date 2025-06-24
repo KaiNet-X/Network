@@ -19,7 +19,7 @@ TcpServer s = new TcpServer(endpoints, new ServerSettings { UseEncryption = true
 
 s.OnClientConnected(Connected);
 s.OnDisconnect(Disconnected);
-s.OnReceive<object>(Recieved);
+s.OnReceive<object>(Received);
 
 // Starts listening for incomming connections
 s.Start();
@@ -54,7 +54,7 @@ void Disconnected(DisconnectionInfo info, ServerClient sc) =>
 void Connected(ServerClient c) =>
     Console.WriteLine($"Connected: {c.RemoteEndpoint}");
 
-async void Recieved(object obj, ServerClient c)
+async void Received(object obj, ServerClient c)
 {
     foreach (ObjectClient b in s.Clients)
         if (b != c)

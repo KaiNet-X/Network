@@ -69,7 +69,8 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     public override void SendMessage(MessageBase message)
     {
         if (ConnectionState == ConnectionState.CLOSED) return;
-        else if (!Connection.Connected)
+        
+        if (!Connection.Connected)
         {
             DisconnectedEvent(new DisconnectionInfo
             {
@@ -105,14 +106,15 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
     public override async Task SendMessageAsync(MessageBase message, CancellationToken token = default)
     {
         if (ConnectionState == ConnectionState.CLOSED) return;
-        else if (!Connection.Connected)
+        
+        if (!Connection.Connected)
         {
-            DisconnectedEvent(new DisconnectionInfo
+            await DisconnectedEventAsync(new DisconnectionInfo
             {
                 Exception = Connection.ConnectionException
             });
         }
-        
+
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(token, DisconnectTokenSource.Token);
 
         try
@@ -181,7 +183,7 @@ public abstract class GeneralClient<MainChannel> : BaseClient where MainChannel 
         EncryptionStage.SYN => "Rsa",
         EncryptionStage.ACK => "Aes",
         EncryptionStage.SYNACK => "Aes",
-        EncryptionStage.NONE or _ => "None"
+        _ => "None"
     };
 
     protected virtual async Task HandleMessageAsync(MessageBase message)

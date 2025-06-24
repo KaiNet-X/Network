@@ -61,7 +61,7 @@ public abstract class Server<ClientType, ConnectionType> : BaseServer<ClientType
     public Server(ServerSettings settings)
     {
         Settings = settings;
-        if (settings.ServerRequiresWhitelistedTypes) 
+        if (settings.RequireWhitelistedTypes) 
             WhitelistedObjectTypes = new();
     }
 

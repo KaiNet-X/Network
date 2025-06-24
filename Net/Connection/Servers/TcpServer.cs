@@ -98,25 +98,25 @@ public class TcpServer : Server<ServerClient, TcpChannel>
     /// <inheritdoc/>
     protected override async Task<ServerClient> InitializeClient()
     {
-        using var cts = new CancellationTokenSource();
-        var tasks = _bindingSockets.Select(s => s.AcceptAsync(cts.Token).AsTask());
+        Socket connection;
+        using (var cts = new CancellationTokenSource())
+        {
+            var tasks = _bindingSockets.Select(s => s.AcceptAsync(cts.Token).AsTask());
 
-        var connection = await await Task.WhenAny(tasks);
-        await cts.CancelAsync();
+            connection = await await Task.WhenAny(tasks);
+            await cts.CancelAsync();
+        }
 
-        var sc = new ServerClient(connection, new ConnectionSettings
+        var settings = new ConnectionSettings
         {
             UseEncryption = Settings.UseEncryption,
             ConnectionPollTimeout = Settings.ConnectionPollTimeout,
-            RequiresWhitelistedTypes = Settings.ServerRequiresWhitelistedTypes,
-        });
+            RequireWhitelistedTypes = Settings.RequireWhitelistedTypes,
+        };
+        
+        var sc = new ServerClient(connection, settings);
 
-        await sc.SendMessageAsync(new SettingsMessage(new ConnectionSettings
-        {
-            UseEncryption = Settings.UseEncryption,
-            ConnectionPollTimeout = Settings.ConnectionPollTimeout,
-            RequiresWhitelistedTypes = Settings.ClientRequiresWhitelistedTypes,
-        }));
+        await sc.SendMessageAsync(new SettingsMessage(settings));
 
         return sc;
     }

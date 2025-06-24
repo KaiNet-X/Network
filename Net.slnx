@@ -1,0 +1,7 @@
+﻿<Solution>
+  <Project Path="CmdLineMsgClient\CmdLineMsgClient.csproj" />
+  <Project Path="MsgServer\MsgServer.csproj" />
+  <Project Path="Net\Net.csproj" />
+  <Project Path="TestGround\TestGround.csproj" />
+  <Project Path="UnitTests\UnitTests.csproj" />
+</Solution>
