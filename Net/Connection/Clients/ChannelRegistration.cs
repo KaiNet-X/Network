@@ -1,7 +1,7 @@
 ﻿namespace Net.Connection.Clients;
 
 using Channels;
-using Net.Messages;
+using Messages;
 using System;
 using System.Threading.Tasks;
 

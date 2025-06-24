@@ -1,7 +1,7 @@
 ﻿namespace Net.Internals;
 
-using Net.Attributes;
-using Net.Messages;
+using Attributes;
+using Messages;
 using System;
 using System.Collections.Concurrent;
 using System.Linq;

@@ -1,21 +1,25 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <PackageId>KaiNet.Net</PackageId>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
     <Description>Net is an extensible networking library that is easy to get running. It is ideal for hobbiest programmers and rapid development as all of the networking features are highly configurable, yet work straight out of the box.</Description>
     <RepositoryUrl>https://github.com/KaiNet-X/Network</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>  
     <Company>KaiNet</Company>
-    <Version>4.0.1</Version>
+    <Version>4.1.0</Version>
 	<GenerateDocumentationFile>true</GenerateDocumentationFile>
 	<PackageProjectUrl>https://github.com/KaiNet-X/Network</PackageProjectUrl>
 	<PackageTags>networking, sockets, tcp, network</PackageTags>
 	<Authors>$(AssemblyName), KaiNet-X</Authors>
-	<TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+	<TargetFramework>net9.0</TargetFramework>
+	<PackageReleaseNotes>-Add CancellationToken support to ConnectAsync
+-Target dotnet 9
+-Update NuGet packages</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="MessagePack" Version="3.1.3" />
+    <None Include="README.md" Pack="true" PackagePath="\"/>
   </ItemGroup>
 
 </Project>

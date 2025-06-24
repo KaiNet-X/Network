@@ -2,9 +2,9 @@
 
 using Channels;
 using Messages;
-using Net.Internals;
-using Net.Messages.Parsing;
-using Net.Serialization;
+using Internals;
+using Messages.Parsing;
+using Serialization;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;

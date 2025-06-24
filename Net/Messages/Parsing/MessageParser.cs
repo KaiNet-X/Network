@@ -1,7 +1,7 @@
 ﻿namespace Net.Messages.Parsing;
 
-using Net.Internals;
-using Net.Serialization;
+using Internals;
+using Serialization;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -15,106 +15,88 @@ public class MessageParser : IMessageParser
     private readonly CryptographyService _cryptographyService;
     private readonly ISerializer _serializer;
 
+    /// <summary>
+    /// The default constructor
+    /// </summary>
+    /// <param name="crypto"></param>
+    /// <param name="serializer"></param>
     public MessageParser(CryptographyService crypto, ISerializer serializer)
     {
         _cryptographyService = crypto;
         _serializer = serializer;
     }
-
-    /// <summary>
-    /// Encapsulate message into a span of bytes
-    /// </summary>
-    /// <param name="message">Message to be parsed</param>
-    /// <param name="options">Options that a client can pass to the parser</param>
-    /// <returns>Span of bytes representing the encoded message</returns>
-    public ReadOnlySpan<byte> EncapsulateMessageAsSpan(MessageBase message, Dictionary<string, string> options)
+    
+    /// <inheritdoc />
+    public byte[] EncapsulateMessage(MessageBase message, Dictionary<string, string> options)
     {
+        const int s = sizeof(int);
+        
         ReadOnlySpan<byte> serialized = _serializer.Serialize(message, message.GetType());
-
+        
         var enc = options["Encryption"];
-        switch (enc)
+        serialized = enc switch
         {
-            case "Rsa":
-                serialized = _cryptographyService.EncryptRSA(serialized);
-                break;
-            case "Aes":
-                serialized = _cryptographyService.EncryptAES(serialized);
-                break;
-        }
-
-        ReadOnlySpan<byte> header = Encoding.UTF8.GetBytes($"{message.MessageType}}}{serialized.Length}}}}}").AsSpan();
-        Span<byte> bytes = new byte[serialized.Length + header.Length];
-
-        header.CopyTo(bytes);
-        serialized.CopyTo(bytes.Slice(header.Length));
+            "Rsa" => _cryptographyService.EncryptRSA(serialized),
+            "Aes" => _cryptographyService.EncryptAES(serialized),
+            _ => serialized
+        };
+        
+        ReadOnlySpan<byte> header = Encoding.UTF8.GetBytes(message.MessageType);
+        
+        var bytes = new byte[s * 2 + header.Length + serialized.Length];
+        var byteSpan = bytes.AsSpan();
+        
+        BitConverter.GetBytes(header.Length).CopyTo(byteSpan);
+        BitConverter.GetBytes(serialized.Length).CopyTo(byteSpan[s..]);
+        header.CopyTo(byteSpan[(s * 2)..]);
+        serialized.CopyTo(byteSpan[(header.Length + s * 2)..]);
 
         return bytes;
     }
 
-    /// <summary>
-    /// Encapsulate message into byte memory
-    /// </summary>
-    /// <param name="message">Message to be parsed</param>
-    /// <param name="options">Options that a client can pass to the parser</param>
-    /// <returns>Memory of bytes representing the encoded message</returns>
-    public ReadOnlyMemory<byte> EncapsulateMessageAsMemory(MessageBase message, Dictionary<string, string> options)
+    private MessageBase DecapsulateNext(List<byte> bytes, Dictionary<string, string> options, out int read)
     {
-        ReadOnlyMemory<byte> serialized = _serializer.Serialize(message, message.GetType());
+        const int s = sizeof(int);
 
-        var enc = options["Encryption"];
-        switch (enc)
+        if (bytes.Count < 2 * s)
         {
-            case "Rsa":
-                serialized = _cryptographyService.EncryptRSA(serialized);
-                break;
-            case "Aes":
-                serialized = _cryptographyService.EncryptAES(serialized);
-                break;
+            read = 0;
+            return null;
         }
+        
+        ReadOnlySpan<byte> span = CollectionsMarshal.AsSpan(bytes);
+        
+        var headerLength = BitConverter.ToInt32(span[..s]);
+        span = span[4..];
+        
+        var messageLength = BitConverter.ToInt32(span[..s]);
+        span = span[4..];
 
-        Memory<byte> header = Encoding.UTF8.GetBytes($"{message.MessageType}}}{serialized.Length}}}}}").AsMemory();
-        Memory<byte> bytes = new byte[serialized.Length + header.Length];
-
-        header.CopyTo(bytes);
-        serialized.CopyTo(bytes.Slice(header.Length));
-
-        return bytes;
-    }
-
-    private MessageBase DecapsulateNext(List<byte> bytes, Dictionary<string, string> options, ref int origin)
-    {
-        var span = CollectionsMarshal.AsSpan(bytes).Slice(origin);
-        int msgEnd = Utilities.IndexInByteSpan(span, new byte[] { 0x7d });
-        int lengthEnd = Utilities.IndexInByteSpan(span, new byte[] { 0x7d, 0x7d });
-
-        if (msgEnd == -1 || lengthEnd == -1)
-            return null;
-
-        int len = int.Parse(Encoding.UTF8.GetString(span.Slice(msgEnd + 1, lengthEnd - msgEnd - 1)));
-
-        if (span.Length < 2 + lengthEnd + len)
-            return null;
-
-        ReadOnlySpan<byte> msg = span.Slice(2 + lengthEnd, len);
-
-        var enc = options["Encryption"];
-        switch (enc)
+        if (bytes.Count < 4 + headerLength + messageLength) 
         {
-            case "Rsa":
-                msg = _cryptographyService.DecryptRSA(msg);
-                break;
-            case "Aes":
-                msg = _cryptographyService.DecryptAES(msg);
-                break;
+            read = 0;
+            return null;
         }
+        
+        var header = Encoding.UTF8.GetString(span[..headerLength]);
+        var type = TypeHandler.RegisteredMessages[header];
+        
+        span = span[headerLength..];
 
-        var t = span.Slice(0, msgEnd);
-        var type = TypeHandler.RegisteredMessages[Encoding.UTF8.GetString(t)];
-
-        origin += lengthEnd + 2 + len;
+        var msg = span[..messageLength];
+        
+        var enc = options["Encryption"];
+        msg = enc switch
+        {
+            "Rsa" => _cryptographyService.DecryptRSA(msg),
+            "Aes" => _cryptographyService.DecryptAES(msg),
+            _ => msg
+        };
+        
+        read = headerLength + messageLength + 2 * s;
         return _serializer.Deserialize(msg, type) as MessageBase;
     }
-
+    
     /// <summary>
     /// Streams messages from a list of bytes
     /// </summary>
@@ -123,15 +105,13 @@ public class MessageParser : IMessageParser
     /// <returns>Sequence of messages</returns>
     public IEnumerable<MessageBase> DecapsulateMessages(List<byte> bytes, Dictionary<string, string> options)
     {
-        int origin = 0;
         while (true)
         {
-            var msg = DecapsulateNext(bytes, options, ref origin);
-            if (msg == null)
-            {
-                bytes.RemoveRange(0, origin);
+            var msg = DecapsulateNext(bytes, options, out var read);
+            if (msg is null)
                 yield break;
-            };
+            
+            bytes.RemoveRange(0, read);
             yield return msg;
         }
     }

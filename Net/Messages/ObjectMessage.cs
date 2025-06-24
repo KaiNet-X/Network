@@ -1,7 +1,7 @@
 ﻿namespace Net.Messages;
 
 using Attributes;
-using Net.Serialization;
+using Serialization;
 using System;
 using System.Reflection;
 

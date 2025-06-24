@@ -1,6 +1,6 @@
 ﻿namespace Net.Internals;
 
-using Net.Serialization;
+using Serialization;
 using System;
 
 public class ObjectMessageErrorFrame

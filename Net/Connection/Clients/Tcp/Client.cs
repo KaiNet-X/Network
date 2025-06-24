@@ -13,13 +13,13 @@ using System.Threading.Tasks;
 /// </summary>
 public class Client : ObjectClient
 {
-    private Task _listener { get; set; }
+    private Task Listener { get; set; }
 
     /// <summary>
     /// If the control loop fails, get the exception
     /// </summary>
-    public Exception ControlLoopException => _listener.Exception;
-
+    public Exception ControlLoopException => Listener.Exception;
+    
     /// <summary>
     /// Connect to the server this client is bound to
     /// </summary>
@@ -164,7 +164,7 @@ public class Client : ObjectClient
 
     private void StartLoop(CancellationToken ct)
     {
-        _listener = Task.Factory.StartNew(async () =>
+        Listener = Task.Factory.StartNew(async () =>
         {
             await foreach (var msg in ReceiveMessagesAsync())
                 if (msg != null && !ct.IsCancellationRequested)

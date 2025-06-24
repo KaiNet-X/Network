@@ -24,7 +24,7 @@ public sealed class EncryptionMessage : MessageBase
 
     public EncryptionMessage(EncryptionStage stage)
     {
-        this.Stage = stage;
+        Stage = stage;
     }
 
     public EncryptionMessage() { }

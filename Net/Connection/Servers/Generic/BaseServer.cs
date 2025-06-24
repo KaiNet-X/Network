@@ -2,7 +2,7 @@
 
 using Messages;
 using Net.Connection.Clients.Generic;
-using Net.Internals;
+using Internals;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;

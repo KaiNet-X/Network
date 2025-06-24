@@ -1,6 +1,6 @@
 ﻿namespace Net;
 
-using Net.Connection.Channels;
+using Connection.Channels;
 using Serialization;
 using System;
 using System.Collections;

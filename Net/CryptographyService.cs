@@ -52,49 +52,25 @@ public class CryptographyService
 
     public static void GenerateKeyPair(out RSAParameters PublicKey, out RSAParameters PrivateKey)
     {
-        using (var prov = new RSACryptoServiceProvider(2048))
-        {
-            PrivateKey = prov.ExportParameters(true);
-            PublicKey = prov.ExportParameters(false);
-        }
+        using var prov = new RSACryptoServiceProvider(2048);
+        PrivateKey = prov.ExportParameters(true);
+        PublicKey = prov.ExportParameters(false);
     }
 
-    public ReadOnlySpan<byte> EncryptRSA(ReadOnlySpan<byte> bytes)
+    public byte[] EncryptRSA(ReadOnlySpan<byte> bytes)
     {
-        using (var provider = new RSACryptoServiceProvider())
-        {
-            provider.ImportParameters(PublicKey.Value);
-            return provider.Encrypt(bytes, RSAEncryptionPadding.OaepSHA256);
-        }
+        using var provider = new RSACryptoServiceProvider();
+        provider.ImportParameters(PublicKey.Value);
+        return provider.Encrypt(bytes, RSAEncryptionPadding.Pkcs1);
     }
-
-    public ReadOnlyMemory<byte> EncryptRSA(ReadOnlyMemory<byte> bytes)
+    
+    public byte[] DecryptRSA(ReadOnlySpan<byte> bytes)
     {
-        using (var provider = new RSACryptoServiceProvider())
-        {
-            provider.ImportParameters(PublicKey.Value);
-            return provider.Encrypt(bytes.Span, RSAEncryptionPadding.Pkcs1);
-        }
+        using var provider = new RSACryptoServiceProvider();
+        provider.ImportParameters(PrivateKey.Value);
+        return provider.Decrypt(bytes, RSAEncryptionPadding.Pkcs1);
     }
-
-    public ReadOnlySpan<byte> DecryptRSA(ReadOnlySpan<byte> bytes)
-    {
-        using (var provider = new RSACryptoServiceProvider())
-        {
-            provider.ImportParameters(PrivateKey.Value);
-            return provider.Decrypt(bytes, RSAEncryptionPadding.Pkcs1);
-        }
-    }
-
-    public ReadOnlyMemory<byte> DecryptRSA(ReadOnlyMemory<byte> bytes)
-    {
-        using (var provider = new RSACryptoServiceProvider())
-        {
-            provider.ImportParameters(PrivateKey.Value);
-            return provider.Decrypt(bytes.Span, RSAEncryptionPadding.OaepSHA256);
-        }
-    }
-
+    
     public ReadOnlySpan<byte> EncryptAES(ReadOnlySpan<byte> input) =>
         _aes.EncryptCbc(input, AesIv);
 

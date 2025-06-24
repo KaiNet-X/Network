@@ -33,10 +33,8 @@ public class ServerSettings
     /// <summary>
     /// Requires the server and client programs to 
     /// </summary>
-    public bool ServerRequiresWhitelistedTypes { get; set; } = true;
+    public bool ServerRequiresWhitelistedTypes { get; init; } = true;
+    
+    public bool ClientRequiresWhitelistedTypes { get; init; } = true;
 
-    /// <summary>
-    /// Requires the server and client programs to 
-    /// </summary>
-    public bool ClientRequiresWhitelistedTypes { get; set; } = false;
 }

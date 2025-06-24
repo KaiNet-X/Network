@@ -43,7 +43,7 @@ public class TcpServer : Server<ServerClient, TcpChannel>
     /// <param name="endpoint">Endpoint for the server to bind to</param>
     /// <param name="settings">Settings for connection</param>
     public TcpServer(IPEndPoint endpoint, ServerSettings settings = null) :
-        this(new List<IPEndPoint> { endpoint }, settings)
+        this([endpoint], settings)
     { }
 
     /// <summary>
@@ -54,9 +54,10 @@ public class TcpServer : Server<ServerClient, TcpChannel>
     public TcpServer(List<IPEndPoint> endpoints, ServerSettings settings = null) : base(settings ?? new ServerSettings())
     {
         Endpoints = endpoints;
-        _bindingSockets = new List<Socket>();
+        _bindingSockets = [];
     }
 
+    /// <inheritdoc/>
     public override void Stop()
     {
         Listening = false;
@@ -69,7 +70,8 @@ public class TcpServer : Server<ServerClient, TcpChannel>
             }
         }, _semaphore);
     }
-
+    
+    /// <inheritdoc/>
     public override async Task StopAsync()
     {
         Listening = false;
@@ -85,6 +87,7 @@ public class TcpServer : Server<ServerClient, TcpChannel>
         }, _semaphore);
     }
 
+    /// <inheritdoc/>
     public override void Start()
     {
         InitializeSockets(Endpoints);
@@ -92,26 +95,23 @@ public class TcpServer : Server<ServerClient, TcpChannel>
         base.Start();
     }
 
+    /// <inheritdoc/>
     protected override async Task<ServerClient> InitializeClient()
     {
-        CancellationTokenSource cts = new CancellationTokenSource();
-        List<Task<Socket>> tasks = new List<Task<Socket>>();
+        using var cts = new CancellationTokenSource();
+        var tasks = _bindingSockets.Select(s => s.AcceptAsync(cts.Token).AsTask());
 
-        foreach (Socket s in _bindingSockets)
-        {
-            tasks.Add(s.AcceptAsync(cts.Token).AsTask());
-        }
         var connection = await await Task.WhenAny(tasks);
-        cts.Cancel();
+        await cts.CancelAsync();
 
-        var sc = new ServerClient(connection, new ConnectionSettings()
+        var sc = new ServerClient(connection, new ConnectionSettings
         {
             UseEncryption = Settings.UseEncryption,
             ConnectionPollTimeout = Settings.ConnectionPollTimeout,
             RequiresWhitelistedTypes = Settings.ServerRequiresWhitelistedTypes,
         });
 
-        await sc.SendMessageAsync(new SettingsMessage(new ConnectionSettings()
+        await sc.SendMessageAsync(new SettingsMessage(new ConnectionSettings
         {
             UseEncryption = Settings.UseEncryption,
             ConnectionPollTimeout = Settings.ConnectionPollTimeout,
@@ -123,9 +123,9 @@ public class TcpServer : Server<ServerClient, TcpChannel>
 
     private void InitializeSockets(List<IPEndPoint> endpoints)
     {
-        foreach (IPEndPoint endpoint in endpoints)
+        foreach (var endpoint in endpoints)
         {
-            Socket s = new Socket(endpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            var s = new Socket(endpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
             s.Bind(endpoint);
             _bindingSockets.Add(s);
@@ -134,7 +134,7 @@ public class TcpServer : Server<ServerClient, TcpChannel>
 
     private void StartListening()
     {
-        foreach (Socket s in _bindingSockets)
+        foreach (var s in _bindingSockets)
             s.Listen();
     }
 }
